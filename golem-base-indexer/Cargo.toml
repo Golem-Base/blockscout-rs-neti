@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = [
+    "golem-base-indexer-logic",
+    "golem-base-indexer-entity",
+    "golem-base-indexer-migration",
+    "golem-base-indexer-proto",
+    "golem-base-indexer-server",
+]
+
+[workspace.dependencies]
+blockscout-service-launcher = "0.12.1"
