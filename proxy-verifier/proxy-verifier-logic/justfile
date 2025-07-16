@@ -1,4 +1,0 @@
-export DATABASE_URL := env_var('DATABASE_URL')
-
-
-

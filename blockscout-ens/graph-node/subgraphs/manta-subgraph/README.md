@@ -1,1 +1,0 @@
-# Manta Name Service Subgraph
