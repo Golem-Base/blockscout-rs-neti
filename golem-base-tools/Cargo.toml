@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+authors = ["neti-soft.com"]
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/Golem-Base/blockscout-rs-neti"
+repository = "https://github.com/Golem-Base/blockscout-rs-neti"
+
+[workspace.dependencies]
+alloy-rlp = "0.3.12"
+golem-base-sdk = { version = "0.4.0" }
+pico-args = "0.5.0"
+color-eyre = "0.6.5"
