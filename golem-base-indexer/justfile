@@ -2,38 +2,21 @@ default:
     just --list --unsorted
 
 db-host := env_var_or_default('DB_HOST', "localhost")
-db-port := env_var_or_default('DB_PORT', "5432")
-db-user := env_var_or_default('DB_USER', "postgres")
-db-password := env_var_or_default('DB_PASSWORD', "admin")
-db-name := env_var_or_default('DB_NAME', "golem_base_indexer")
+db-port := env_var_or_default('DB_PORT', "7432")
+db-user := env_var_or_default('DB_USER', "blockscout")
+db-password := env_var_or_default('DB_PASSWORD', "ceWb1MeLBEeOIfk65gU8EjF8")
+db-name := env_var_or_default('DB_NAME', "blockscout")
 export DATABASE_URL := "postgres://" + db-user + ":" + db-password + "@" + db-host + ":" + db-port + "/" + db-name
 
-docker-name := env_var_or_default('DOCKER_NAME', "golem-base-indexer-postgres")
-test-db-port := env_var_or_default('TEST_DB_PORT', "9433")
-
-
-start-postgres:
-    # we run it in --rm mode, so all data will be deleted after stopping
-    docker run -p {{db-port}}:5432 --name {{docker-name}} -e POSTGRES_PASSWORD={{db-password}} -e POSTGRES_USER={{db-user}} --rm -d postgres -N 500
-    sleep 3
-    # wait for postgres to start, but only if db_name is not empty
-    $SHELL -c '[[ -z "{{db-name}}" ]] || docker exec -it {{docker-name}} psql -U postgres -c "create database {{db-name}};"'
-
-stop-postgres:
-    docker kill {{docker-name}}
-
 test *args:
-    cargo test {{args}} -- --include-ignored
-
-test-with-db *args:
-    -just db-port="{{test-db-port}}" db-name="" docker-name="{{docker-name}}-test" start-postgres
-    just db-port="{{test-db-port}}" db-name=""                                    test {{args}}
-
-stop-test-postgres:
-    just docker-name="{{docker-name}}-test" stop-postgres
+  - docker stop golem-base-indexer-postgres
+  docker run -p 8432 --name golem-base-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
+  env DATABASE_URL=$(dirname $DATABASE_URL) cargo test {{args}} -- --include-ignored
+  docker stop golem-base-indexer-postgres
 
 run:
     GOLEM_BASE_INDEXER__DATABASE__CONNECT__URL={{DATABASE_URL}} \
+    GOLEM_BASE_INDEXER__DATABASE__RUN_MIGRATIONS=true \
     cargo run --bin golem-base-indexer-server
 
 generate-entities:
@@ -47,5 +30,3 @@ migrate-up:
 
 migrate-down:
     sea-orm-cli migrate -d golem-base-indexer-migration down
-
-

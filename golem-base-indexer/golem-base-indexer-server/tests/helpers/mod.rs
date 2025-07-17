@@ -1,11 +1,46 @@
 use blockscout_service_launcher::{test_database::TestDbGuard, test_server};
 use golem_base_indexer_server::Settings;
+use migration::{
+    from_sql, Alias, DbErr, DynIden, IntoIden, MigrationName, MigrationTrait, MigratorTrait,
+    SchemaManager,
+};
 use reqwest::Url;
+
+pub struct TestMigrator;
+#[async_trait::async_trait]
+impl MigratorTrait for TestMigrator {
+    fn migrations() -> Vec<Box<dyn MigrationTrait>> {
+        let before: Vec<Box<dyn MigrationTrait>> = vec![Box::new(TestMigrationBefore)];
+        before
+            .into_iter()
+            .chain(migration::Migrator::migrations())
+            .collect()
+    }
+    fn migration_table_name() -> DynIden {
+        Alias::new("golem_base_indexer_migrations").into_iden()
+    }
+}
+
+pub struct TestMigrationBefore;
+
+impl MigrationName for TestMigrationBefore {
+    fn name(&self) -> &str {
+        "test_migration_before_0"
+    }
+}
+
+#[async_trait::async_trait]
+impl MigrationTrait for TestMigrationBefore {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        from_sql(manager, include_str!("blockscout_tables.sql")).await
+    }
+}
 
 pub async fn init_db(db_prefix: &str, test_name: &str) -> TestDbGuard {
     let db_name = format!("{db_prefix}_{test_name}");
-    TestDbGuard::new::<migration::Migrator>(db_name.as_str()).await
+    TestDbGuard::new::<TestMigrator>(db_name.as_str()).await
 }
+
 pub async fn init_golem_base_indexer_server<F>(db_url: String, settings_setup: F) -> Url
 where
     F: Fn(Settings) -> Settings,
