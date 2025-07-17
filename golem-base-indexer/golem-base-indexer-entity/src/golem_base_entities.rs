@@ -11,13 +11,15 @@ pub struct Model {
         auto_increment = false,
         column_type = "VarBinary(StringLen::None)"
     )]
-    pub hash: Vec<u8>,
+    pub key: Vec<u8>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub data: Vec<u8>,
     pub status: GolemBaseEntityStatusType,
-    pub created_at: i32,
-    pub expires_at: i32,
-    pub last_updated_at: i32,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
+    pub created_at_tx_hash: Option<Vec<u8>>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub last_updated_at_tx_hash: Vec<u8>,
+    pub expires_at_block_number: i64,
     pub inserted_at: DateTime,
     pub updated_at: DateTime,
 }

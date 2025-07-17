@@ -10,15 +10,15 @@ pub struct Model {
         auto_increment = false,
         column_type = "VarBinary(StringLen::None)"
     )]
-    pub entity_hash: Vec<u8>,
+    pub entity_key: Vec<u8>,
     #[sea_orm(
         primary_key,
         auto_increment = false,
         column_type = "VarBinary(StringLen::None)"
     )]
-    pub operation_txhash: Vec<u8>,
+    pub operation_tx_hash: Vec<u8>,
     #[sea_orm(primary_key, auto_increment = false)]
-    pub operation_index: i32,
+    pub operation_index: i64,
     pub active: bool,
     #[sea_orm(column_type = "Text")]
     pub key: String,
@@ -31,15 +31,15 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::golem_base_entities::Entity",
-        from = "Column::EntityHash",
-        to = "super::golem_base_entities::Column::Hash",
+        from = "Column::EntityKey",
+        to = "super::golem_base_entities::Column::Key",
         on_update = "NoAction",
         on_delete = "NoAction"
     )]
     GolemBaseEntities,
     #[sea_orm(
         belongs_to = "super::golem_base_operations::Entity",
-        from = "(Column::OperationTxhash, Column::OperationIndex)",
+        from = "(Column::OperationTxHash, Column::OperationIndex)",
         to = "(super::golem_base_operations::Column::TransactionHash, super::golem_base_operations::Column::Index)",
         on_update = "NoAction",
         on_delete = "NoAction"
