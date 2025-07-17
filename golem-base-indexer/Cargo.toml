@@ -15,6 +15,7 @@ actix-prost-macros = "0.2.0"
 actix-web = "4.2"
 alloy-primitives = "1.2.1"
 alloy-rlp = "0.3.12"
+alloy-sol-types = "1.2.1"
 anyhow = "1.0"
 async-std = { version = "1", features = ["attributes", "tokio1"] }
 async-trait = "0.1"
@@ -39,4 +40,3 @@ tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }
 tonic = "0.12"
 tonic-build = "0.12"
 tracing = "0.1"
-

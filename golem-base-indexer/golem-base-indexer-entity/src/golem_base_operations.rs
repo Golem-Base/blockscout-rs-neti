@@ -7,24 +7,24 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "golem_base_operations")]
 pub struct Model {
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
-    pub entity_hash: Vec<u8>,
+    pub entity_key: Vec<u8>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub sender: Vec<u8>,
     pub operation: GolemBaseOperationType,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub data: Option<Vec<u8>>,
-    pub btl: Option<i32>,
+    #[sea_orm(column_type = "Decimal(Some((21, 0)))", nullable)]
+    pub btl: Option<Decimal>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub block_hash: Vec<u8>,
     #[sea_orm(
         primary_key,
         auto_increment = false,
         column_type = "VarBinary(StringLen::None)"
     )]
     pub transaction_hash: Vec<u8>,
-    pub block_number: i32,
-    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
-    pub block_hash: Vec<u8>,
     #[sea_orm(primary_key, auto_increment = false)]
-    pub index: i32,
+    pub index: i64,
     pub inserted_at: DateTime,
 }
 

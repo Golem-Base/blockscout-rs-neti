@@ -22,29 +22,36 @@ impl MigrationTrait for Migration {
 
             create type golem_base_entity_status_type as enum (
                 'active',
-                'deleted',
-                'expired'
+                'deleted'
             );
 
             create table golem_base_operations (
-                entity_hash bytea not null,
+                entity_key bytea not null,
                 sender bytea not null,
                 operation golem_base_operation_type not null,
                 data bytea,
-                btl int,
+                btl numeric(21,0), -- we must fit uint64
 
-                transaction_hash bytea not null,
-                block_number int not null,
                 block_hash bytea not null,
-                index int not null,
+                transaction_hash bytea not null,
+                index bigint not null,
 
                 inserted_at timestamp NOT NULL DEFAULT (now()),
 
-                primary key(transaction_hash, index)
+                primary key(transaction_hash, index),
+
+                -- create & update ops must set data & btl
+                check(operation != 'create' or operation != 'update' or (data is not null and btl is not null)),
+
+                -- delete ops must not set data & btl
+                check(operation != 'delete' or (data is null and btl is null)),
+
+                -- extend ops must not set data & must set btl
+                check(operation != 'extend' or (data is null and btl is not null))
             );
 
             -- for fetching all operations for given entity
-            create index on golem_base_operations (entity_hash);
+            create index on golem_base_operations (entity_key);
 
             -- for fetching all operations for given owner
             create index on golem_base_operations (sender);
@@ -52,52 +59,48 @@ impl MigrationTrait for Migration {
             -- for fetching all operations in given tx
             create index on golem_base_operations (transaction_hash);
 
-            -- for fetching all operations in given block. use block_number to also be able to fetch it chronologically
-            create index on golem_base_operations (block_number);
-
             -- for fetching all operations in given block
             create index on golem_base_operations (block_hash);
 
             create table golem_base_entities (
-                hash bytea not null primary key,
+                key bytea not null primary key,
                 data bytea not null,
                 status golem_base_entity_status_type not null,
 
-                -- block numbers
-                created_at int not null,
-                expires_at int not null,
-                last_updated_at int not null,
+                created_at_tx_hash bytea,
+                last_updated_at_tx_hash bytea not null,
+                expires_at_block_number bigint not null,
 
                 inserted_at timestamp NOT NULL DEFAULT (now()),
                 updated_at timestamp NOT NULL DEFAULT (now())
             );
 
             create table golem_base_string_annotations (
-                entity_hash bytea not null references golem_base_entities (hash),
-                operation_txhash bytea not null,
-                operation_index int not null,
+                entity_key bytea not null references golem_base_entities (key),
+                operation_tx_hash bytea not null,
+                operation_index bigint not null,
                 active bool not null default 't',
 
                 key text not null,
                 value text not null,
                 inserted_at timestamp NOT NULL DEFAULT (now()),
 
-                primary key (entity_hash, operation_txhash, operation_index),
-                foreign key (operation_txhash, operation_index) references golem_base_operations (transaction_hash, index)
+                primary key (entity_key, operation_tx_hash, operation_index),
+                foreign key (operation_tx_hash, operation_index) references golem_base_operations (transaction_hash, index)
             );
 
             create table golem_base_numeric_annotations (
-                entity_hash bytea not null references golem_base_entities (hash),
-                operation_txhash bytea not null,
-                operation_index int not null,
+                entity_key bytea not null references golem_base_entities (key),
+                operation_tx_hash bytea not null,
+                operation_index bigint not null,
                 active bool not null default 't',
 
                 key text not null,
                 value numeric(21,0) not null, -- we must fit uint64
                 inserted_at timestamp NOT NULL DEFAULT (now()),
 
-                primary key (entity_hash, operation_txhash, operation_index),
-                foreign key (operation_txhash, operation_index) references golem_base_operations (transaction_hash, index)
+                primary key (entity_key, operation_tx_hash, operation_index),
+                foreign key (operation_tx_hash, operation_index) references golem_base_operations (transaction_hash, index)
             );
         "#;
         crate::from_sql(manager, sql).await
@@ -105,9 +108,9 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"
-            drop table golem_base_entity;
             drop table golem_base_string_annotations;
             drop table golem_base_numeric_annotations;
+            drop table golem_base_entities;
             drop table golem_base_operations;
             drop type golem_base_operation_type;
             drop type golem_base_entity_status_type;

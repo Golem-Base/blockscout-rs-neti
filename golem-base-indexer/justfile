@@ -9,11 +9,13 @@ db-name := env('DB_NAME', "blockscout")
 
 DEFAULT_DATABASE_URL := "postgres://" + db-user + ":" + db-password + "@" + db-host + ":" + db-port + "/" + db-name
 export DATABASE_URL := env('DATABASE_URL', DEFAULT_DATABASE_URL)
+export TEST_DATABASE_URL := "postgres://admin:admin@localhost:8432"
 
 test *args:
   - docker stop golem-base-indexer-postgres
-  docker run -p 8432 --name golem-base-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
-  env DATABASE_URL=$(dirname $DATABASE_URL) cargo test {{args}} -- --include-ignored
+  docker run -p 8432:5432 --name golem-base-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
+  sleep 3
+  env DATABASE_URL={{TEST_DATABASE_URL}} cargo test {{args}} -- --include-ignored
   docker stop golem-base-indexer-postgres
 
 run:
@@ -22,7 +24,14 @@ run:
     cargo run --bin golem-base-indexer-server
 
 generate-entities:
-    sea-orm-cli generate entity --lib -o golem-base-indexer-entity/src
+  - docker stop golem-base-indexer-postgres
+  docker run -p 8432:5432 --name golem-base-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
+  sleep 3
+  docker exec -it golem-base-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres -c 'create table transactions (id int)';
+  env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli migrate -d golem-base-indexer-migration up
+  env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli generate entity --ignore-tables golem_base_indexer_migrations,transactions --lib -o golem-base-indexer-entity/src
+  cargo fmt -p golem-base-indexer-entity -- --config imports_granularity=Crate
+  docker stop golem-base-indexer-postgres
 
 new-migration name:
     sea-orm-cli migrate generate -d golem-base-indexer-migration {{name}}
