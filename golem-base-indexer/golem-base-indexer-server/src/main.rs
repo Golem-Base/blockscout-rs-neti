@@ -1,5 +1,5 @@
 use blockscout_service_launcher::launcher::ConfigSettings;
-use golem_base_indexer_server::{Settings, run};
+use golem_base_indexer_server::{run, Settings};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
