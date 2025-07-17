@@ -113,6 +113,7 @@ impl MigrationTrait for Migration {
             drop table golem_base_numeric_annotations;
             drop table golem_base_operations;
             drop type golem_base_operation_type;
+            drop type golem_base_entity_status_type;
         "#;
         crate::from_sql(manager, sql).await
     }
