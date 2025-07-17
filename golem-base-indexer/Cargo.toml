@@ -1,12 +1,42 @@
 [workspace]
 resolver = "2"
 members = [
-    "golem-base-indexer-logic",
-    "golem-base-indexer-entity",
-    "golem-base-indexer-migration",
-    "golem-base-indexer-proto",
-    "golem-base-indexer-server",
+  "golem-base-indexer-logic",
+  "golem-base-indexer-entity",
+  "golem-base-indexer-migration",
+  "golem-base-indexer-proto",
+  "golem-base-indexer-server",
 ]
 
 [workspace.dependencies]
-blockscout-service-launcher = "0.12.1"
+actix-prost = "0.2.0"
+actix-prost-build = "0.2.0"
+actix-prost-macros = "0.2.0"
+actix-web = "4.2"
+alloy-primitives = "1.2.1"
+alloy-rlp = "0.3.12"
+anyhow = "1.0"
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+async-trait = "0.1"
+blockscout-display-bytes = "1.0"
+blockscout-service-launcher = "0.20.0"
+config = "0.14"
+futures = "0.3.31"
+golem-base-sdk = "0.4.0"
+pretty_assertions = "1.3"
+prost = "0.13"
+prost-build = "0.13"
+reqwest = { version = "0.12", features = ["json"] }
+sea-orm = "1.1.13"
+sea-orm-migration = { version = "1.1.13", features = [
+  "runtime-tokio-rustls",
+  "sqlx-postgres",
+] }
+serde = "1"
+serde_json = "1.0.96"
+serde_with = "3.14.0"
+tokio = { version = "1.23", features = ["rt-multi-thread", "macros"] }
+tonic = "0.12"
+tonic-build = "0.12"
+tracing = "0.1"
+
