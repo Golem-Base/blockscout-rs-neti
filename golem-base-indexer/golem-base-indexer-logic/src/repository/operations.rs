@@ -13,7 +13,7 @@ use super::sql;
 
 #[derive(FromQueryResult)]
 pub struct FullOperationIndex {
-    pub block_number: i64,
+    pub block_number: i32,
     pub transaction_index: i32,
     pub operation_index: i64,
 }
@@ -51,7 +51,8 @@ pub async fn insert_operation<T: ConnectionTrait>(
         inserted_at: NotSet,
     }
     .insert(db)
-    .await?;
+    .await
+    .inspect_err(|_| panic!("WTF"))?;
     Ok(())
 }
 
@@ -70,7 +71,41 @@ pub async fn get_latest_update<T: ConnectionTrait>(
         [entity_key.into()],
     ))
     .one(db)
-    .await?;
+    .await
+    .inspect_err(|e| tracing::error!(?e, "WTF"))
+    .inspect_err(|e| panic!("WTF"))?;
 
-    Ok(res.map(|v| (v.block_number, v.transaction_index, v.operation_index)))
+    Ok(res.map(|v| {
+        (
+            v.block_number as i64,
+            v.transaction_index,
+            v.operation_index,
+        )
+    }))
+}
+
+#[instrument(
+    name = "repository::operations::get_operation",
+    skip(db),
+    level = "info"
+)]
+pub async fn get_operation<T: ConnectionTrait>(
+    db: &T,
+    tx_hash: Vec<u8>,
+    index: i64,
+) -> Result<Option<golem_base_operations::Model>> {
+    Ok(golem_base_operations::Entity::find_by_id((tx_hash, index))
+        .one(db)
+        .await?)
+}
+
+#[instrument(
+    name = "repository::operations::list_operations",
+    skip(db),
+    level = "info"
+)]
+pub async fn list_operations<T: ConnectionTrait>(
+    db: &T,
+) -> Result<Vec<golem_base_operations::Model>> {
+    Ok(golem_base_operations::Entity::find().all(db).await?)
 }

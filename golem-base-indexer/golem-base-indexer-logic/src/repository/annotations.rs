@@ -44,7 +44,8 @@ pub async fn insert_string_annotation<T: ConnectionTrait>(
         inserted_at: NotSet,
     }
     .insert(db)
-    .await?;
+    .await
+    .inspect_err(|e| panic!("WTF"))?;
     Ok(())
 }
 
@@ -67,7 +68,8 @@ pub async fn insert_numeric_annotation<T: ConnectionTrait>(
         inserted_at: NotSet,
     }
     .insert(db)
-    .await?;
+    .await
+    .inspect_err(|e| panic!("WTF"))?;
     Ok(())
 }
 
@@ -80,22 +82,35 @@ pub async fn deactivate_annotations<T: ConnectionTrait>(
     db: &T,
     deactivate: GolemBaseAnnotationsDeactivate,
 ) -> Result<()> {
-    golem_base_string_annotations::Entity::update_many()
+    let res = golem_base_string_annotations::Entity::update_many()
         .col_expr(
             golem_base_string_annotations::Column::Active,
             Expr::value(false),
         )
         .filter(golem_base_string_annotations::Column::EntityKey.eq(deactivate.entity_key.clone()))
         .exec(db)
-        .await?;
+        .await;
 
-    golem_base_numeric_annotations::Entity::update_many()
+    match res {
+        Ok(_) => {}
+        Err(DbErr::RecordNotUpdated) => {}
+        Err(e) => return Err(e.into()),
+    };
+
+    let res = golem_base_numeric_annotations::Entity::update_many()
         .col_expr(
             golem_base_numeric_annotations::Column::Active,
             Expr::value(false),
         )
         .filter(golem_base_numeric_annotations::Column::EntityKey.eq(deactivate.entity_key))
         .exec(db)
-        .await?;
+        .await;
+
+    match res {
+        Ok(_) => {}
+        Err(DbErr::RecordNotUpdated) => {}
+        Err(e) => return Err(e.into()),
+    };
+
     Ok(())
 }

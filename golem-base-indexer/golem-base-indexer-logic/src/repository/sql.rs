@@ -23,6 +23,7 @@ inner join transactions
     on golem_base_operations.transaction_hash = transactions.hash
 where
     golem_base_operations.entity_key = $1
+    and transactions.block_number is not null
 order by
     transactions.block_number desc,
     transactions.index desc,
@@ -37,5 +38,5 @@ left join golem_base_operations
     on transactions.hash = golem_base_operations.transaction_hash
 where
     golem_base_operations.transaction_hash is null
-    and transactions.from_address_hash in ($1, $2) 
+    and transactions.to_address_hash in ($1, $2) 
 "#;

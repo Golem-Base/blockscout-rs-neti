@@ -3,6 +3,7 @@ use blockscout_service_launcher::{
     launcher::{ConfigSettings, MetricsSettings, ServerSettings},
     tracing::{JaegerSettings, TracingSettings},
 };
+use golem_base_indexer_logic::IndexerSettings;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -16,6 +17,8 @@ pub struct Settings {
     pub tracing: TracingSettings,
     #[serde(default)]
     pub jaeger: JaegerSettings,
+    #[serde(default)]
+    pub indexer: IndexerSettings,
     pub database: DatabaseSettings,
 }
 
@@ -36,6 +39,7 @@ impl Settings {
                 create_database: Default::default(),
                 run_migrations: Default::default(),
             },
+            indexer: Default::default(),
         }
     }
 }

@@ -9,6 +9,7 @@ actix-web.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 blockscout-service-launcher = { workspace = true, features = ["database-1"] }
+bytes.workspace = true
 config.workspace = true
 golem-base-indexer-logic = { path = "../golem-base-indexer-logic" }
 golem-base-indexer-migration = { path = "../golem-base-indexer-migration" }

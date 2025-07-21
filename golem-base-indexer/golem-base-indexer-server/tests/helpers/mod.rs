@@ -32,8 +32,8 @@ impl MigrationName for TestMigrationBefore {
 #[async_trait::async_trait]
 impl MigrationTrait for TestMigrationBefore {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        from_sql(manager, include_str!("blockscout_tables.sql")).await?;
-        from_sql(manager, include_str!("sample_data.sql")).await?;
+        from_sql(manager, include_str!("../fixtures/blockscout_tables.sql")).await?;
+        from_sql(manager, include_str!("../fixtures/sample_data.sql")).await?;
         Ok(())
     }
 }
@@ -43,12 +43,12 @@ pub async fn init_db(db_prefix: &str, test_name: &str) -> TestDbGuard {
     TestDbGuard::new::<TestMigrator>(db_name.as_str()).await
 }
 
-pub async fn init_golem_base_indexer_server<F>(db_url: String, settings_setup: F) -> Url
+pub async fn init_golem_base_indexer_server<F>(db: TestDbGuard, settings_setup: F) -> Url
 where
     F: Fn(Settings) -> Settings,
 {
     let (settings, base) = {
-        let mut settings = Settings::default(db_url);
+        let mut settings = Settings::default(db.db_url());
         let (server_settings, base) = test_server::get_test_server_settings();
         settings.server = server_settings;
         settings.metrics.enabled = false;
@@ -58,6 +58,11 @@ where
         (settings_setup(settings), base)
     };
 
-    test_server::init_server(|| golem_base_indexer_server::run(settings), &base).await;
+    let client = db.client();
+    test_server::init_server(
+        || golem_base_indexer_server::run_server(client, settings),
+        &base,
+    )
+    .await;
     base
 }

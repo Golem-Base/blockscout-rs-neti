@@ -22,6 +22,7 @@ serde_with.workspace = true
 golem-base-sdk.workspace = true
 alloy-rlp.workspace = true
 alloy-sol-types.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 blockscout-service-launcher = { workspace = true, features = [

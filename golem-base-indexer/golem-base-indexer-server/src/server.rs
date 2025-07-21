@@ -1,19 +1,21 @@
 use crate::{
-    proto::{health_actix::route_health, health_server::HealthServer},
-    services::HealthService,
+    proto::{
+        golem_base_indexer_service_actix::route_golem_base_indexer_service,
+        health_actix::route_health, health_server::HealthServer,
+    },
+    services::{GolemBaseIndexerService, HealthService},
     settings::Settings,
 };
-use blockscout_service_launcher::{database, launcher, launcher::LaunchSettings, tracing};
-
-use migration::Migrator;
+use blockscout_service_launcher::{launcher, launcher::LaunchSettings};
+use sea_orm::DatabaseConnection;
 
 use std::sync::Arc;
 
-const SERVICE_NAME: &str = "golem_base_indexer";
+const SERVICE_NAME: &str = "golem_base_indexer_server";
 
 #[derive(Clone)]
 struct Router {
-    // TODO: add services here
+    golem_base_indexer: Arc<GolemBaseIndexerService>,
     health: Arc<HealthService>,
 }
 
@@ -26,19 +28,26 @@ impl Router {
 impl launcher::HttpRouter for Router {
     fn register_routes(&self, service_config: &mut actix_web::web::ServiceConfig) {
         service_config.configure(|config| route_health(config, self.health.clone()));
+        service_config.configure(|config| {
+            route_golem_base_indexer_service(config, self.golem_base_indexer.clone())
+        });
     }
 }
 
-pub async fn run(settings: Settings) -> Result<(), anyhow::Error> {
-    tracing::init_logs(SERVICE_NAME, &settings.tracing, &settings.jaeger)?;
-
+pub async fn run(
+    db_connection: Arc<DatabaseConnection>,
+    settings: Settings,
+) -> Result<(), anyhow::Error> {
     let health = Arc::new(HealthService::default());
-
-    let _db_connection = database::initialize_postgres::<Migrator>(&settings.database).await?;
 
     // TODO: init services here
 
-    let router = Router { health };
+    let golem_base_indexer = Arc::new(GolemBaseIndexerService::new(db_connection));
+
+    let router = Router {
+        golem_base_indexer,
+        health,
+    };
 
     let grpc_router = router.grpc_router();
     let http_router = router;

@@ -2846,6 +2846,7 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_with",
+ "tokio",
  "tracing",
 ]
 
@@ -2881,6 +2882,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "blockscout-service-launcher",
+ "bytes",
  "config 0.14.1",
  "golem-base-indexer-logic",
  "golem-base-indexer-migration",

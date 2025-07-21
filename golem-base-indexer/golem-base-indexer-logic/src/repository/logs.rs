@@ -8,10 +8,10 @@ use tracing::instrument;
 pub struct Log {
     pub data: Vec<u8>,
     pub index: i32,
-    pub first_topic: Vec<u8>,
-    pub second_topic: Vec<u8>,
-    pub third_topic: Vec<u8>,
-    pub fourth_topic: Vec<u8>,
+    pub first_topic: Option<Vec<u8>>,
+    pub second_topic: Option<Vec<u8>>,
+    pub third_topic: Option<Vec<u8>>,
+    pub fourth_topic: Option<Vec<u8>>,
 }
 
 #[instrument(name = "repository::logs::get_tx_logs", skip(db), level = "info")]

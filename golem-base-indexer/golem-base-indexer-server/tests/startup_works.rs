@@ -7,8 +7,7 @@ use pretty_assertions::assert_eq;
 #[ignore = "Needs database to run"]
 async fn test_startup_works() {
     let db = helpers::init_db("test", "startup_works").await;
-    let db_url = db.db_url();
-    let base = helpers::init_golem_base_indexer_server(db_url, |x| x).await;
+    let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
     let response: serde_json::Value = test_server::send_get_request(&base, "/health").await;
     assert_eq!(response, serde_json::json!({"status": "SERVING"}));
 }
