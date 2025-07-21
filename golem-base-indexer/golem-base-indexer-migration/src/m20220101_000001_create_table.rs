@@ -64,7 +64,7 @@ impl MigrationTrait for Migration {
 
             create table golem_base_entities (
                 key bytea not null primary key,
-                data bytea not null,
+                data bytea,
                 status golem_base_entity_status_type not null,
 
                 created_at_tx_hash bytea,

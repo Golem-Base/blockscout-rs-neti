@@ -1,0 +1,33 @@
+use std::sync::Arc;
+
+use crate::settings::Settings;
+use golem_base_indexer_logic::Indexer;
+use sea_orm::DatabaseConnection;
+use tokio::time::sleep;
+
+pub async fn run(
+    db_connection: Arc<DatabaseConnection>,
+    settings: Settings,
+) -> Result<(), anyhow::Error> {
+    tokio::spawn(async move {
+        let delay = settings.indexer.restart_delay;
+
+        loop {
+            let indexer = Indexer::new(db_connection.clone(), settings.indexer.clone());
+            match indexer.start().await {
+                Err(err) => {
+                    tracing::error!(
+                        error = ?err,
+                        ?delay,
+                        "indexer stream ended with error, retrying"
+                    );
+                }
+                Ok(_) => {
+                    tracing::error!(?delay, "indexer stream ended unexpectedly, retrying");
+                }
+            };
+            sleep(delay).await;
+        }
+    });
+    Ok(())
+}

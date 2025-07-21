@@ -11,6 +11,7 @@ use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::{sync::Arc, time};
+use tokio::time::sleep;
 use tracing::instrument;
 
 use crate::{
@@ -30,14 +31,14 @@ use crate::{
 };
 
 mod golem_base;
-mod repository;
+pub mod repository;
 mod well_known;
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct IndexerSettings {
-    concurrency: usize,
+    pub concurrency: usize,
 
     #[serde_as(as = "serde_with::DurationSeconds<u64>")]
     pub polling_interval: time::Duration,
@@ -62,13 +63,37 @@ pub struct Indexer {
 }
 
 // FIXME integration tests
+// FIXME only process txs that didn't revert
+// FIXME what about chain reorgs (use debug_setHead for testing)
+// FIXME refactor whole logic to use some defined, sane `types` for inter-module and inter-crate calls
+// FIXME cleanup logging
+// FIXME separate Expired state
+// FIXME test what happens when DB connection fails
+// FIXME only process non-pending transactions
 impl Indexer {
     pub fn new(db: Arc<DatabaseConnection>, settings: IndexerSettings) -> Self {
         Self { db, settings }
     }
 
     #[instrument(name = "indexer", skip_all, level = "info")]
-    pub async fn start(&self) -> Result<()> {
+    pub async fn start(self) -> Result<()> {
+        tokio::spawn(async move {
+            loop {
+                if let Err(e) = self.tick().await {
+                    tracing::error!(
+                        ?e,
+                        "Failed to index storage txs, exiting (will be restarted)..."
+                    );
+                    return;
+                };
+                sleep(self.settings.polling_interval).await;
+            }
+        });
+        Ok(())
+    }
+
+    #[instrument(name = "indexer::tick", skip_all, level = "info")]
+    pub async fn tick(&self) -> Result<()> {
         repository::transactions::stream_unprocessed_tx_hashes(&*self.db)
             .await?
             .map(Ok)
@@ -86,8 +111,8 @@ impl Indexer {
         let tx = tx.ok_or(anyhow!("Somehow tx disappeared from the DB"))?;
         let storagetx = match EncodableGolemBaseTransaction::decode(&mut tx.input.as_slice()) {
             Ok(storagetx) => storagetx,
-            Err(_) => {
-                tracing::warn!(?tx_hash, "Storage tx with undecodable data");
+            Err(e) => {
+                tracing::warn!(?tx_hash, ?e, "Storage tx with undecodable data");
                 return Ok(());
             }
         };
@@ -112,6 +137,7 @@ impl Indexer {
             idx += 1;
         }
 
+        // FIXME what if blockscout lags with populating logs?
         let logs = repository::logs::get_tx_logs(
             &txn,
             tx_hash.as_slice().into(),
@@ -323,6 +349,7 @@ impl Indexer {
             GolemBaseEntityDelete {
                 key: delete.as_slice().into(),
                 deleted_at_tx_hash: tx.hash.as_slice().into(),
+                deleted_at_block_number: tx.block_number.try_into()?,
             },
         )
         .await?;
@@ -400,8 +427,15 @@ impl Indexer {
     #[instrument(name = "indexer::handle_extend_log", skip(self, tx, log), fields(tx_hash = ?tx.hash), level = "info")]
     async fn handle_extend_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
         // extends are handled after updates, so if it's in the same tx, we need to process it
+        let entity_key = if let Some(k) = log.second_topic {
+            k
+        } else {
+            tracing::warn!("Extend Log event with no second topic?");
+            return Ok(());
+        };
+
         let latest_update = self
-            .is_latest_update(txn, log.second_topic.clone(), tx.hash, i64::MAX)
+            .is_latest_update(txn, entity_key.clone(), tx.hash, i64::MAX)
             .await?;
 
         if latest_update {
@@ -417,7 +451,7 @@ impl Indexer {
             repository::entities::extend_entity(
                 txn,
                 GolemBaseEntityExtend {
-                    key: log.second_topic,
+                    key: entity_key,
                     extended_at_tx_hash: tx.hash.as_slice().into(),
                     expires_at_block_number: expires_at_block_number.try_into().unwrap_or(i64::MAX),
                 },

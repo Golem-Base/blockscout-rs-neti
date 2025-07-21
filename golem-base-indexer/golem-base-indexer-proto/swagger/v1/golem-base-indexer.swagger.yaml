@@ -3,60 +3,84 @@ info:
   title: v1/golem-base-indexer.proto
   version: version not set
 tags:
-  - name: TestService
+  - name: GolemBaseIndexerService
   - name: Health
 consumes:
   - application/json
 produces:
   - application/json
 paths:
-  /api/v1/TestService:create:
-    post:
-      operationId: TestService_TestServiceCreate
-      responses:
-        "200":
-          description: A successful response.
-          schema:
-            $ref: '#/definitions/v1TestServiceCreateResponse'
-        default:
-          description: An unexpected error response.
-          schema:
-            $ref: '#/definitions/rpcStatus'
-      parameters:
-        - name: body
-          in: body
-          required: true
-          schema:
-            $ref: '#/definitions/v1TestServiceCreateRequest'
-      tags:
-        - TestService
-  /api/v1/TestService:search:
+  /api/v1/entities:
     get:
-      operationId: TestService_TestServiceSearch
+      operationId: GolemBaseIndexerService_ListEntities
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1TestServiceSearchResponse'
+            $ref: '#/definitions/v1ListEntitiesResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
+  /api/v1/entities/{key}:
+    get:
+      operationId: GolemBaseIndexerService_GetEntity
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1Entity'
         default:
           description: An unexpected error response.
           schema:
             $ref: '#/definitions/rpcStatus'
       parameters:
-        - name: filter_1
-          in: query
-          required: false
-          type: string
-        - name: filter_2
-          in: query
-          required: false
-          type: string
-        - name: filter_3
-          in: query
-          required: false
+        - name: key
+          in: path
+          required: true
           type: string
       tags:
-        - TestService
+        - GolemBaseIndexerService
+  /api/v1/operations:
+    get:
+      operationId: GolemBaseIndexerService_ListOperations
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ListOperationsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
+  /api/v1/operations/{tx_hash}/{index}:
+    get:
+      operationId: GolemBaseIndexerService_GetOperation
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1Operation'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tx_hash
+          in: path
+          required: true
+          type: string
+        - name: index
+          in: path
+          required: true
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
   /health:
     get:
       summary: |-
@@ -108,42 +132,67 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/protobufAny'
+  v1Entity:
+    type: object
+    properties:
+      key:
+        type: string
+      data:
+        type: string
+        title: FIXME some raw data type maybe?
+      status:
+        type: string
+        title: FIXME some enum type maybe?
+      created_at_tx_hash:
+        type: string
+      last_updated_at_tx_hash:
+        type: string
+      expires_at_block_number:
+        type: string
+        format: uint64
   v1HealthCheckResponse:
     type: object
     properties:
       status:
         $ref: '#/definitions/HealthCheckResponseServingStatus'
-  v1Item:
-    type: object
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-  v1TestServiceCreateRequest:
-    type: object
-    properties:
-      foo:
-        type: string
-      bar:
-        type: string
-      timestamp:
-        type: string
-        format: int64
-      map:
-        type: object
-        additionalProperties:
-          type: string
-  v1TestServiceCreateResponse:
-    type: object
-    properties:
-      item:
-        $ref: '#/definitions/v1Item'
-  v1TestServiceSearchResponse:
+  v1ListEntitiesResponse:
     type: object
     properties:
       items:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1Item'
+          $ref: '#/definitions/v1Entity'
+        title: FIXME add pagination metadata
+  v1ListOperationsResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1Operation'
+        title: FIXME add pagination metadata
+  v1Operation:
+    type: object
+    properties:
+      entity_key:
+        type: string
+      sender:
+        type: string
+      operation:
+        type: string
+        title: FIXME some enum type maybe?
+      data:
+        type: string
+        title: FIXME some raw data type maybe?
+      btl:
+        type: string
+        format: uint64
+      block_hash:
+        type: string
+      transaction_Hash:
+        type: string
+      index:
+        type: string
+        format: uint64
