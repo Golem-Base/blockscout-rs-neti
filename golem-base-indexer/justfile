@@ -1,12 +1,14 @@
 default:
     just --list --unsorted
 
-db-host := env_var_or_default('DB_HOST', "localhost")
-db-port := env_var_or_default('DB_PORT', "7432")
-db-user := env_var_or_default('DB_USER', "blockscout")
-db-password := env_var_or_default('DB_PASSWORD', "ceWb1MeLBEeOIfk65gU8EjF8")
-db-name := env_var_or_default('DB_NAME', "blockscout")
-export DATABASE_URL := "postgres://" + db-user + ":" + db-password + "@" + db-host + ":" + db-port + "/" + db-name
+db-host := env('DB_HOST', "localhost")
+db-port := env('DB_PORT', "7432")
+db-user := env('DB_USER', "blockscout")
+db-password := env('DB_PASSWORD', "ceWb1MeLBEeOIfk65gU8EjF8")
+db-name := env('DB_NAME', "blockscout")
+
+DEFAULT_DATABASE_URL := "postgres://" + db-user + ":" + db-password + "@" + db-host + ":" + db-port + "/" + db-name
+export DATABASE_URL := env('DATABASE_URL', DEFAULT_DATABASE_URL)
 
 test *args:
   - docker stop golem-base-indexer-postgres
