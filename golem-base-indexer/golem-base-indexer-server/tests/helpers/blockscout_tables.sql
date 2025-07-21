@@ -1,3 +1,18 @@
+CREATE TABLE logs (
+    data bytea NOT NULL,
+    index integer NOT NULL,
+    first_topic bytea,
+    second_topic bytea,
+    third_topic bytea,
+    fourth_topic bytea,
+    inserted_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL,
+    address_hash bytea,
+    transaction_hash bytea NOT NULL,
+    block_hash bytea NOT NULL,
+    block_number integer
+);
+
 CREATE TABLE transactions (
     cumulative_gas_used numeric(100,0),
     error character varying(255),
@@ -43,21 +58,38 @@ CREATE TABLE transactions (
     CONSTRAINT status CHECK ((((block_hash IS NULL) AND (status IS NULL)) OR (block_hash IS NOT NULL) OR ((status = 0) AND ((error)::text = 'dropped/replaced'::text))))
 );
 
-ALTER TABLE ONLY public.transactions
+
+ALTER TABLE ONLY logs
+    ADD CONSTRAINT logs_pkey PRIMARY KEY (transaction_hash, block_hash, index);
+
+ALTER TABLE ONLY transactions
     ADD CONSTRAINT transactions_pkey PRIMARY KEY (hash);
-CREATE INDEX method_id ON public.transactions USING btree (SUBSTRING(input FROM 1 FOR 4));
-CREATE INDEX pending_txs_index ON public.transactions USING btree (inserted_at, hash) WHERE ((block_hash IS NULL) AND ((error IS NULL) OR ((error)::text <> 'dropped/replaced'::text)));
-CREATE INDEX transactions_block_consensus_index ON public.transactions USING btree (block_consensus);
-CREATE INDEX transactions_block_hash_error_index ON public.transactions USING btree (block_hash, error);
-CREATE UNIQUE INDEX transactions_block_hash_index_index ON public.transactions USING btree (block_hash, index);
-CREATE INDEX transactions_block_number_index ON public.transactions USING btree (block_number);
-CREATE INDEX transactions_block_timestamp_index ON public.transactions USING btree (block_timestamp);
-CREATE INDEX transactions_created_contract_address_hash_with_pending_index_a ON public.transactions USING btree (created_contract_address_hash, block_number, index, inserted_at, hash DESC);
-CREATE INDEX transactions_created_contract_code_indexed_at_index ON public.transactions USING btree (created_contract_code_indexed_at);
-CREATE INDEX transactions_from_address_hash_with_pending_index_asc ON public.transactions USING btree (from_address_hash, block_number, index, inserted_at, hash DESC);
-CREATE INDEX transactions_inserted_at_index ON public.transactions USING btree (inserted_at);
-CREATE INDEX transactions_nonce_from_address_hash_block_hash_index ON public.transactions USING btree (nonce, from_address_hash, block_hash);
-CREATE INDEX transactions_recent_collated_index ON public.transactions USING btree (block_number DESC, index DESC);
-CREATE INDEX transactions_status_index ON public.transactions USING btree (status);
-CREATE INDEX transactions_to_address_hash_with_pending_index_asc ON public.transactions USING btree (to_address_hash, block_number, index, inserted_at, hash DESC);
-CREATE INDEX transactions_updated_at_index ON public.transactions USING btree (updated_at);
+
+CREATE INDEX "logs_address_hash_block_number_DESC_index_DESC_index" ON logs USING btree (address_hash, block_number DESC, index DESC);
+CREATE INDEX logs_block_hash_index ON logs USING btree (block_hash);
+CREATE INDEX "logs_block_number_DESC__index_DESC_index" ON logs USING btree (block_number DESC, index DESC);
+CREATE INDEX logs_deposits_withdrawals_index ON logs USING btree (transaction_hash, block_hash, index, address_hash) WHERE (first_topic = ANY (ARRAY['\xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c'::bytea, '\x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65'::bytea]));
+CREATE INDEX logs_first_topic_index ON logs USING btree (first_topic);
+CREATE INDEX logs_fourth_topic_index ON logs USING btree (fourth_topic);
+CREATE INDEX logs_second_topic_index ON logs USING btree (second_topic);
+CREATE INDEX logs_third_topic_index ON logs USING btree (third_topic);
+CREATE INDEX logs_transaction_hash_index_index ON logs USING btree (transaction_hash, index);
+CREATE INDEX method_id ON transactions USING btree (SUBSTRING(input FROM 1 FOR 4));
+CREATE INDEX pending_txs_index ON transactions USING btree (inserted_at, hash) WHERE ((block_hash IS NULL) AND ((error IS NULL) OR ((error)::text <> 'dropped/replaced'::text)));
+CREATE INDEX transactions_block_consensus_index ON transactions USING btree (block_consensus);
+CREATE INDEX transactions_block_hash_error_index ON transactions USING btree (block_hash, error);
+CREATE UNIQUE INDEX transactions_block_hash_index_index ON transactions USING btree (block_hash, index);
+CREATE INDEX transactions_block_number_index ON transactions USING btree (block_number);
+CREATE INDEX transactions_block_timestamp_index ON transactions USING btree (block_timestamp);
+CREATE INDEX transactions_created_contract_address_hash_with_pending_index_a ON transactions USING btree (created_contract_address_hash, block_number, index, inserted_at, hash DESC);
+CREATE INDEX transactions_created_contract_code_indexed_at_index ON transactions USING btree (created_contract_code_indexed_at);
+CREATE INDEX transactions_from_address_hash_with_pending_index_asc ON transactions USING btree (from_address_hash, block_number, index, inserted_at, hash DESC);
+CREATE INDEX transactions_inserted_at_index ON transactions USING btree (inserted_at);
+CREATE INDEX transactions_nonce_from_address_hash_block_hash_index ON transactions USING btree (nonce, from_address_hash, block_hash);
+CREATE INDEX transactions_recent_collated_index ON transactions USING btree (block_number DESC, index DESC);
+CREATE INDEX transactions_status_index ON transactions USING btree (status);
+CREATE INDEX transactions_to_address_hash_with_pending_index_asc ON transactions USING btree (to_address_hash, block_number, index, inserted_at, hash DESC);
+CREATE INDEX transactions_updated_at_index ON transactions USING btree (updated_at);
+ALTER TABLE ONLY logs
+    ADD CONSTRAINT logs_transaction_hash_fkey FOREIGN KEY (transaction_hash) REFERENCES transactions(hash) ON DELETE CASCADE;
+
