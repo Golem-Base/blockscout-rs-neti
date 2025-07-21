@@ -32,7 +32,9 @@ impl MigrationName for TestMigrationBefore {
 #[async_trait::async_trait]
 impl MigrationTrait for TestMigrationBefore {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        from_sql(manager, include_str!("blockscout_tables.sql")).await
+        from_sql(manager, include_str!("blockscout_tables.sql")).await?;
+        from_sql(manager, include_str!("sample_data.sql")).await?;
+        Ok(())
     }
 }
 
