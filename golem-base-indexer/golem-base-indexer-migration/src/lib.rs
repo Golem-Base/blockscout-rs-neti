@@ -19,6 +19,7 @@ impl MigratorTrait for Migrator {
 pub async fn from_sql(manager: &SchemaManager<'_>, content: &str) -> Result<(), DbErr> {
     let stmts: Vec<&str> = content.split(';').collect();
     let txn = manager.get_connection().begin().await?;
+
     for st in stmts {
         txn.execute(Statement::from_string(
             manager.get_database_backend(),

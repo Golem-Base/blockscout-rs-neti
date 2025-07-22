@@ -58,14 +58,12 @@ pub struct Indexer {
 }
 
 // FIXME integration tests
-// FIXME only process txs that didn't revert
 // FIXME what about chain reorgs (use debug_setHead for testing)
-// FIXME refactor whole logic to use some defined, sane `types` for inter-module and inter-crate calls
+// FIXME we have enums from entity crate leaking
 // FIXME cleanup logging
 // FIXME separate Expired state
 // FIXME test what happens when DB connection fails
 // FIXME only process non-pending transactions
-// FIXME handle txses that dont produce operations (prevent processing them over and over again)
 impl Indexer {
     pub fn new(db: Arc<DatabaseConnection>, settings: IndexerSettings) -> Self {
         Self { db, settings }
@@ -160,6 +158,7 @@ impl Indexer {
             self.handle_extend_log(&txn, &tx, extend_log).await?;
         }
 
+        repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
         txn.commit().await?;
 
         Ok(())
@@ -429,6 +428,7 @@ impl Indexer {
             tracing::warn!("Extend Log event with no second topic?");
             return Ok(());
         };
+        tracing::info!("Processing extend log for entity 0x{entity_key:x}");
 
         let latest_update = self
             .is_latest_update(txn, entity_key, tx.hash, u64::MAX)
@@ -464,6 +464,7 @@ impl Indexer {
             tracing::warn!("Delete Log event with no second topic?");
             return Ok(());
         };
+        tracing::info!("Processing delete log for entity 0x{entity_key:x}");
 
         repository::operations::insert_operation(
             txn,

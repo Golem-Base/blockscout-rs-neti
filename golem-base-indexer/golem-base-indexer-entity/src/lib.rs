@@ -5,5 +5,7 @@ pub mod prelude;
 pub mod golem_base_entities;
 pub mod golem_base_numeric_annotations;
 pub mod golem_base_operations;
+pub mod golem_base_pending_transaction_operations;
 pub mod golem_base_string_annotations;
 pub mod sea_orm_active_enums;
+pub mod transactions;
