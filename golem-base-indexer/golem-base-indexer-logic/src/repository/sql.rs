@@ -32,10 +32,11 @@ limit 1
 "#;
 
 pub const GET_UNPROCESSED_TX_HASHES: &str = r#"
-select transactions.hash
-from transactions
+select hash
+from golem_base_pending_transaction_operations as pendings
+inner join transactions using (hash)
 left join golem_base_operations
-    on transactions.hash = golem_base_operations.transaction_hash
+    on pendings.hash = golem_base_operations.transaction_hash
 where
     golem_base_operations.transaction_hash is null
     and transactions.to_address_hash in ($1, $2) 

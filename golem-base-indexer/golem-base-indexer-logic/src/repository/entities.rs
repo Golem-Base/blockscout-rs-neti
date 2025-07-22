@@ -118,7 +118,7 @@ pub async fn delete_entity<T: ConnectionTrait>(
         status: Set(GolemBaseEntityStatusType::Deleted),
         last_updated_at_tx_hash: Set(entity.deleted_at_tx.as_slice().into()),
         updated_at: Set(Utc::now().naive_utc()),
-        data: NotSet,
+        data: Set(None),
         expires_at_block_number: Set(entity.deleted_at_block.try_into()?),
         inserted_at: NotSet,
         created_at_tx_hash: NotSet,
@@ -128,6 +128,7 @@ pub async fn delete_entity<T: ConnectionTrait>(
         .on_conflict(
             OnConflict::column(golem_base_entities::Column::Key)
                 .update_columns([
+                    golem_base_entities::Column::Data,
                     golem_base_entities::Column::Status,
                     golem_base_entities::Column::LastUpdatedAtTxHash,
                     golem_base_entities::Column::UpdatedAt,
