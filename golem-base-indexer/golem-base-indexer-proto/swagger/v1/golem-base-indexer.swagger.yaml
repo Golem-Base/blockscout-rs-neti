@@ -140,9 +140,6 @@ definitions:
       data:
         type: string
         title: FIXME some raw data type maybe?
-      status:
-        type: string
-        title: FIXME some enum type maybe?
       created_at_tx_hash:
         type: string
       last_updated_at_tx_hash:
@@ -181,8 +178,7 @@ definitions:
       sender:
         type: string
       operation:
-        type: string
-        title: FIXME some enum type maybe?
+        $ref: '#/definitions/v1OperationType'
       data:
         type: string
         title: FIXME some raw data type maybe?
@@ -196,3 +192,11 @@ definitions:
       index:
         type: string
         format: uint64
+  v1OperationType:
+    type: string
+    enum:
+      - Create
+      - Update
+      - Delete
+      - Extend
+    default: Create

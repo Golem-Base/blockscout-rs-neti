@@ -40,20 +40,33 @@ message ListOperationsResponse {
   // FIXME add pagination metadata
 }
 
+enum EntityStatus {
+  Active = 0;
+  Deleted = 1;
+  Expired = 2;
+}
+
 message Entity {
   string key = 1;
   optional string data = 2; // FIXME some raw data type maybe?
-  string status = 3; // FIXME some enum type maybe?
+  //EntityStatus status = 3; // FIXME some enum type maybe? // FIXME add this back
 
   optional string created_at_tx_hash = 4;
   string last_updated_at_tx_hash = 5;
   uint64 expires_at_block_number = 6;
 }
 
+enum OperationType {
+  Create = 0;
+  Update = 1;
+  Delete = 2;
+  Extend = 3;
+}
+
 message Operation {
   string entity_key = 1;
   string sender = 2;
-  string operation = 3; // FIXME some enum type maybe?
+  OperationType operation = 3;
   optional string data = 4; // FIXME some raw data type maybe?
   optional uint64 btl = 5;
   string block_hash = 6;

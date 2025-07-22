@@ -1,9 +1,8 @@
-use alloy_primitives::{TxHash, B256, U256};
+use alloy_primitives::U256;
 use alloy_rlp::Decodable;
 use alloy_sol_types::SolValue;
 use anyhow::{anyhow, Result};
 use futures::{StreamExt, TryStreamExt};
-use golem_base_indexer_entity::sea_orm_active_enums::GolemBaseOperationType;
 use golem_base_sdk::entity::{
     Create, EncodableGolemBaseTransaction, Extend, GolemBaseDelete, Update,
 };
@@ -16,22 +15,18 @@ use tracing::instrument;
 
 use crate::{
     golem_base::entity_key,
-    repository::{
-        annotations::{
-            GolemBaseAnnotationsDeactivate, GolemBaseNumericAnnotation, GolemBaseStringAnnotation,
-        },
-        entities::{
-            GolemBaseEntityCreate, GolemBaseEntityDelete, GolemBaseEntityExtend,
-            GolemBaseEntityUpdate,
-        },
-        logs::Log,
-        operations::GolemBaseOperationCreate,
-        transactions::Tx,
+    repository::entities::{
+        GolemBaseEntityCreate, GolemBaseEntityDelete, GolemBaseEntityExtend, GolemBaseEntityUpdate,
+    },
+    types::{
+        EntityKey, Log, NumericAnnotation, Operation, OperationData, OperationMetadata,
+        StringAnnotation, Tx, TxHash,
     },
 };
 
 mod golem_base;
 pub mod repository;
+pub mod types;
 mod well_known;
 
 #[serde_as]
@@ -70,29 +65,26 @@ pub struct Indexer {
 // FIXME separate Expired state
 // FIXME test what happens when DB connection fails
 // FIXME only process non-pending transactions
+// FIXME handle txses that dont produce operations (prevent processing them over and over again)
 impl Indexer {
     pub fn new(db: Arc<DatabaseConnection>, settings: IndexerSettings) -> Self {
         Self { db, settings }
     }
 
-    #[instrument(name = "indexer", skip_all, level = "info")]
-    pub async fn start(self) -> Result<()> {
-        tokio::spawn(async move {
-            loop {
-                if let Err(e) = self.tick().await {
-                    tracing::error!(
-                        ?e,
-                        "Failed to index storage txs, exiting (will be restarted)..."
-                    );
-                    return;
-                };
-                sleep(self.settings.polling_interval).await;
-            }
-        });
-        Ok(())
+    #[instrument(skip_all)]
+    pub async fn run(self) -> Result<()> {
+        loop {
+            self.tick().await.inspect_err(|e| {
+                tracing::error!(
+                    ?e,
+                    "Failed to index storage txs, exiting (will be restarted)..."
+                )
+            })?;
+            sleep(self.settings.polling_interval).await;
+        }
     }
 
-    #[instrument(name = "indexer::tick", skip_all, level = "info")]
+    #[instrument(skip_all)]
     pub async fn tick(&self) -> Result<()> {
         repository::transactions::stream_unprocessed_tx_hashes(&*self.db)
             .await?
@@ -103,47 +95,64 @@ impl Indexer {
             .await
     }
 
-    #[instrument(name = "indexer::handle_tx", skip(self), level = "info")]
+    #[instrument(skip(self))]
     async fn handle_tx(&self, tx_hash: TxHash) -> Result<()> {
+        tracing::info!("Processing tx");
+
         let txn = self.db.begin().await?;
 
         let tx = repository::transactions::get_tx(&txn, tx_hash).await?;
         let tx = tx.ok_or(anyhow!("Somehow tx disappeared from the DB"))?;
-        let storagetx = match EncodableGolemBaseTransaction::decode(&mut tx.input.as_slice()) {
-            Ok(storagetx) => storagetx,
-            Err(e) => {
-                tracing::warn!(?tx_hash, ?e, "Storage tx with undecodable data");
-                return Ok(());
-            }
-        };
 
-        // following operations are a good candidate for optimization when needed
-        // possible improvements include parallelization and batching
-        let mut idx = 0;
-        for create in storagetx.creates {
-            self.handle_create(&txn, &tx, create, idx).await?;
-            idx += 1;
+        if tx.to_address_hash == well_known::GOLEM_BASE_STORAGE_PROCESSOR_ADDRESS {
+            let storagetx = match EncodableGolemBaseTransaction::decode(&mut &*tx.input) {
+                Ok(storagetx) => storagetx,
+                Err(e) => {
+                    tracing::warn!(?tx_hash, ?e, "Storage tx with undecodable data");
+                    return Ok(());
+                }
+            };
+
+            // following operations are a good candidate for optimization when needed
+            // possible improvements include parallelization and batching
+            let mut idx = 0;
+            for create in storagetx.creates {
+                self.handle_create(&txn, &tx, create, idx).await?;
+                idx += 1;
+            }
+            for delete in storagetx.deletes {
+                self.handle_delete(&txn, &tx, delete, idx).await?;
+                idx += 1;
+            }
+            for update in storagetx.updates {
+                self.handle_update(&txn, &tx, update, idx).await?;
+                idx += 1;
+            }
+            for extend in storagetx.extensions {
+                self.handle_extend(&txn, &tx, extend, idx).await?;
+                idx += 1;
+            }
         }
-        for update in storagetx.updates {
-            self.handle_update(&txn, &tx, update, idx).await?;
-            idx += 1;
-        }
-        for delete in storagetx.deletes {
-            self.handle_delete(&txn, &tx, delete, idx).await?;
-            idx += 1;
-        }
-        for extend in storagetx.extensions {
-            self.handle_extend(&txn, &tx, extend, idx).await?;
-            idx += 1;
+
+        if tx.to_address_hash == well_known::L1_BLOCK_CONTRACT_ADDRESS {
+            // FIXME what if blockscout lags with populating logs?
+            let logs = repository::logs::get_tx_logs(
+                &txn,
+                tx_hash,
+                well_known::GOLEM_BASE_STORAGE_ENTITY_DELETED,
+            )
+            .await?;
+
+            for delete_log in logs {
+                self.handle_delete_log(&txn, &tx, delete_log).await?;
+            }
         }
 
         // FIXME what if blockscout lags with populating logs?
         let logs = repository::logs::get_tx_logs(
             &txn,
-            tx_hash.as_slice().into(),
-            well_known::GOLEM_BASE_STORAGE_ENTITY_BTL_EXTENDED
-                .as_slice()
-                .into(),
+            tx_hash,
+            well_known::GOLEM_BASE_STORAGE_ENTITY_BTL_EXTENDED,
         )
         .await?;
 
@@ -156,48 +165,41 @@ impl Indexer {
         Ok(())
     }
 
-    #[instrument(name = "indexer::handle_create", skip(self, tx), fields(tx_hash = ?tx.hash), level = "info")]
+    #[instrument(skip(self, tx), fields(tx_hash = ?tx.hash))]
     async fn handle_create(
         &self,
         txn: &DatabaseTransaction,
         tx: &Tx,
         create: Create,
-        idx: i64,
+        idx: u64,
     ) -> Result<()> {
-        let key = entity_key(tx.hash, &create.data, idx).to_vec();
-        let data: Vec<u8> = create.data.into();
+        let key = entity_key(tx.hash, create.data.clone(), idx);
+        tracing::info!("Processing Create operation for entity 0x{key:x}");
 
-        let latest_update = self
-            .is_latest_update(txn, key.clone(), tx.hash, idx)
-            .await?;
+        let latest_update = self.is_latest_update(txn, key, tx.hash, idx).await?;
 
         repository::operations::insert_operation(
             txn,
-            GolemBaseOperationCreate {
-                entity_key: key.clone(),
-                sender: tx.from_address_hash.as_slice().into(),
-                operation: GolemBaseOperationType::Create,
-                data: Some(data.clone()),
-                btl: Some(create.btl.into()),
-                transaction_hash: tx.hash.as_slice().into(),
-                block_hash: tx.block_hash.as_slice().into(),
-                index: idx,
+            Operation {
+                metadata: OperationMetadata {
+                    entity_key: key,
+                    sender: tx.from_address_hash,
+                    tx_hash: tx.hash,
+                    block_hash: tx.block_hash,
+                    index: idx,
+                },
+                operation: OperationData::create(create.data.clone(), create.btl),
             },
         )
         .await?;
 
-        // will only update `created_at_tx_hash` if already exists
         repository::entities::insert_entity(
             txn,
             GolemBaseEntityCreate {
-                key: key.clone(),
-                data,
-                created_at_tx_hash: tx.hash.as_slice().into(),
-                expires_at_block_number: tx
-                    .block_number
-                    .saturating_add(create.btl)
-                    .try_into()
-                    .unwrap_or(i64::MAX),
+                key,
+                data: create.data,
+                created_at: tx.hash,
+                expires_at: tx.block_number.saturating_add(create.btl),
             },
         )
         .await?;
@@ -205,14 +207,14 @@ impl Indexer {
         for annotation in create.string_annotations {
             repository::annotations::insert_string_annotation(
                 txn,
-                GolemBaseStringAnnotation {
-                    entity_key: key.clone(),
-                    operation_tx_hash: tx.hash.as_slice().into(),
+                StringAnnotation {
+                    entity_key: key,
+                    operation_tx_hash: tx.hash,
                     operation_index: idx,
                     key: annotation.key,
                     value: annotation.value,
-                    active: latest_update,
                 },
+                latest_update,
             )
             .await?;
         }
@@ -220,14 +222,14 @@ impl Indexer {
         for annotation in create.numeric_annotations {
             repository::annotations::insert_numeric_annotation(
                 txn,
-                GolemBaseNumericAnnotation {
-                    entity_key: key.clone(),
-                    operation_tx_hash: tx.hash.as_slice().into(),
+                NumericAnnotation {
+                    entity_key: key,
+                    operation_tx_hash: tx.hash,
                     operation_index: idx,
                     key: annotation.key,
                     value: annotation.value,
-                    active: latest_update,
                 },
+                latest_update,
             )
             .await?;
         }
@@ -235,30 +237,34 @@ impl Indexer {
         Ok(())
     }
 
-    #[instrument(name = "indexer::handle_update", skip(self, tx), fields(tx_hash = ?tx.hash), level = "info")]
+    #[instrument(skip(self, tx), fields(tx_hash = ?tx.hash))]
     async fn handle_update(
         &self,
         txn: &DatabaseTransaction,
         tx: &Tx,
         update: Update,
-        idx: i64,
+        idx: u64,
     ) -> Result<()> {
-        let data: Vec<u8> = update.data.into();
+        tracing::info!(
+            "Processing Update operation for entity 0x{:x}",
+            update.entity_key
+        );
+
         let latest_update = self
-            .is_latest_update(txn, update.entity_key.as_slice().into(), tx.hash, idx)
+            .is_latest_update(txn, update.entity_key, tx.hash, idx)
             .await?;
 
         repository::operations::insert_operation(
             txn,
-            GolemBaseOperationCreate {
-                entity_key: update.entity_key.as_slice().into(),
-                sender: tx.from_address_hash.as_slice().into(),
-                operation: GolemBaseOperationType::Update,
-                data: Some(data.clone()),
-                btl: Some(update.btl.into()),
-                transaction_hash: tx.hash.as_slice().into(),
-                block_hash: tx.block_hash.as_slice().into(),
-                index: idx,
+            Operation {
+                metadata: OperationMetadata {
+                    entity_key: update.entity_key,
+                    sender: tx.from_address_hash,
+                    tx_hash: tx.hash,
+                    block_hash: tx.block_hash,
+                    index: idx,
+                },
+                operation: OperationData::update(update.data.clone(), update.btl),
             },
         )
         .await?;
@@ -267,38 +273,28 @@ impl Indexer {
             repository::entities::update_entity(
                 txn,
                 GolemBaseEntityUpdate {
-                    key: update.entity_key.as_slice().into(),
-                    data,
-                    updated_at_tx_hash: tx.hash.as_slice().into(),
-                    expires_at_block_number: tx
-                        .block_number
-                        .saturating_add(update.btl)
-                        .try_into()
-                        .unwrap_or(i64::MAX),
+                    key: update.entity_key,
+                    data: update.data,
+                    updated_at: tx.hash,
+                    expires_at: tx.block_number.saturating_add(update.btl),
                 },
             )
             .await?;
 
-            repository::annotations::deactivate_annotations(
-                txn,
-                GolemBaseAnnotationsDeactivate {
-                    entity_key: update.entity_key.as_slice().into(),
-                },
-            )
-            .await?;
+            repository::annotations::deactivate_annotations(txn, update.entity_key).await?;
         }
 
         for annotation in update.string_annotations {
             repository::annotations::insert_string_annotation(
                 txn,
-                GolemBaseStringAnnotation {
-                    entity_key: update.entity_key.as_slice().into(),
-                    operation_tx_hash: tx.hash.as_slice().into(),
+                StringAnnotation {
+                    entity_key: update.entity_key,
+                    operation_tx_hash: tx.hash,
                     operation_index: idx,
                     key: annotation.key,
                     value: annotation.value,
-                    active: latest_update,
                 },
+                latest_update,
             )
             .await?;
         }
@@ -306,14 +302,14 @@ impl Indexer {
         for annotation in update.numeric_annotations {
             repository::annotations::insert_numeric_annotation(
                 txn,
-                GolemBaseNumericAnnotation {
-                    entity_key: update.entity_key.as_slice().into(),
-                    operation_tx_hash: tx.hash.as_slice().into(),
+                NumericAnnotation {
+                    entity_key: update.entity_key,
+                    operation_tx_hash: tx.hash,
                     operation_index: idx,
                     key: annotation.key,
                     value: annotation.value,
-                    active: latest_update,
                 },
+                latest_update,
             )
             .await?;
         }
@@ -321,25 +317,27 @@ impl Indexer {
         Ok(())
     }
 
-    #[instrument(name = "indexer::handle_delete", skip(self, tx), fields(tx_hash = ?tx.hash), level = "info")]
+    #[instrument(skip(self, tx), fields(tx_hash = ?tx.hash))]
     async fn handle_delete(
         &self,
         txn: &DatabaseTransaction,
         tx: &Tx,
         delete: GolemBaseDelete,
-        idx: i64,
+        idx: u64,
     ) -> Result<()> {
+        tracing::info!("Processing Delete operation for entity 0x{delete:x}");
+
         repository::operations::insert_operation(
             txn,
-            GolemBaseOperationCreate {
-                entity_key: delete.as_slice().into(),
-                sender: tx.from_address_hash.as_slice().into(),
-                operation: GolemBaseOperationType::Delete,
-                data: None,
-                btl: None,
-                transaction_hash: tx.hash.as_slice().into(),
-                block_hash: tx.block_hash.as_slice().into(),
-                index: idx,
+            Operation {
+                metadata: OperationMetadata {
+                    entity_key: delete,
+                    sender: tx.from_address_hash,
+                    tx_hash: tx.hash,
+                    block_hash: tx.block_hash,
+                    index: idx,
+                },
+                operation: OperationData::delete(),
             },
         )
         .await?;
@@ -347,42 +345,40 @@ impl Indexer {
         repository::entities::delete_entity(
             txn,
             GolemBaseEntityDelete {
-                key: delete.as_slice().into(),
-                deleted_at_tx_hash: tx.hash.as_slice().into(),
-                deleted_at_block_number: tx.block_number.try_into()?,
+                key: delete,
+                deleted_at_tx: tx.hash,
+                deleted_at_block: tx.block_number,
             },
         )
         .await?;
 
-        repository::annotations::deactivate_annotations(
-            txn,
-            GolemBaseAnnotationsDeactivate {
-                entity_key: delete.as_slice().into(),
-            },
-        )
-        .await?;
+        repository::annotations::deactivate_annotations(txn, delete).await?;
         Ok(())
     }
 
-    #[instrument(name = "indexer::handle_extend", skip(self, tx), fields(tx_hash = ?tx.hash), level = "info")]
+    #[instrument(skip(self, tx), fields(tx_hash = ?tx.hash))]
     async fn handle_extend(
         &self,
         txn: &DatabaseTransaction,
         tx: &Tx,
         extend: Extend,
-        idx: i64,
+        idx: u64,
     ) -> Result<()> {
+        tracing::info!(
+            "Processing Extend operation for entity 0x{:x}",
+            extend.entity_key
+        );
         repository::operations::insert_operation(
             txn,
-            GolemBaseOperationCreate {
-                entity_key: extend.entity_key.as_slice().into(),
-                sender: tx.from_address_hash.as_slice().into(),
-                operation: GolemBaseOperationType::Extend,
-                data: None,
-                btl: Some(extend.number_of_blocks.into()),
-                transaction_hash: tx.hash.as_slice().into(),
-                block_hash: tx.block_hash.as_slice().into(),
-                index: idx,
+            Operation {
+                metadata: OperationMetadata {
+                    entity_key: extend.entity_key,
+                    sender: tx.from_address_hash,
+                    tx_hash: tx.hash,
+                    block_hash: tx.block_hash,
+                    index: idx,
+                },
+                operation: OperationData::extend(extend.number_of_blocks),
             },
         )
         .await?;
@@ -395,9 +391,9 @@ impl Indexer {
     async fn is_latest_update(
         &self,
         txn: &DatabaseTransaction,
-        entity_key: Vec<u8>,
-        tx_hash: B256,
-        operation_index: i64,
+        entity_key: EntityKey,
+        tx_hash: TxHash,
+        operation_index: u64,
     ) -> Result<bool> {
         let latest_stored_update =
             repository::operations::get_latest_update(txn, entity_key).await?;
@@ -416,7 +412,7 @@ impl Indexer {
         };
 
         let candidate_update = (
-            candidate_update.block_number.try_into().unwrap_or(i64::MAX),
+            candidate_update.block_number,
             candidate_update.index,
             operation_index,
         );
@@ -424,7 +420,7 @@ impl Indexer {
         Ok(candidate_update > latest_stored_update)
     }
 
-    #[instrument(name = "indexer::handle_extend_log", skip(self, tx, log), fields(tx_hash = ?tx.hash), level = "info")]
+    #[instrument(skip(self, tx, log), fields(tx_hash = ?tx.hash))]
     async fn handle_extend_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
         // extends are handled after updates, so if it's in the same tx, we need to process it
         let entity_key = if let Some(k) = log.second_topic {
@@ -435,14 +431,12 @@ impl Indexer {
         };
 
         let latest_update = self
-            .is_latest_update(txn, entity_key.clone(), tx.hash, i64::MAX)
+            .is_latest_update(txn, entity_key, tx.hash, u64::MAX)
             .await?;
 
         if latest_update {
             type EventArgs = (U256, U256);
-            let (_, expires_at_block_number) = if let Ok(res) =
-                EventArgs::abi_decode(log.data.as_slice())
-            {
+            let (_, expires_at_block_number) = if let Ok(res) = EventArgs::abi_decode(&log.data) {
                 res
             } else {
                 tracing::warn!(data=?log.data, "Invalid GolemBaseStorageEntityBTLExtended event data encountered");
@@ -452,12 +446,50 @@ impl Indexer {
                 txn,
                 GolemBaseEntityExtend {
                     key: entity_key,
-                    extended_at_tx_hash: tx.hash.as_slice().into(),
-                    expires_at_block_number: expires_at_block_number.try_into().unwrap_or(i64::MAX),
+                    extended_at: tx.hash,
+                    expires_at: expires_at_block_number.try_into().unwrap_or(u64::MAX),
                 },
             )
             .await?;
         }
+
+        Ok(())
+    }
+
+    #[instrument(skip(self, tx, log), fields(tx_hash = ?tx.hash))]
+    async fn handle_delete_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
+        let entity_key = if let Some(k) = log.second_topic {
+            k
+        } else {
+            tracing::warn!("Delete Log event with no second topic?");
+            return Ok(());
+        };
+
+        repository::operations::insert_operation(
+            txn,
+            Operation {
+                metadata: OperationMetadata {
+                    entity_key,
+                    sender: tx.from_address_hash,
+                    tx_hash: tx.hash,
+                    block_hash: tx.block_hash,
+                    index: log.index, // FIXME this should be an operation index, not log index,
+                                      // but we don't really have an operation in this case...
+                },
+                operation: OperationData::delete(),
+            },
+        )
+        .await?;
+
+        repository::entities::delete_entity(
+            txn,
+            GolemBaseEntityDelete {
+                key: entity_key,
+                deleted_at_tx: tx.hash,
+                deleted_at_block: tx.block_number,
+            },
+        )
+        .await?;
 
         Ok(())
     }

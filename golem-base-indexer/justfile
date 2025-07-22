@@ -21,6 +21,7 @@ test *args:
 run:
     GOLEM_BASE_INDEXER__DATABASE__CONNECT__URL={{DATABASE_URL}} \
     GOLEM_BASE_INDEXER__DATABASE__RUN_MIGRATIONS=true \
+    RUST_LOG=debug,sqlx=info,tracing::span=info \
     cargo run --bin golem-base-indexer-server
 
 generate-entities:

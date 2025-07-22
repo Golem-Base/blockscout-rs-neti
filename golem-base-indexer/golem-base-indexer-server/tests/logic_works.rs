@@ -18,15 +18,13 @@ async fn test_single_logic_tick_works() {
 
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/operations").await;
-    assert_eq!(
-        response,
-        serde_json::json!(include_str!("fixtures/operations.json"))
-    );
+    let expected: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/operations.json")).unwrap();
+    assert_eq!(response, expected);
 
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/entities").await;
-    assert_eq!(
-        response,
-        serde_json::json!(include_str!("fixtures/entities.json"))
-    );
+    let expected: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/entities.json")).unwrap();
+    assert_eq!(response, expected);
 }

@@ -2,7 +2,7 @@ use crate::proto::golem_base_indexer_service_server::GolemBaseIndexerService as 
 use crate::proto::*;
 use bytes::Bytes;
 use golem_base_indexer_logic::repository;
-use sea_orm::{ActiveEnum, DatabaseConnection};
+use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
@@ -36,7 +36,6 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         Ok(Response::new(Entity {
             key: format!("0x{:x}", Bytes::from(entity.key)),
             data: entity.data.map(|v| format!("0x{:x}", Bytes::from(v))),
-            status: entity.status.into_value(),
             created_at_tx_hash: entity
                 .created_at_tx_hash
                 .map(|v| format!("0x{:x}", Bytes::from(v))),
@@ -53,13 +52,13 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         request: Request<GetOperationRequest>,
     ) -> Result<Response<Operation>, Status> {
         let inner = request.into_inner();
-
-        let tx_hash = Bytes::from(inner.tx_hash).into();
-        let index = inner
-            .index
+        let tx_hash = hex::decode(inner.tx_hash)
+            .map_err(|_| Status::invalid_argument("Invalid tx hash"))?
+            .as_slice()
             .try_into()
-            .map_err(|_| Status::invalid_argument("Index out of range"))?;
-        let operation = repository::operations::get_operation(&*self.db, tx_hash, index)
+            .map_err(|_| Status::invalid_argument("Invalid tx hash"))?;
+
+        let operation = repository::operations::get_operation(&*self.db, tx_hash, inner.index)
             .await
             .map_err(|err| {
                 tracing::error!(?err, "failed to query operation");
@@ -67,21 +66,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             })?
             .ok_or(Status::not_found("operation not found"))?;
 
-        Ok(Response::new(Operation {
-            entity_key: format!("0x{:x}", Bytes::from(operation.entity_key)),
-            sender: format!("0x{:x}", Bytes::from(operation.sender)),
-            operation: operation.operation.into_value(),
-            data: operation.data.map(|v| format!("0x{:x}", Bytes::from(v))),
-            btl: operation
-                .btl
-                .map(|v| v.try_into().expect("Will always fit")),
-            block_hash: format!("0x{:x}", Bytes::from(operation.block_hash)),
-            transaction_hash: format!("0x{:x}", Bytes::from(operation.transaction_hash)),
-            index: operation
-                .index
-                .try_into()
-                .expect("Index is always non-negative"),
-        }))
+        Ok(Response::new(operation.into()))
     }
 
     async fn list_entities(
@@ -100,7 +85,6 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             .map(|entity| Entity {
                 key: format!("0x{:x}", Bytes::from(entity.key)),
                 data: entity.data.map(|v| format!("0x{:x}", Bytes::from(v))),
-                status: entity.status.into_value(),
                 created_at_tx_hash: entity
                     .created_at_tx_hash
                     .map(|v| format!("0x{:x}", Bytes::from(v))),
@@ -129,24 +113,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
                 Status::internal("failed to query operations")
             })?;
 
-        let items = operations
-            .into_iter()
-            .map(|operation| Operation {
-                entity_key: format!("0x{:x}", Bytes::from(operation.entity_key)),
-                sender: format!("0x{:x}", Bytes::from(operation.sender)),
-                operation: operation.operation.into_value(),
-                data: operation.data.map(|v| format!("0x{:x}", Bytes::from(v))),
-                btl: operation
-                    .btl
-                    .map(|v| v.try_into().expect("Will always fit")),
-                block_hash: format!("0x{:x}", Bytes::from(operation.block_hash)),
-                transaction_hash: format!("0x{:x}", Bytes::from(operation.transaction_hash)),
-                index: operation
-                    .index
-                    .try_into()
-                    .expect("Index is always non-negative"),
-            })
-            .collect();
+        let items = operations.into_iter().map(Into::into).collect();
 
         Ok(Response::new(ListOperationsResponse { items }))
     }
