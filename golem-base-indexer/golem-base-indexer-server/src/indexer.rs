@@ -14,7 +14,7 @@ pub async fn run(
 
         loop {
             let indexer = Indexer::new(db_connection.clone(), settings.indexer.clone());
-            match indexer.start().await {
+            match indexer.run().await {
                 Err(err) => {
                     tracing::error!(
                         error = ?err,

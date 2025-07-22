@@ -2866,6 +2866,7 @@ dependencies = [
  "actix-prost-build",
  "actix-prost-macros",
  "actix-web",
+ "golem-base-indexer-logic",
  "prost",
  "prost-build",
  "serde",
@@ -2887,6 +2888,7 @@ dependencies = [
  "golem-base-indexer-logic",
  "golem-base-indexer-migration",
  "golem-base-indexer-proto",
+ "hex",
  "pretty_assertions",
  "reqwest",
  "sea-orm",
@@ -2895,6 +2897,7 @@ dependencies = [
  "tokio",
  "tonic",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

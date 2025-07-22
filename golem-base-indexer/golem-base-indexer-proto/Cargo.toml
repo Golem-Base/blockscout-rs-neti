@@ -11,6 +11,7 @@ prost.workspace = true
 serde.workspace = true
 serde_with.workspace = true
 tonic.workspace = true
+golem-base-indexer-logic = { path = "../golem-base-indexer-logic" }
 
 [build-dependencies]
 actix-prost-build.workspace = true

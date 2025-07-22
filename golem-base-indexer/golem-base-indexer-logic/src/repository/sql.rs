@@ -39,4 +39,19 @@ left join golem_base_operations
 where
     golem_base_operations.transaction_hash is null
     and transactions.to_address_hash in ($1, $2) 
+    and transactions.status = 1
+"#;
+
+pub const GET_TX_BY_HASH: &str = r#"
+select 
+    from_address_hash,
+    to_address_hash,
+    hash,
+    block_number,
+    block_hash,
+    index,
+    input
+from transactions
+where
+    hash = $1
 "#;

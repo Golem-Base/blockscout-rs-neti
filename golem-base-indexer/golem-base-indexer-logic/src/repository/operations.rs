@@ -1,13 +1,15 @@
-use anyhow::Result;
+use anyhow::{anyhow, Context, Result};
 use golem_base_indexer_entity::{
     golem_base_operations, sea_orm_active_enums::GolemBaseOperationType,
 };
 use sea_orm::{
     prelude::*,
     ActiveValue::{NotSet, Set},
-    DbBackend, FromQueryResult, Statement,
+    DbBackend, FromQueryResult, QueryOrder, Statement,
 };
 use tracing::instrument;
+
+use crate::types::{BlockNumber, EntityKey, Operation, OperationData, OperationMetadata, TxHash};
 
 use super::sql;
 
@@ -18,94 +20,139 @@ pub struct FullOperationIndex {
     pub operation_index: i64,
 }
 
-#[derive(Debug)]
-pub struct GolemBaseOperationCreate {
-    pub entity_key: Vec<u8>,
-    pub sender: Vec<u8>,
-    pub operation: GolemBaseOperationType,
-    pub data: Option<Vec<u8>>,
-    pub btl: Option<Decimal>,
-    pub transaction_hash: Vec<u8>,
-    pub block_hash: Vec<u8>,
-    pub index: i64,
+impl TryFrom<golem_base_operations::Model> for Operation {
+    type Error = anyhow::Error;
+
+    fn try_from(v: golem_base_operations::Model) -> Result<Self> {
+        let data = match v.operation {
+            GolemBaseOperationType::Create => OperationData::create(
+                v.data
+                    .ok_or(anyhow!("Update operation in db with no data"))?
+                    .into(),
+                v.btl
+                    .ok_or(anyhow!("Update operation in db with no btl"))?
+                    .try_into()?,
+            ),
+            GolemBaseOperationType::Update => OperationData::update(
+                v.data
+                    .ok_or(anyhow!("Update operation in db with no data"))?
+                    .into(),
+                v.btl
+                    .ok_or(anyhow!("Update operation in db with no btl"))?
+                    .try_into()?,
+            ),
+            GolemBaseOperationType::Delete => OperationData::delete(),
+            GolemBaseOperationType::Extend => OperationData::extend(
+                v.btl
+                    .ok_or(anyhow!("Extend operation in db with no btl"))?
+                    .try_into()?,
+            ),
+        };
+        Ok(Self {
+            operation: data,
+            metadata: OperationMetadata {
+                entity_key: v.entity_key.as_slice().try_into()?,
+                sender: v.sender.as_slice().try_into()?,
+                tx_hash: v.transaction_hash.as_slice().try_into()?,
+                block_hash: v.block_hash.as_slice().try_into()?,
+                index: v.index.try_into()?,
+            },
+        })
+    }
 }
 
-#[instrument(
-    name = "repository::operations::insert_operation",
-    skip(db),
-    level = "info"
-)]
-pub async fn insert_operation<T: ConnectionTrait>(
-    db: &T,
-    op: GolemBaseOperationCreate,
-) -> Result<()> {
+impl From<&OperationData> for GolemBaseOperationType {
+    fn from(value: &OperationData) -> Self {
+        match value {
+            OperationData::Create(_, _) => GolemBaseOperationType::Create,
+            OperationData::Update(_, _) => GolemBaseOperationType::Update,
+            OperationData::Delete => GolemBaseOperationType::Delete,
+            OperationData::Extend(_) => GolemBaseOperationType::Extend,
+        }
+    }
+}
+
+impl TryFrom<Operation> for golem_base_operations::ActiveModel {
+    type Error = anyhow::Error;
+    fn try_from(op: Operation) -> std::result::Result<Self, Self::Error> {
+        let md = op.metadata;
+        Ok(Self {
+            entity_key: Set(md.entity_key.as_slice().into()),
+            sender: Set(md.sender.as_slice().into()),
+            operation: Set((&op.operation).into()),
+            data: Set(op.operation.data().map(|v| v.to_owned().into())),
+            btl: Set(op.operation.btl().map(Into::into)),
+            transaction_hash: Set(md.tx_hash.as_slice().into()),
+            block_hash: Set(md.block_hash.as_slice().into()),
+            index: Set(md.index.try_into()?),
+            inserted_at: NotSet,
+        })
+    }
+}
+
+#[instrument(name = "repository::operations::insert_operation", skip(db))]
+pub async fn insert_operation<T: ConnectionTrait>(db: &T, op: Operation) -> Result<()> {
     golem_base_operations::ActiveModel {
-        entity_key: Set(op.entity_key),
-        sender: Set(op.sender),
-        operation: Set(op.operation),
-        data: Set(op.data),
-        btl: Set(op.btl),
-        transaction_hash: Set(op.transaction_hash),
-        block_hash: Set(op.block_hash),
-        index: Set(op.index),
-        inserted_at: NotSet,
+        ..op.clone().try_into()?
     }
     .insert(db)
     .await
-    .inspect_err(|_| panic!("WTF"))?;
+    .with_context(|| format!("Failed to insert operation: {op:?}"))?;
+
     Ok(())
 }
 
-#[instrument(
-    name = "repository::operations::get_latest_update",
-    skip(db),
-    level = "info"
-)]
+#[instrument(name = "repository::operations::get_latest_update", skip(db))]
 pub async fn get_latest_update<T: ConnectionTrait>(
     db: &T,
-    entity_key: Vec<u8>,
-) -> Result<Option<(i64, i32, i64)>> {
+    entity_key: EntityKey,
+) -> Result<Option<(BlockNumber, u64, u64)>> {
     let res = FullOperationIndex::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
         sql::GET_LATEST_UPDATE_OPERATION_INDEX,
-        [entity_key.into()],
+        [entity_key.as_slice().into()],
     ))
     .one(db)
     .await
-    .inspect_err(|e| tracing::error!(?e, "WTF"))
-    .inspect_err(|e| panic!("WTF"))?;
+    .with_context(|| format!("Failed to get latest update: {entity_key:x}"))?;
 
-    Ok(res.map(|v| {
-        (
-            v.block_number as i64,
-            v.transaction_index,
-            v.operation_index,
-        )
-    }))
+    res.map(|v| -> Result<_> {
+        Ok((
+            v.block_number.try_into()?,
+            v.transaction_index.try_into()?,
+            v.operation_index.try_into()?,
+        ))
+    })
+    .transpose()
+    .with_context(|| format!("Failed to get latest update: {entity_key:x}"))
 }
 
-#[instrument(
-    name = "repository::operations::get_operation",
-    skip(db),
-    level = "info"
-)]
+#[instrument(name = "repository::operations::get_operation", skip(db))]
 pub async fn get_operation<T: ConnectionTrait>(
     db: &T,
-    tx_hash: Vec<u8>,
-    index: i64,
-) -> Result<Option<golem_base_operations::Model>> {
-    Ok(golem_base_operations::Entity::find_by_id((tx_hash, index))
+    tx_hash: TxHash,
+    index: u64,
+) -> Result<Option<Operation>> {
+    golem_base_operations::Entity::find_by_id((tx_hash.as_slice().into(), index.try_into()?))
         .one(db)
-        .await?)
+        .await
+        .with_context(|| format!("Failed to get operation. tx_hash={tx_hash:x}, index={index}"))?
+        .map(|v| {
+            v.try_into().with_context(|| {
+                format!("Failed to convert operation. tx_hash={tx_hash:x}, index={index}")
+            })
+        })
+        .transpose()
 }
 
-#[instrument(
-    name = "repository::operations::list_operations",
-    skip(db),
-    level = "info"
-)]
-pub async fn list_operations<T: ConnectionTrait>(
-    db: &T,
-) -> Result<Vec<golem_base_operations::Model>> {
-    Ok(golem_base_operations::Entity::find().all(db).await?)
+#[instrument(name = "repository::operations::list_operations", skip(db))]
+pub async fn list_operations<T: ConnectionTrait>(db: &T) -> Result<Vec<Operation>> {
+    golem_base_operations::Entity::find()
+        .order_by_asc(golem_base_operations::Column::TransactionHash)
+        .order_by_asc(golem_base_operations::Column::Index)
+        .all(db)
+        .await?
+        .into_iter()
+        .map(Operation::try_from)
+        .collect()
 }

@@ -1,5 +1,8 @@
-use alloy_primitives::{Address, BlockHash, BlockNumber, TxHash, B256};
-use anyhow::Result;
+use crate::{
+    repository::sql::GET_TX_BY_HASH,
+    types::{Tx, TxHash},
+};
+use anyhow::{Context, Result};
 use futures::{Stream, StreamExt};
 use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement, StreamTrait};
 use tracing::instrument;
@@ -16,30 +19,35 @@ pub struct DbTxHash {
 pub struct DbTx {
     pub hash: Vec<u8>,
     pub from_address_hash: Vec<u8>,
+    pub to_address_hash: Vec<u8>,
     pub block_number: i32,
     pub block_hash: Vec<u8>,
     pub input: Vec<u8>,
     pub index: i32,
 }
 
-#[derive(Debug)]
-pub struct Tx {
-    pub hash: TxHash,
-    pub from_address_hash: Address,
-    pub block_number: BlockNumber,
-    pub block_hash: BlockHash,
-    pub input: Vec<u8>,
-    pub index: i32,
+impl TryFrom<DbTx> for Tx {
+    type Error = anyhow::Error;
+    fn try_from(tx: DbTx) -> Result<Self> {
+        Ok(Self {
+            input: tx.input.into(),
+            block_hash: tx.block_hash.as_slice().try_into()?,
+            block_number: tx.block_number.try_into()?,
+            from_address_hash: tx.from_address_hash.as_slice().try_into()?,
+            to_address_hash: tx.to_address_hash.as_slice().try_into()?,
+            hash: tx.hash.as_slice().try_into()?,
+            index: tx.index.try_into()?,
+        })
+    }
 }
 
 #[instrument(
     name = "repository::transactions::stream_unprocessed_tx_hashes",
-    skip(db),
-    level = "info"
+    skip(db)
 )]
 pub async fn stream_unprocessed_tx_hashes<T: StreamTrait + ConnectionTrait>(
     db: &T,
-) -> Result<impl Stream<Item = B256> + '_> {
+) -> Result<impl Stream<Item = TxHash> + '_> {
     Ok(DbTxHash::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
         sql::GET_UNPROCESSED_TX_HASHES,
@@ -51,10 +59,11 @@ pub async fn stream_unprocessed_tx_hashes<T: StreamTrait + ConnectionTrait>(
         ],
     ))
     .stream(db)
-    .await?
+    .await
+    .context("Failed to get unprocessed tx hashes")?
     .filter_map(|tx| async {
         match tx {
-            Ok(tx) => Some(B256::from_slice(&tx.hash)),
+            Ok(tx) => Some(TxHash::from_slice(&tx.hash)),
             Err(err) => {
                 tracing::error!(error = ?err, "error during unprocessed tx hash retrieval");
                 None
@@ -63,34 +72,15 @@ pub async fn stream_unprocessed_tx_hashes<T: StreamTrait + ConnectionTrait>(
     }))
 }
 
-#[instrument(name = "repository::transactions::get_tx", skip(db), level = "info")]
-pub async fn get_tx<T: ConnectionTrait>(db: &T, tx_hash: B256) -> Result<Option<Tx>> {
+#[instrument(name = "repository::transactions::get_tx", skip(db))]
+pub async fn get_tx<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> Result<Option<Tx>> {
     DbTx::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        r#"
-select 
-    from_address_hash,
-    hash,
-    block_number,
-    block_hash,
-    index,
-    input
-from transactions
-where hash = $1
-        "#,
+        GET_TX_BY_HASH,
         [tx_hash.as_slice().into()],
     ))
     .one(db)
     .await?
-    .map(|tx| {
-        Ok(Tx {
-            input: tx.input,
-            block_hash: tx.block_hash.as_slice().try_into()?,
-            block_number: tx.block_number.try_into()?,
-            from_address_hash: tx.from_address_hash.as_slice().try_into()?,
-            hash: tx.hash.as_slice().try_into()?,
-            index: tx.index,
-        })
-    })
+    .map(TryInto::try_into)
     .transpose()
 }

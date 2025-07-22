@@ -52,8 +52,6 @@ where
         let (server_settings, base) = test_server::get_test_server_settings();
         settings.server = server_settings;
         settings.metrics.enabled = false;
-        settings.tracing.enabled = false;
-        settings.jaeger.enabled = false;
 
         (settings_setup(settings), base)
     };
