@@ -42,3 +42,6 @@ migrate-up:
 
 migrate-down:
     sea-orm-cli migrate -d golem-base-indexer-migration down
+
+fmt:
+    cargo fmt --all -- --config imports_granularity=Crate
