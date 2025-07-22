@@ -1,5 +1,6 @@
-use crate::proto::golem_base_indexer_service_server::GolemBaseIndexerService as GolemBaseIndexer;
-use crate::proto::*;
+use crate::proto::{
+    golem_base_indexer_service_server::GolemBaseIndexerService as GolemBaseIndexer, *,
+};
 use bytes::Bytes;
 use golem_base_indexer_logic::repository;
 use sea_orm::DatabaseConnection;
