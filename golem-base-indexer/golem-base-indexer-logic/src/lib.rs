@@ -1,7 +1,7 @@
 use alloy_primitives::U256;
 use alloy_rlp::Decodable;
 use alloy_sol_types::SolValue;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use futures::{StreamExt, TryStreamExt};
 use golem_base_sdk::entity::{
     Create, EncodableGolemBaseTransaction, Extend, GolemBaseDelete, Update,
@@ -60,7 +60,6 @@ pub struct Indexer {
 
 // FIXME integration tests
 // FIXME what about chain reorgs (use debug_setHead for testing)
-// FIXME cleanup logging
 // FIXME test what happens when DB connection fails
 impl Indexer {
     pub fn new(db: Arc<DatabaseConnection>, settings: IndexerSettings) -> Self {
@@ -97,14 +96,16 @@ impl Indexer {
 
         let txn = self.db.begin().await?;
 
-        let tx = repository::blockscout::get_tx(&txn, tx_hash).await?;
+        let tx = repository::blockscout::get_tx(&txn, tx_hash)
+            .await
+            .with_context(|| format!("Getting tx {tx_hash}"))?;
         let tx = tx.ok_or(anyhow!("Somehow tx disappeared from the DB"))?;
 
         if tx.to_address_hash == well_known::GOLEM_BASE_STORAGE_PROCESSOR_ADDRESS {
             let storagetx = match EncodableGolemBaseTransaction::decode(&mut &*tx.input) {
                 Ok(storagetx) => storagetx,
                 Err(e) => {
-                    tracing::warn!(?tx_hash, ?e, "Storage tx with undecodable data");
+                    tracing::warn!(?e, "Storage tx with undecodable data");
                     return Ok(());
                 }
             };
@@ -113,19 +114,27 @@ impl Indexer {
             // possible improvements include parallelization and batching
             let mut idx = 0;
             for create in storagetx.creates {
-                self.handle_create(&txn, &tx, create, idx).await?;
+                self.handle_create(&txn, &tx, create, idx)
+                    .await
+                    .with_context(|| format!("Handling create op tx_hash={tx_hash} idx={idx}"))?;
                 idx += 1;
             }
             for delete in storagetx.deletes {
-                self.handle_delete(&txn, &tx, delete, idx).await?;
+                self.handle_delete(&txn, &tx, delete, idx)
+                    .await
+                    .with_context(|| format!("Handling delete op tx_hash={tx_hash} idx={idx}"))?;
                 idx += 1;
             }
             for update in storagetx.updates {
-                self.handle_update(&txn, &tx, update, idx).await?;
+                self.handle_update(&txn, &tx, update, idx)
+                    .await
+                    .with_context(|| format!("Handling update op tx_hash={tx_hash} idx={idx}"))?;
                 idx += 1;
             }
             for extend in storagetx.extensions {
-                self.handle_extend(&txn, &tx, extend, idx).await?;
+                self.handle_extend(&txn, &tx, extend, idx)
+                    .await
+                    .with_context(|| format!("Handling extend op tx_hash={tx_hash} idx={idx}"))?;
                 idx += 1;
             }
         }
@@ -162,7 +171,7 @@ impl Indexer {
         Ok(())
     }
 
-    #[instrument(skip(self, tx), fields(tx_hash = ?tx.hash))]
+    #[instrument(skip_all, fields(create, idx))]
     async fn handle_create(
         &self,
         txn: &DatabaseTransaction,
@@ -171,7 +180,7 @@ impl Indexer {
         idx: u64,
     ) -> Result<()> {
         let key = entity_key(tx.hash, create.data.clone(), idx);
-        tracing::info!("Processing Create operation for entity {key}");
+        tracing::info!("Processing Create operation");
 
         let latest_update = self.is_latest_update(txn, key, tx.hash, idx).await?;
 
@@ -239,7 +248,7 @@ impl Indexer {
         Ok(())
     }
 
-    #[instrument(skip(self, tx), fields(tx_hash = ?tx.hash))]
+    #[instrument(skip_all, fields(update, idx))]
     async fn handle_update(
         &self,
         txn: &DatabaseTransaction,
@@ -247,10 +256,7 @@ impl Indexer {
         update: Update,
         idx: u64,
     ) -> Result<()> {
-        tracing::info!(
-            "Processing Update operation for entity {}",
-            update.entity_key
-        );
+        tracing::info!("Processing Update operation");
 
         let latest_update = self
             .is_latest_update(txn, update.entity_key, tx.hash, idx)
@@ -324,7 +330,7 @@ impl Indexer {
         Ok(())
     }
 
-    #[instrument(skip(self, tx), fields(tx_hash = ?tx.hash))]
+    #[instrument(skip_all, fields(delete, idx))]
     async fn handle_delete(
         &self,
         txn: &DatabaseTransaction,
@@ -332,7 +338,7 @@ impl Indexer {
         delete: GolemBaseDelete,
         idx: u64,
     ) -> Result<()> {
-        tracing::info!("Processing Delete operation for entity {delete}");
+        tracing::info!("Processing Delete operation");
 
         repository::operations::insert_operation(
             txn,
@@ -365,7 +371,7 @@ impl Indexer {
         Ok(())
     }
 
-    #[instrument(skip(self, tx), fields(tx_hash = ?tx.hash))]
+    #[instrument(skip_all, fields(extend, idx))]
     async fn handle_extend(
         &self,
         txn: &DatabaseTransaction,
@@ -373,10 +379,7 @@ impl Indexer {
         extend: Extend,
         idx: u64,
     ) -> Result<()> {
-        tracing::info!(
-            "Processing Extend operation for entity {}",
-            extend.entity_key
-        );
+        tracing::info!("Processing Extend operation");
         repository::operations::insert_operation(
             txn,
             Operation {
@@ -429,7 +432,7 @@ impl Indexer {
         Ok(candidate_update > latest_stored_update)
     }
 
-    #[instrument(skip(self, tx, log), fields(tx_hash = ?tx.hash))]
+    #[instrument(skip_all, fields(log))]
     async fn handle_extend_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
         // extends are handled after updates, so if it's in the same tx, we need to process it
         let entity_key = if let Some(k) = log.second_topic {
@@ -467,7 +470,7 @@ impl Indexer {
         Ok(())
     }
 
-    #[instrument(skip(self, tx, log), fields(tx_hash = ?tx.hash))]
+    #[instrument(skip_all, fields(log))]
     async fn handle_expire_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
         let entity_key = if let Some(k) = log.second_topic {
             k

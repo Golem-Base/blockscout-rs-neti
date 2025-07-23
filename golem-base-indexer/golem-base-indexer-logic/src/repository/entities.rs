@@ -90,7 +90,7 @@ impl TryFrom<golem_base_entities::Model> for Entity {
     }
 }
 
-#[instrument(name = "repository::entities::insert_entity", skip(db))]
+#[instrument(skip(db))]
 pub async fn insert_entity<T: ConnectionTrait>(
     db: &T,
     entity: GolemBaseEntityCreate,
@@ -122,7 +122,7 @@ pub async fn insert_entity<T: ConnectionTrait>(
     Ok(())
 }
 
-#[instrument(name = "repository::entities::update_entity", skip(db))]
+#[instrument(skip(db))]
 pub async fn update_entity<T: ConnectionTrait>(
     db: &T,
     entity: GolemBaseEntityUpdate,
@@ -157,7 +157,7 @@ pub async fn update_entity<T: ConnectionTrait>(
     Ok(())
 }
 
-#[instrument(name = "repository::entities::delete_entity", skip(db))]
+#[instrument(skip(db))]
 pub async fn delete_entity<T: ConnectionTrait>(
     db: &T,
     entity: GolemBaseEntityDelete,
@@ -191,7 +191,7 @@ pub async fn delete_entity<T: ConnectionTrait>(
     Ok(())
 }
 
-#[instrument(name = "repository::entities::extend_entity", skip(db))]
+#[instrument(skip(db))]
 pub async fn extend_entity<T: ConnectionTrait>(
     db: &T,
     entity: GolemBaseEntityExtend,
@@ -224,7 +224,7 @@ pub async fn extend_entity<T: ConnectionTrait>(
     Ok(())
 }
 
-#[instrument(name = "repository::entities::get_entity", skip(db))]
+#[instrument(skip(db))]
 pub async fn get_entity<T: ConnectionTrait>(db: &T, key: EntityKey) -> Result<Option<Entity>> {
     let key: Vec<u8> = key.as_slice().into();
     golem_base_entities::Entity::find_by_id(key.clone())
@@ -235,7 +235,7 @@ pub async fn get_entity<T: ConnectionTrait>(db: &T, key: EntityKey) -> Result<Op
         .transpose()
 }
 
-#[instrument(name = "repository::entities::list_entities", skip(db))]
+#[instrument(skip(db))]
 pub async fn list_entities<T: ConnectionTrait>(db: &T) -> Result<Vec<Entity>> {
     golem_base_entities::Entity::find()
         .order_by_asc(golem_base_entities::Column::Key)
@@ -247,7 +247,7 @@ pub async fn list_entities<T: ConnectionTrait>(db: &T) -> Result<Vec<Entity>> {
         .collect()
 }
 
-#[instrument(name = "repository::entities::get_full_entity", skip(db))]
+#[instrument(skip(db))]
 pub async fn get_full_entity<T: ConnectionTrait>(
     db: &T,
     key: EntityKey,

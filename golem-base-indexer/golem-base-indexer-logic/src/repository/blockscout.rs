@@ -53,10 +53,7 @@ impl TryFrom<DbTx> for Tx {
     }
 }
 
-#[instrument(
-    name = "repository::blockscout::stream_unprocessed_tx_hashes",
-    skip(db)
-)]
+#[instrument(skip(db))]
 pub async fn stream_unprocessed_tx_hashes<T: StreamTrait + ConnectionTrait>(
     db: &T,
 ) -> Result<impl Stream<Item = TxHash> + '_> {
@@ -84,7 +81,7 @@ pub async fn stream_unprocessed_tx_hashes<T: StreamTrait + ConnectionTrait>(
     }))
 }
 
-#[instrument(name = "repository::blockscout::get_tx", skip(db))]
+#[instrument(skip(db))]
 pub async fn get_tx<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> Result<Option<Tx>> {
     DbTx::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
@@ -92,32 +89,35 @@ pub async fn get_tx<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> Result<Optio
         [tx_hash.as_slice().into()],
     ))
     .one(db)
-    .await?
+    .await
+    .context("Failed to get tx by hash")?
     .map(TryInto::try_into)
     .transpose()
 }
 
-#[instrument(name = "repository::blockscout::get_current_block", skip(db))]
+#[instrument(skip(db))]
 pub(super) async fn get_current_block<T: ConnectionTrait>(db: &T) -> Result<Option<DbBlock>> {
-    Ok(DbBlock::find_by_statement(Statement::from_string(
+    DbBlock::find_by_statement(Statement::from_string(
         DbBackend::Postgres,
         "select hash, number, timestamp from blocks order by number desc limit 1",
     ))
     .one(db)
-    .await?)
+    .await
+    .context("Failed to get current block")
 }
 
-#[instrument(name = "repository::blockscout::get_block", skip(db))]
+#[instrument(skip(db))]
 pub(super) async fn get_block<T: ConnectionTrait>(
     db: &T,
     hash: BlockHash,
 ) -> Result<Option<DbBlock>> {
     let hash: Vec<u8> = hash.as_slice().into();
-    Ok(DbBlock::find_by_statement(Statement::from_sql_and_values(
+    DbBlock::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
         "select hash, number, timestamp from blocks where hash = $1",
         [hash.into()],
     ))
     .one(db)
-    .await?)
+    .await
+    .context("Failed to get block by hash")
 }

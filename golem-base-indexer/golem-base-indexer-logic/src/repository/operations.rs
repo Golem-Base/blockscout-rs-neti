@@ -90,7 +90,7 @@ impl TryFrom<Operation> for golem_base_operations::ActiveModel {
     }
 }
 
-#[instrument(name = "repository::operations::insert_operation", skip(db))]
+#[instrument(skip(db))]
 pub async fn insert_operation<T: ConnectionTrait>(db: &T, op: Operation) -> Result<()> {
     golem_base_operations::ActiveModel {
         ..op.clone().try_into()?
@@ -102,7 +102,7 @@ pub async fn insert_operation<T: ConnectionTrait>(db: &T, op: Operation) -> Resu
     Ok(())
 }
 
-#[instrument(name = "repository::operations::get_latest_update", skip(db))]
+#[instrument(skip(db))]
 pub async fn get_latest_update<T: ConnectionTrait>(
     db: &T,
     entity_key: EntityKey,
@@ -127,7 +127,7 @@ pub async fn get_latest_update<T: ConnectionTrait>(
     .with_context(|| format!("Failed to get latest update: {entity_key}"))
 }
 
-#[instrument(name = "repository::operations::get_operation", skip(db))]
+#[instrument(skip(db))]
 pub async fn get_operation<T: ConnectionTrait>(
     db: &T,
     tx_hash: TxHash,
@@ -145,19 +145,20 @@ pub async fn get_operation<T: ConnectionTrait>(
         .transpose()
 }
 
-#[instrument(name = "repository::operations::list_operations", skip(db))]
+#[instrument(skip(db))]
 pub async fn list_operations<T: ConnectionTrait>(db: &T) -> Result<Vec<Operation>> {
     golem_base_operations::Entity::find()
         .order_by_asc(golem_base_operations::Column::TransactionHash)
         .order_by_asc(golem_base_operations::Column::Index)
         .all(db)
-        .await?
+        .await
+        .context("Failed to list operations")?
         .into_iter()
         .map(Operation::try_from)
         .collect()
 }
 
-#[instrument(name = "repository::operations::find_create_operation", skip(db))]
+#[instrument(skip(db))]
 pub async fn find_create_operation<T: ConnectionTrait>(
     db: &T,
     entity_key: EntityKey,
@@ -167,7 +168,8 @@ pub async fn find_create_operation<T: ConnectionTrait>(
         .filter(golem_base_operations::Column::EntityKey.eq(entity_key))
         .filter(golem_base_operations::Column::Operation.eq(GolemBaseOperationType::Create))
         .one(db)
-        .await?
+        .await
+        .context("Failed to find create operation")?
         .map(Operation::try_from)
         .transpose()
 }
