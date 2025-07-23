@@ -6,10 +6,13 @@ use crate::{
     services::{GolemBaseIndexerService, HealthService},
     settings::Settings,
 };
+use blockscout_endpoint_swagger::route_swagger;
 use blockscout_service_launcher::{launcher, launcher::LaunchSettings};
 use sea_orm::DatabaseConnection;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 const SERVICE_NAME: &str = "golem_base_indexer_server";
 
@@ -17,6 +20,7 @@ const SERVICE_NAME: &str = "golem_base_indexer_server";
 struct Router {
     golem_base_indexer: Arc<GolemBaseIndexerService>,
     health: Arc<HealthService>,
+    swagger_path: PathBuf,
 }
 
 impl Router {
@@ -25,11 +29,27 @@ impl Router {
     }
 }
 
+#[derive(OpenApi)]
+#[openapi()]
+struct ApiDoc;
+
 impl launcher::HttpRouter for Router {
     fn register_routes(&self, service_config: &mut actix_web::web::ServiceConfig) {
         service_config.configure(|config| route_health(config, self.health.clone()));
         service_config.configure(|config| {
             route_golem_base_indexer_service(config, self.golem_base_indexer.clone())
+        });
+        service_config.configure(|config| {
+            route_swagger(
+                config,
+                self.swagger_path.clone(),
+                "/api/v1/docs/swagger.yaml",
+            )
+        });
+        service_config.configure(|config| {
+            config.service(
+                SwaggerUi::new("/docs/{_:.*}").url("/api/v1/docs/swagger.yaml", ApiDoc::openapi()),
+            );
         });
     }
 }
@@ -47,6 +67,7 @@ pub async fn run(
     let router = Router {
         golem_base_indexer,
         health,
+        swagger_path: settings.swagger_path,
     };
 
     let grpc_router = router.grpc_router();
