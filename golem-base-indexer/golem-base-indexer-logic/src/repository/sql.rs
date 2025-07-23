@@ -41,6 +41,7 @@ where
     golem_base_operations.transaction_hash is null
     and transactions.to_address_hash in ($1, $2) 
     and transactions.status = 1
+    and transactions.block_hash is not null
 "#;
 
 pub const GET_TX_BY_HASH: &str = r#"

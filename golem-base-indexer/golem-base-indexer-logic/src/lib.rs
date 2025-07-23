@@ -62,7 +62,6 @@ pub struct Indexer {
 // FIXME what about chain reorgs (use debug_setHead for testing)
 // FIXME cleanup logging
 // FIXME test what happens when DB connection fails
-// FIXME only process non-pending transactions
 impl Indexer {
     pub fn new(db: Arc<DatabaseConnection>, settings: IndexerSettings) -> Self {
         Self { db, settings }
