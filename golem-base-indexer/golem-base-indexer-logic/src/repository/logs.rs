@@ -37,7 +37,7 @@ impl TryFrom<DbLog> for Log {
     }
 }
 
-#[instrument(name = "repository::logs::get_tx_logs", skip(db))]
+#[instrument(skip(db))]
 pub async fn get_tx_logs<T: ConnectionTrait>(
     db: &T,
     tx_hash: TxHash,

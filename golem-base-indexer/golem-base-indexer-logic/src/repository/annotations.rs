@@ -62,7 +62,7 @@ impl TryFrom<FullNumericAnnotation> for golem_base_numeric_annotations::ActiveMo
     }
 }
 
-#[instrument(name = "repository::annotations::insert_string_annotation", skip(db))]
+#[instrument(skip(db))]
 pub async fn insert_string_annotation<T: ConnectionTrait>(
     db: &T,
     annotation: FullStringAnnotation,
@@ -81,7 +81,7 @@ pub async fn insert_string_annotation<T: ConnectionTrait>(
     Ok(())
 }
 
-#[instrument(name = "repository::annotations::insert_numeric_annotation", skip(db))]
+#[instrument(skip(db))]
 pub async fn insert_numeric_annotation<T: ConnectionTrait>(
     db: &T,
     annotation: FullNumericAnnotation,
@@ -100,7 +100,7 @@ pub async fn insert_numeric_annotation<T: ConnectionTrait>(
     Ok(())
 }
 
-#[instrument(name = "repository::annotations::deactivate_annotations", skip(db))]
+#[instrument(skip(db))]
 pub async fn deactivate_annotations<T: ConnectionTrait>(
     db: &T,
     entity_key: EntityKey,
@@ -119,7 +119,9 @@ pub async fn deactivate_annotations<T: ConnectionTrait>(
     match res {
         Ok(_) => {}
         Err(DbErr::RecordNotUpdated) => {}
-        Err(e) => return Err(e.into()),
+        Err(e) => {
+            return Err(e).context("Deactivating string annotations");
+        }
     };
 
     let res = golem_base_numeric_annotations::Entity::update_many()
@@ -134,13 +136,15 @@ pub async fn deactivate_annotations<T: ConnectionTrait>(
     match res {
         Ok(_) => {}
         Err(DbErr::RecordNotUpdated) => {}
-        Err(e) => return Err(e.into()),
+        Err(e) => {
+            return Err(e).context("Deactivating numeric annotations");
+        }
     };
 
     Ok(())
 }
 
-#[instrument(name = "repository::annotations::find_string_annotations", skip(db))]
+#[instrument(skip(db))]
 pub async fn find_active_string_annotations<T: ConnectionTrait>(
     db: &T,
     entity_key: EntityKey,
@@ -149,13 +153,14 @@ pub async fn find_active_string_annotations<T: ConnectionTrait>(
     Ok(golem_base_string_annotations::Entity::find()
         .filter(golem_base_string_annotations::Column::EntityKey.eq(entity_key))
         .all(db)
-        .await?
+        .await
+        .context("Finding active string annotations")?
         .into_iter()
         .map(Into::into)
         .collect())
 }
 
-#[instrument(name = "repository::annotations::find_numeric_annotations", skip(db))]
+#[instrument(skip(db))]
 pub async fn find_active_numeric_annotations<T: ConnectionTrait>(
     db: &T,
     entity_key: EntityKey,
@@ -164,7 +169,8 @@ pub async fn find_active_numeric_annotations<T: ConnectionTrait>(
     golem_base_numeric_annotations::Entity::find()
         .filter(golem_base_numeric_annotations::Column::EntityKey.eq(entity_key))
         .all(db)
-        .await?
+        .await
+        .context("Finding active numeric annotations")?
         .into_iter()
         .map(TryInto::try_into)
         .collect()

@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use sea_orm::{prelude::*, Statement};
 use tracing::instrument;
 
@@ -12,6 +12,7 @@ pub async fn finish_tx_processing<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -
         "delete from golem_base_pending_transaction_operations where hash = $1",
         [tx_hash.into()],
     ))
-    .await?;
+    .await
+    .context("Failed to finish tx processing")?;
     Ok(())
 }
