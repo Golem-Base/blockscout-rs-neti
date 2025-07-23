@@ -60,9 +60,7 @@ pub struct Indexer {
 
 // FIXME integration tests
 // FIXME what about chain reorgs (use debug_setHead for testing)
-// FIXME we have enums from entity crate leaking
 // FIXME cleanup logging
-// FIXME separate Expired state
 // FIXME test what happens when DB connection fails
 // FIXME only process non-pending transactions
 impl Indexer {

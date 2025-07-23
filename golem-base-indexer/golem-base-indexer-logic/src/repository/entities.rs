@@ -207,7 +207,7 @@ pub async fn extend_entity<T: ConnectionTrait>(
         inserted_at: NotSet,
         created_at_tx_hash: NotSet,
     };
-    // FIXME are all fields we skip optional???
+
     golem_base_entities::Entity::insert(model)
         .on_conflict(
             OnConflict::column(golem_base_entities::Column::Key)

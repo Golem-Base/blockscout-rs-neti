@@ -32,7 +32,7 @@ impl v1::FullEntity {
             data: entity.data.map(|v| v.encode_hex_with_prefix()),
             data_size,
             status: status.into(),
-            owner: entity.owner.to_checksum(None), // FIXME chain id?
+            owner: entity.owner.to_checksum(None),
 
             created_at_tx_hash: entity
                 .created_at_tx_hash
@@ -88,7 +88,7 @@ impl From<Operation> for v1::Operation {
 
         Self {
             entity_key: op.metadata.entity_key.to_string(),
-            sender: op.metadata.sender.to_checksum(None), // FIXME provide chain id?
+            sender: op.metadata.sender.to_checksum(None),
             operation: operation_type.into(),
             data: op
                 .operation
@@ -113,7 +113,6 @@ impl From<EntityStatus> for v1::EntityStatus {
     }
 }
 
-// FIXME blockscout has something called display_bytes?
 impl From<Entity> for v1::Entity {
     fn from(entity: Entity) -> Self {
         let status: v1::EntityStatus = entity.status.into();

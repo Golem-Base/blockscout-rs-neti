@@ -139,7 +139,6 @@ definitions:
         type: string
       data:
         type: string
-        title: FIXME some raw data type maybe?
       status:
         $ref: '#/definitions/v1EntityStatus'
       created_at_tx_hash:
@@ -163,7 +162,6 @@ definitions:
         type: string
       data:
         type: string
-        title: FIXME some raw data type maybe?
       data_size:
         type: string
         format: uint64
@@ -241,7 +239,6 @@ definitions:
         $ref: '#/definitions/v1OperationType'
       data:
         type: string
-        title: FIXME some raw data type maybe?
       btl:
         type: string
         format: uint64
