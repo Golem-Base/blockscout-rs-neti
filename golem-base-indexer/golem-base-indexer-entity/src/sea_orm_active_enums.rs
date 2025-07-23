@@ -13,6 +13,8 @@ pub enum GolemBaseEntityStatusType {
     Active,
     #[sea_orm(string_value = "deleted")]
     Deleted,
+    #[sea_orm(string_value = "expired")]
+    Expired,
 }
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(

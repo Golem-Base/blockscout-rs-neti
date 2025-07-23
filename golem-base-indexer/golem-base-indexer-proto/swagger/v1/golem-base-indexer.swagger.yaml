@@ -140,6 +140,8 @@ definitions:
       data:
         type: string
         title: FIXME some raw data type maybe?
+      status:
+        $ref: '#/definitions/v1EntityStatus'
       created_at_tx_hash:
         type: string
       last_updated_at_tx_hash:
@@ -147,6 +149,13 @@ definitions:
       expires_at_block_number:
         type: string
         format: uint64
+  v1EntityStatus:
+    type: string
+    enum:
+      - Active
+      - Deleted
+      - Expired
+    default: Active
   v1HealthCheckResponse:
     type: object
     properties:

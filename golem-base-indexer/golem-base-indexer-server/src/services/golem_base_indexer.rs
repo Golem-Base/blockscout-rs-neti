@@ -34,18 +34,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             })?
             .ok_or(Status::not_found("entity not found"))?;
 
-        Ok(Response::new(Entity {
-            key: format!("0x{:x}", Bytes::from(entity.key)),
-            data: entity.data.map(|v| format!("0x{:x}", Bytes::from(v))),
-            created_at_tx_hash: entity
-                .created_at_tx_hash
-                .map(|v| format!("0x{:x}", Bytes::from(v))),
-            last_updated_at_tx_hash: format!("0x{:x}", Bytes::from(entity.last_updated_at_tx_hash)),
-            expires_at_block_number: entity
-                .expires_at_block_number
-                .try_into()
-                .expect("block number is always non-negative"),
-        }))
+        Ok(Response::new(entity.into()))
     }
 
     async fn get_operation(
@@ -81,24 +70,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
                 Status::internal("failed to query entities")
             })?;
 
-        let items = entities
-            .into_iter()
-            .map(|entity| Entity {
-                key: format!("0x{:x}", Bytes::from(entity.key)),
-                data: entity.data.map(|v| format!("0x{:x}", Bytes::from(v))),
-                created_at_tx_hash: entity
-                    .created_at_tx_hash
-                    .map(|v| format!("0x{:x}", Bytes::from(v))),
-                last_updated_at_tx_hash: format!(
-                    "0x{:x}",
-                    Bytes::from(entity.last_updated_at_tx_hash)
-                ),
-                expires_at_block_number: entity
-                    .expires_at_block_number
-                    .try_into()
-                    .expect("block number is always non-negative"),
-            })
-            .collect();
+        let items = entities.into_iter().map(Into::into).collect();
 
         Ok(Response::new(ListEntitiesResponse { items }))
     }

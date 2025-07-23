@@ -91,3 +91,20 @@ pub struct Tx {
     pub input: Bytes,
     pub index: u64,
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum EntityStatus {
+    Active,
+    Deleted,
+    Expired,
+}
+
+#[derive(Debug, Clone)]
+pub struct Entity {
+    pub key: EntityKey,
+    pub data: Option<Bytes>,
+    pub status: EntityStatus,
+    pub created_at_tx_hash: Option<TxHash>,
+    pub last_updated_at_tx_hash: TxHash,
+    pub expires_at_block_number: BlockNumber,
+}

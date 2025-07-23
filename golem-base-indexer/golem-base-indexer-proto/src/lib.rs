@@ -43,3 +43,32 @@ impl From<golem_base_indexer_logic::types::Operation>
         }
     }
 }
+
+impl From<&golem_base_indexer_logic::types::EntityStatus>
+    for blockscout::golem_base_indexer::v1::EntityStatus
+{
+    fn from(value: &golem_base_indexer_logic::types::EntityStatus) -> Self {
+        use golem_base_indexer_logic::types::EntityStatus::*;
+        match value {
+            Active => Self::Active,
+            Deleted => Self::Deleted,
+            Expired => Self::Expired,
+        }
+    }
+}
+
+// FIXME blockscout has something called display_bytes?
+impl From<golem_base_indexer_logic::types::Entity> for blockscout::golem_base_indexer::v1::Entity {
+    fn from(entity: golem_base_indexer_logic::types::Entity) -> Self {
+        let status: blockscout::golem_base_indexer::v1::EntityStatus = (&entity.status).into();
+
+        Self {
+            key: format!("0x{:x}", entity.key),
+            data: entity.data.map(|v| format!("0x{v:x}")),
+            status: status.into(),
+            created_at_tx_hash: entity.created_at_tx_hash.map(|v| format!("0x{v:x}")),
+            last_updated_at_tx_hash: format!("0x{:x}", entity.last_updated_at_tx_hash),
+            expires_at_block_number: entity.expires_at_block_number,
+        }
+    }
+}

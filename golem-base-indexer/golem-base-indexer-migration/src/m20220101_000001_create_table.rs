@@ -25,7 +25,8 @@ create type golem_base_operation_type as enum (
 
 create type golem_base_entity_status_type as enum (
     'active',
-    'deleted'
+    'deleted',
+    'expired'
 );
 
 create table golem_base_operations (
