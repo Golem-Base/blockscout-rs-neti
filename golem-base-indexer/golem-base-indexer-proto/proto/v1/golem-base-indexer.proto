@@ -48,7 +48,7 @@ enum EntityStatus {
 
 message Entity {
   string key = 1;
-  optional string data = 2; // FIXME some raw data type maybe?
+  optional string data = 2;
   EntityStatus status = 3;
 
   optional string created_at_tx_hash = 4;
@@ -68,7 +68,7 @@ message NumericAnnotation {
 
 message FullEntity {
   string key = 1;
-  optional string data = 2; // FIXME some raw data type maybe?
+  optional string data = 2;
   optional uint64 data_size = 3;
   EntityStatus status = 4;
 
@@ -99,7 +99,7 @@ message Operation {
   string entity_key = 1;
   string sender = 2;
   OperationType operation = 3;
-  optional string data = 4; // FIXME some raw data type maybe?
+  optional string data = 4;
   optional uint64 btl = 5;
   string block_hash = 6;
   string transaction_Hash = 7;
