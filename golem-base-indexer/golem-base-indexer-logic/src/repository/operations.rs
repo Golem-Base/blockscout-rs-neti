@@ -114,7 +114,7 @@ pub async fn get_latest_update<T: ConnectionTrait>(
     ))
     .one(db)
     .await
-    .with_context(|| format!("Failed to get latest update: {entity_key:x}"))?;
+    .with_context(|| format!("Failed to get latest update: {entity_key}"))?;
 
     res.map(|v| -> Result<_> {
         Ok((
@@ -124,7 +124,7 @@ pub async fn get_latest_update<T: ConnectionTrait>(
         ))
     })
     .transpose()
-    .with_context(|| format!("Failed to get latest update: {entity_key:x}"))
+    .with_context(|| format!("Failed to get latest update: {entity_key}"))
 }
 
 #[instrument(name = "repository::operations::get_operation", skip(db))]
@@ -136,10 +136,10 @@ pub async fn get_operation<T: ConnectionTrait>(
     golem_base_operations::Entity::find_by_id((tx_hash.as_slice().into(), index.try_into()?))
         .one(db)
         .await
-        .with_context(|| format!("Failed to get operation. tx_hash={tx_hash:x}, index={index}"))?
+        .with_context(|| format!("Failed to get operation. tx_hash={tx_hash}, index={index}"))?
         .map(|v| {
             v.try_into().with_context(|| {
-                format!("Failed to convert operation. tx_hash={tx_hash:x}, index={index}")
+                format!("Failed to convert operation. tx_hash={tx_hash}, index={index}")
             })
         })
         .transpose()
@@ -155,4 +155,19 @@ pub async fn list_operations<T: ConnectionTrait>(db: &T) -> Result<Vec<Operation
         .into_iter()
         .map(Operation::try_from)
         .collect()
+}
+
+#[instrument(name = "repository::operations::find_create_operation", skip(db))]
+pub async fn find_create_operation<T: ConnectionTrait>(
+    db: &T,
+    entity_key: EntityKey,
+) -> Result<Option<Operation>> {
+    let entity_key: Vec<u8> = entity_key.as_slice().into();
+    golem_base_operations::Entity::find()
+        .filter(golem_base_operations::Column::EntityKey.eq(entity_key))
+        .filter(golem_base_operations::Column::Operation.eq(GolemBaseOperationType::Create))
+        .one(db)
+        .await?
+        .map(Operation::try_from)
+        .transpose()
 }

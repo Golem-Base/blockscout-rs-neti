@@ -15,7 +15,7 @@ test *args:
   - docker stop golem-base-indexer-postgres
   docker run -p 8432:5432 --name golem-base-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
   sleep 3
-  env DATABASE_URL={{TEST_DATABASE_URL}} cargo test {{args}} -- --include-ignored
+  env DATABASE_URL={{TEST_DATABASE_URL}} cargo test {{args}} -- --include-ignored --nocapture
   docker stop golem-base-indexer-postgres
 
 run:

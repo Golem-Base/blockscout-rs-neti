@@ -15,6 +15,8 @@ pub struct Model {
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub data: Option<Vec<u8>>,
     pub status: GolemBaseEntityStatusType,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub owner: Vec<u8>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub created_at_tx_hash: Option<Vec<u8>>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]

@@ -70,6 +70,7 @@ create table golem_base_entities (
     key bytea not null primary key,
     data bytea,
     status golem_base_entity_status_type not null,
+    owner bytea not null,
 
     created_at_tx_hash bytea,
     last_updated_at_tx_hash bytea not null,

@@ -6,7 +6,7 @@ option go_package = "github.com/Golem-Base/blockscout-rs-neti/golem-base-indexer
 
 
 service GolemBaseIndexerService {
-  rpc GetEntity(GetEntityRequest) returns (Entity);
+  rpc GetEntity(GetEntityRequest) returns (FullEntity);
   rpc GetOperation(GetOperationRequest) returns (Operation);
   
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse);
@@ -54,6 +54,38 @@ message Entity {
   optional string created_at_tx_hash = 4;
   string last_updated_at_tx_hash = 5;
   uint64 expires_at_block_number = 6;
+}
+
+message StringAnnotation {
+  string key = 1;
+  string value = 2;
+}
+
+message NumericAnnotation {
+  string key = 1;
+  uint64 value = 2;
+}
+
+message FullEntity {
+  string key = 1;
+  optional string data = 2; // FIXME some raw data type maybe?
+  optional uint64 data_size = 3;
+  EntityStatus status = 4;
+
+  repeated StringAnnotation string_annotations = 5;
+  repeated NumericAnnotation numeric_annotations = 6;
+
+  optional string created_at_tx_hash = 7;
+  optional string created_at_operation_index = 8;
+  optional uint64 created_at_block_number = 9;
+  optional string created_at_timestamp = 10;
+
+  uint64 expires_at_block_number = 11;
+  string expires_at_timestamp = 12;
+
+  string owner = 13;
+  string gas_used = 14;
+  string fees_paid = 15;
 }
 
 enum OperationType {

@@ -1,7 +1,6 @@
 use crate::proto::{
     golem_base_indexer_service_server::GolemBaseIndexerService as GolemBaseIndexer, *,
 };
-use bytes::Bytes;
 use golem_base_indexer_logic::repository;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
@@ -22,19 +21,41 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
     async fn get_entity(
         &self,
         request: Request<GetEntityRequest>,
-    ) -> Result<Response<Entity>, Status> {
+    ) -> Result<Response<FullEntity>, Status> {
         let inner = request.into_inner();
 
-        let key = Bytes::from(inner.key).into();
-        let entity = repository::entities::get_entity(&*self.db, key)
+        let key = inner
+            .key
+            .parse()
+            .map_err(|_| Status::invalid_argument("Invalid entity key"))?;
+
+        let entity = repository::entities::get_full_entity(&*self.db, key)
             .await
             .map_err(|err| {
                 tracing::error!(?err, "failed to query entity");
-                Status::internal("failed to query entity")
+                Status::internal(format!("failed to query entity - {err}"))
             })?
             .ok_or(Status::not_found("entity not found"))?;
 
-        Ok(Response::new(entity.into()))
+        let string_annotations =
+            repository::annotations::find_active_string_annotations(&*self.db, key)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query annotations");
+                    Status::internal("failed to query annotations")
+                })?;
+
+        let numeric_annotations =
+            repository::annotations::find_active_numeric_annotations(&*self.db, key)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query annotations");
+                    Status::internal("failed to query annotations")
+                })?;
+
+        let entity = FullEntity::new(entity, string_annotations, numeric_annotations);
+
+        Ok(Response::new(entity))
     }
 
     async fn get_operation(
@@ -42,10 +63,9 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         request: Request<GetOperationRequest>,
     ) -> Result<Response<Operation>, Status> {
         let inner = request.into_inner();
-        let tx_hash = hex::decode(inner.tx_hash)
-            .map_err(|_| Status::invalid_argument("Invalid tx hash"))?
-            .as_slice()
-            .try_into()
+        let tx_hash = inner
+            .tx_hash
+            .parse()
             .map_err(|_| Status::invalid_argument("Invalid tx hash"))?;
 
         let operation = repository::operations::get_operation(&*self.db, tx_hash, inner.index)

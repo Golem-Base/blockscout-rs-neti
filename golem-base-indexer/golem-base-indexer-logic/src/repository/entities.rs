@@ -1,4 +1,5 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
+use chrono::Duration;
 use golem_base_indexer_entity::{
     golem_base_entities, sea_orm_active_enums::GolemBaseEntityStatusType,
 };
@@ -11,12 +12,15 @@ use sea_orm::{
 };
 use tracing::instrument;
 
-use crate::types::{BlockNumber, Bytes, Entity, EntityKey, EntityStatus, TxHash};
+use crate::types::{
+    Address, BlockNumber, Bytes, Entity, EntityKey, EntityStatus, FullEntity, TxHash,
+};
 
 #[derive(Debug)]
 pub struct GolemBaseEntityCreate {
     pub key: EntityKey,
     pub data: Bytes,
+    pub sender: Address,
     pub created_at: TxHash,
     pub expires_at: BlockNumber,
 }
@@ -25,6 +29,7 @@ pub struct GolemBaseEntityCreate {
 pub struct GolemBaseEntityUpdate {
     pub key: EntityKey,
     pub data: Bytes,
+    pub sender: Address,
     pub updated_at: TxHash,
     pub expires_at: BlockNumber,
 }
@@ -32,6 +37,7 @@ pub struct GolemBaseEntityUpdate {
 #[derive(Debug)]
 pub struct GolemBaseEntityDelete {
     pub key: EntityKey,
+    pub sender: Address,
     pub deleted_at_tx: TxHash,
     pub deleted_at_block: BlockNumber,
     pub status: EntityStatus,
@@ -40,6 +46,7 @@ pub struct GolemBaseEntityDelete {
 #[derive(Debug)]
 pub struct GolemBaseEntityExtend {
     pub key: EntityKey,
+    pub sender: Address,
     pub extended_at: TxHash,
     pub expires_at: BlockNumber,
 }
@@ -72,6 +79,7 @@ impl TryFrom<golem_base_entities::Model> for Entity {
             key: value.key.as_slice().try_into()?,
             data: value.data.map(|v| v.into()),
             status: value.status.into(),
+            owner: value.owner.as_slice().try_into()?,
             created_at_tx_hash: value
                 .created_at_tx_hash
                 .map(|v| v.as_slice().try_into())
@@ -92,6 +100,7 @@ pub async fn insert_entity<T: ConnectionTrait>(
         key: Set(entity.key.as_slice().into()),
         data: Set(Some(entity.data.clone().into())),
         status: Set(GolemBaseEntityStatusType::Active),
+        owner: Set(entity.sender.as_slice().into()),
         created_at_tx_hash: Set(Some(created_at.clone())),
         expires_at_block_number: Set(entity.expires_at.try_into()?),
         last_updated_at_tx_hash: Set(created_at),
@@ -121,6 +130,7 @@ pub async fn update_entity<T: ConnectionTrait>(
     let model = golem_base_entities::ActiveModel {
         key: Set(entity.key.as_slice().into()),
         data: Set(Some(entity.data.clone().into())),
+        owner: Set(entity.sender.as_slice().into()),
         status: Set(GolemBaseEntityStatusType::Active),
         expires_at_block_number: Set(entity.expires_at.try_into()?),
         last_updated_at_tx_hash: Set(entity.updated_at.as_slice().into()),
@@ -156,6 +166,7 @@ pub async fn delete_entity<T: ConnectionTrait>(
         key: Set(entity.key.as_slice().into()),
         status: Set(entity.status.into()),
         last_updated_at_tx_hash: Set(entity.deleted_at_tx.as_slice().into()),
+        owner: Set(entity.sender.as_slice().into()),
         updated_at: Set(Utc::now().naive_utc()),
         data: Set(None),
         expires_at_block_number: Set(entity.deleted_at_block.try_into()?),
@@ -189,6 +200,7 @@ pub async fn extend_entity<T: ConnectionTrait>(
         key: Set(entity.key.as_slice().into()),
         expires_at_block_number: Set(entity.expires_at.try_into()?),
         last_updated_at_tx_hash: Set(entity.extended_at.as_slice().into()),
+        owner: Set(entity.sender.as_slice().into()),
         updated_at: Set(Utc::now().naive_utc()),
         status: Set(GolemBaseEntityStatusType::Active),
         data: NotSet,
@@ -213,7 +225,8 @@ pub async fn extend_entity<T: ConnectionTrait>(
 }
 
 #[instrument(name = "repository::entities::get_entity", skip(db))]
-pub async fn get_entity<T: ConnectionTrait>(db: &T, key: Vec<u8>) -> Result<Option<Entity>> {
+pub async fn get_entity<T: ConnectionTrait>(db: &T, key: EntityKey) -> Result<Option<Entity>> {
+    let key: Vec<u8> = key.as_slice().into();
     golem_base_entities::Entity::find_by_id(key.clone())
         .one(db)
         .await
@@ -232,4 +245,58 @@ pub async fn list_entities<T: ConnectionTrait>(db: &T) -> Result<Vec<Entity>> {
         .into_iter()
         .map(|v| v.try_into())
         .collect()
+}
+
+#[instrument(name = "repository::entities::get_full_entity", skip(db))]
+pub async fn get_full_entity<T: ConnectionTrait>(
+    db: &T,
+    key: EntityKey,
+) -> Result<Option<FullEntity>> {
+    let dbkey: Vec<u8> = key.as_slice().into();
+    let entity = golem_base_entities::Entity::find_by_id(dbkey.clone())
+        .one(db)
+        .await
+        .with_context(|| format!("Failed to get entity: {key:?}"))?;
+    let entity = if let Some(v) = entity {
+        v
+    } else {
+        return Ok(None);
+    };
+
+    let current_block = super::blockscout::get_current_block(db)
+        .await?
+        .ok_or(anyhow!("No blocks indexed yet"))?;
+    let create_operation = super::operations::find_create_operation(db, key).await?;
+    let create_block = match create_operation {
+        Some(ref op) => super::blockscout::get_block(db, op.metadata.block_hash).await?,
+        None => None,
+    };
+
+    let secs_per_block = 2;
+    let expires_at_timestamp = current_block.timestamp.and_utc()
+        + Duration::seconds(
+            (entity.expires_at_block_number - current_block.number) * secs_per_block,
+        );
+
+    Ok(Some(FullEntity {
+        key: entity.key.as_slice().try_into()?,
+        data: entity.data.map(|v| v.into()),
+        status: entity.status.into(),
+        created_at_tx_hash: entity
+            .created_at_tx_hash
+            .map(|v| v.as_slice().try_into())
+            .transpose()?,
+        created_at_operation_index: create_operation.as_ref().map(|v| v.metadata.index),
+        created_at_block_number: create_block
+            .as_ref()
+            .map(|v| v.number.try_into())
+            .transpose()?,
+        created_at_timestamp: create_block.as_ref().map(|v| v.timestamp.and_utc()),
+        last_updated_at_tx_hash: entity.last_updated_at_tx_hash.as_slice().try_into()?,
+        expires_at_block_number: entity.expires_at_block_number.try_into()?,
+        expires_at_timestamp,
+        owner: entity.owner.as_slice().try_into()?,
+        gas_used: Default::default(), // FIXME when we have gas per operation
+        fees_paid: Default::default(), // FIXME when we have gas per operation
+    }))
 }
