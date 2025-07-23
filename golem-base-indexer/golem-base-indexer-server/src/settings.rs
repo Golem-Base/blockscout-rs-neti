@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use blockscout_service_launcher::{
     database::{DatabaseConnectSettings, DatabaseSettings},
     launcher::{ConfigSettings, MetricsSettings, ServerSettings},
@@ -15,6 +17,12 @@ pub struct Settings {
     #[serde(default)]
     pub indexer: IndexerSettings,
     pub database: DatabaseSettings,
+    #[serde(default = "default_swagger_path")]
+    pub swagger_path: PathBuf,
+}
+
+fn default_swagger_path() -> PathBuf {
+    blockscout_endpoint_swagger::default_swagger_path_from_service_name("golem-base-indexer")
 }
 
 impl ConfigSettings for Settings {
@@ -26,6 +34,7 @@ impl Settings {
         Self {
             server: Default::default(),
             metrics: Default::default(),
+            swagger_path: default_swagger_path(),
             database: DatabaseSettings {
                 connect: DatabaseConnectSettings::Url(database_url),
                 connect_options: Default::default(),

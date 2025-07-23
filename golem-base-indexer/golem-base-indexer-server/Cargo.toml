@@ -9,6 +9,7 @@ actix-web.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 blockscout-service-launcher = { workspace = true, features = ["database-1"] }
+blockscout-endpoint-swagger.workspace = true
 bytes.workspace = true
 config.workspace = true
 golem-base-indexer-logic = { path = "../golem-base-indexer-logic" }
@@ -22,6 +23,8 @@ tokio.workspace = true
 tonic.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+utoipa.workspace = true
+utoipa-swagger-ui.workspace = true
 
 
 [dev-dependencies]
