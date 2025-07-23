@@ -50,7 +50,7 @@ pub async fn get_tx_logs<T: ConnectionTrait>(
     ))
     .all(db)
     .await
-    .with_context(|| format!("Failed to get tx logs - tx={tx_hash:x}, signature={signature:x}"))?
+    .with_context(|| format!("Failed to get tx logs - tx={tx_hash}, signature={signature}"))?
     .into_iter()
     .map(TryInto::try_into)
     .collect()

@@ -19,8 +19,9 @@ use crate::{
         GolemBaseEntityCreate, GolemBaseEntityDelete, GolemBaseEntityExtend, GolemBaseEntityUpdate,
     },
     types::{
-        EntityKey, EntityStatus, Log, NumericAnnotation, Operation, OperationData,
-        OperationMetadata, StringAnnotation, Tx, TxHash,
+        EntityKey, EntityStatus, FullNumericAnnotation, FullStringAnnotation, Log,
+        NumericAnnotation, Operation, OperationData, OperationMetadata, StringAnnotation, Tx,
+        TxHash,
     },
 };
 
@@ -84,7 +85,7 @@ impl Indexer {
 
     #[instrument(skip_all)]
     pub async fn tick(&self) -> Result<()> {
-        repository::transactions::stream_unprocessed_tx_hashes(&*self.db)
+        repository::blockscout::stream_unprocessed_tx_hashes(&*self.db)
             .await?
             .map(Ok)
             .try_for_each_concurrent(self.settings.concurrency, |tx| async move {
@@ -99,7 +100,7 @@ impl Indexer {
 
         let txn = self.db.begin().await?;
 
-        let tx = repository::transactions::get_tx(&txn, tx_hash).await?;
+        let tx = repository::blockscout::get_tx(&txn, tx_hash).await?;
         let tx = tx.ok_or(anyhow!("Somehow tx disappeared from the DB"))?;
 
         if tx.to_address_hash == well_known::GOLEM_BASE_STORAGE_PROCESSOR_ADDRESS {
@@ -173,7 +174,7 @@ impl Indexer {
         idx: u64,
     ) -> Result<()> {
         let key = entity_key(tx.hash, create.data.clone(), idx);
-        tracing::info!("Processing Create operation for entity 0x{key:x}");
+        tracing::info!("Processing Create operation for entity {key}");
 
         let latest_update = self.is_latest_update(txn, key, tx.hash, idx).await?;
 
@@ -197,6 +198,7 @@ impl Indexer {
             GolemBaseEntityCreate {
                 key,
                 data: create.data,
+                sender: tx.from_address_hash,
                 created_at: tx.hash,
                 expires_at: tx.block_number.saturating_add(create.btl),
             },
@@ -206,12 +208,14 @@ impl Indexer {
         for annotation in create.string_annotations {
             repository::annotations::insert_string_annotation(
                 txn,
-                StringAnnotation {
+                FullStringAnnotation {
                     entity_key: key,
                     operation_tx_hash: tx.hash,
                     operation_index: idx,
-                    key: annotation.key,
-                    value: annotation.value,
+                    annotation: StringAnnotation {
+                        key: annotation.key,
+                        value: annotation.value,
+                    },
                 },
                 latest_update,
             )
@@ -221,12 +225,14 @@ impl Indexer {
         for annotation in create.numeric_annotations {
             repository::annotations::insert_numeric_annotation(
                 txn,
-                NumericAnnotation {
+                FullNumericAnnotation {
                     entity_key: key,
                     operation_tx_hash: tx.hash,
                     operation_index: idx,
-                    key: annotation.key,
-                    value: annotation.value,
+                    annotation: NumericAnnotation {
+                        key: annotation.key,
+                        value: annotation.value,
+                    },
                 },
                 latest_update,
             )
@@ -245,7 +251,7 @@ impl Indexer {
         idx: u64,
     ) -> Result<()> {
         tracing::info!(
-            "Processing Update operation for entity 0x{:x}",
+            "Processing Update operation for entity {}",
             update.entity_key
         );
 
@@ -274,6 +280,7 @@ impl Indexer {
                 GolemBaseEntityUpdate {
                     key: update.entity_key,
                     data: update.data,
+                    sender: tx.from_address_hash,
                     updated_at: tx.hash,
                     expires_at: tx.block_number.saturating_add(update.btl),
                 },
@@ -286,12 +293,14 @@ impl Indexer {
         for annotation in update.string_annotations {
             repository::annotations::insert_string_annotation(
                 txn,
-                StringAnnotation {
+                FullStringAnnotation {
                     entity_key: update.entity_key,
                     operation_tx_hash: tx.hash,
                     operation_index: idx,
-                    key: annotation.key,
-                    value: annotation.value,
+                    annotation: StringAnnotation {
+                        key: annotation.key,
+                        value: annotation.value,
+                    },
                 },
                 latest_update,
             )
@@ -301,12 +310,14 @@ impl Indexer {
         for annotation in update.numeric_annotations {
             repository::annotations::insert_numeric_annotation(
                 txn,
-                NumericAnnotation {
+                FullNumericAnnotation {
                     entity_key: update.entity_key,
                     operation_tx_hash: tx.hash,
                     operation_index: idx,
-                    key: annotation.key,
-                    value: annotation.value,
+                    annotation: NumericAnnotation {
+                        key: annotation.key,
+                        value: annotation.value,
+                    },
                 },
                 latest_update,
             )
@@ -324,7 +335,7 @@ impl Indexer {
         delete: GolemBaseDelete,
         idx: u64,
     ) -> Result<()> {
-        tracing::info!("Processing Delete operation for entity 0x{delete:x}");
+        tracing::info!("Processing Delete operation for entity {delete}");
 
         repository::operations::insert_operation(
             txn,
@@ -346,6 +357,7 @@ impl Indexer {
             GolemBaseEntityDelete {
                 key: delete,
                 status: EntityStatus::Deleted,
+                sender: tx.from_address_hash,
                 deleted_at_tx: tx.hash,
                 deleted_at_block: tx.block_number,
             },
@@ -365,7 +377,7 @@ impl Indexer {
         idx: u64,
     ) -> Result<()> {
         tracing::info!(
-            "Processing Extend operation for entity 0x{:x}",
+            "Processing Extend operation for entity {}",
             extend.entity_key
         );
         repository::operations::insert_operation(
@@ -403,7 +415,7 @@ impl Indexer {
             return Ok(true);
         };
 
-        let candidate_update = repository::transactions::get_tx(txn, tx_hash).await?;
+        let candidate_update = repository::blockscout::get_tx(txn, tx_hash).await?;
         let candidate_update = if let Some(tx) = candidate_update {
             tx
         } else {
@@ -429,7 +441,7 @@ impl Indexer {
             tracing::warn!("Extend Log event with no second topic?");
             return Ok(());
         };
-        tracing::info!("Processing extend log for entity 0x{entity_key:x}");
+        tracing::info!("Processing extend log for entity {entity_key}");
 
         let latest_update = self
             .is_latest_update(txn, entity_key, tx.hash, u64::MAX)
@@ -448,6 +460,7 @@ impl Indexer {
                 GolemBaseEntityExtend {
                     key: entity_key,
                     extended_at: tx.hash,
+                    sender: tx.from_address_hash,
                     expires_at: expires_at_block_number.try_into().unwrap_or(u64::MAX),
                 },
             )
@@ -465,7 +478,7 @@ impl Indexer {
             tracing::warn!("Delete Log event with no second topic?");
             return Ok(());
         };
-        tracing::info!("Processing delete log for entity 0x{entity_key:x}");
+        tracing::info!("Processing delete log for entity {entity_key}");
 
         repository::operations::insert_operation(
             txn,
@@ -488,6 +501,7 @@ impl Indexer {
             GolemBaseEntityDelete {
                 key: entity_key,
                 status: EntityStatus::Expired,
+                sender: tx.from_address_hash,
                 deleted_at_tx: tx.hash,
                 deleted_at_block: tx.block_number,
             },

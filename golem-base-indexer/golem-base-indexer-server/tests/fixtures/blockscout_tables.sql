@@ -1,3 +1,23 @@
+CREATE TABLE blocks (
+    consensus boolean NOT NULL,
+    difficulty numeric(50,0),
+    gas_limit numeric(100,0) NOT NULL,
+    gas_used numeric(100,0) NOT NULL,
+    hash bytea NOT NULL,
+    miner_hash bytea NOT NULL,
+    nonce bytea NOT NULL,
+    number bigint NOT NULL,
+    parent_hash bytea NOT NULL,
+    size integer,
+    "timestamp" timestamp without time zone NOT NULL,
+    total_difficulty numeric(50,0),
+    inserted_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL,
+    refetch_needed boolean DEFAULT false,
+    base_fee_per_gas numeric(100,0),
+    is_empty boolean
+);
+
 CREATE TABLE logs (
     data bytea NOT NULL,
     index integer NOT NULL,
@@ -58,6 +78,8 @@ CREATE TABLE transactions (
     CONSTRAINT status CHECK ((((block_hash IS NULL) AND (status IS NULL)) OR (block_hash IS NOT NULL) OR ((status = 0) AND ((error)::text = 'dropped/replaced'::text))))
 );
 
+ALTER TABLE ONLY public.blocks
+    ADD CONSTRAINT blocks_pkey PRIMARY KEY (hash);
 
 ALTER TABLE ONLY logs
     ADD CONSTRAINT logs_pkey PRIMARY KEY (transaction_hash, block_hash, index);
@@ -65,6 +87,18 @@ ALTER TABLE ONLY logs
 ALTER TABLE ONLY transactions
     ADD CONSTRAINT transactions_pkey PRIMARY KEY (hash);
 
+CREATE INDEX blocks_consensus_index ON public.blocks USING btree (consensus);
+CREATE INDEX blocks_date ON public.blocks USING btree (date("timestamp"), number);
+CREATE INDEX blocks_inserted_at_index ON public.blocks USING btree (inserted_at);
+CREATE INDEX blocks_is_empty_index ON public.blocks USING btree (is_empty);
+CREATE INDEX blocks_miner_hash_index ON public.blocks USING btree (miner_hash);
+CREATE INDEX blocks_miner_hash_number_index ON public.blocks USING btree (miner_hash, number);
+CREATE INDEX blocks_number_index ON public.blocks USING btree (number);
+CREATE INDEX blocks_timestamp_index ON public.blocks USING btree ("timestamp");
+CREATE INDEX consensus_block_hashes_refetch_needed ON public.blocks USING btree (hash) WHERE (consensus AND refetch_needed);
+CREATE INDEX empty_consensus_blocks ON public.blocks USING btree (consensus) WHERE (is_empty IS NULL);
+CREATE UNIQUE INDEX one_consensus_block_at_height ON public.blocks USING btree (number) WHERE consensus;
+CREATE UNIQUE INDEX one_consensus_child_per_parent ON public.blocks USING btree (parent_hash) WHERE consensus;
 CREATE INDEX "logs_address_hash_block_number_DESC_index_DESC_index" ON logs USING btree (address_hash, block_number DESC, index DESC);
 CREATE INDEX logs_block_hash_index ON logs USING btree (block_hash);
 CREATE INDEX "logs_block_number_DESC__index_DESC_index" ON logs USING btree (block_number DESC, index DESC);

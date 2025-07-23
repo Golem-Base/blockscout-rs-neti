@@ -31,7 +31,7 @@ paths:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1Entity'
+            $ref: '#/definitions/v1FullEntity'
         default:
           description: An unexpected error response.
           schema:
@@ -156,6 +156,49 @@ definitions:
       - Deleted
       - Expired
     default: Active
+  v1FullEntity:
+    type: object
+    properties:
+      key:
+        type: string
+      data:
+        type: string
+        title: FIXME some raw data type maybe?
+      data_size:
+        type: string
+        format: uint64
+      status:
+        $ref: '#/definitions/v1EntityStatus'
+      string_annotations:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1StringAnnotation'
+      numeric_annotations:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1NumericAnnotation'
+      created_at_tx_hash:
+        type: string
+      created_at_operation_index:
+        type: string
+      created_at_block_number:
+        type: string
+        format: uint64
+      created_at_timestamp:
+        type: string
+      expires_at_block_number:
+        type: string
+        format: uint64
+      expires_at_timestamp:
+        type: string
+      owner:
+        type: string
+      gas_used:
+        type: string
+      fees_paid:
+        type: string
   v1HealthCheckResponse:
     type: object
     properties:
@@ -179,6 +222,14 @@ definitions:
           type: object
           $ref: '#/definitions/v1Operation'
         title: FIXME add pagination metadata
+  v1NumericAnnotation:
+    type: object
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+        format: uint64
   v1Operation:
     type: object
     properties:
@@ -209,3 +260,10 @@ definitions:
       - Delete
       - Extend
     default: Create
+  v1StringAnnotation:
+    type: object
+    properties:
+      key:
+        type: string
+      value:
+        type: string

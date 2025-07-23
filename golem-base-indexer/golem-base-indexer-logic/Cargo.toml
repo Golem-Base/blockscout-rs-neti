@@ -5,24 +5,25 @@ edition = "2021"
 
 
 [dependencies]
+alloy-primitives.workspace = true
+alloy-rlp.workspace = true
+alloy-sol-types.workspace = true
+anyhow.workspace = true
+blockscout-display-bytes.workspace = true
+chrono.workspace = true
+futures.workspace = true
 golem-base-indexer-entity = { path = "../golem-base-indexer-entity" }
+golem-base-sdk.workspace = true
 sea-orm = { workspace = true, features = [
   "sqlx-postgres",
   "runtime-tokio-rustls",
   "macros",
   "postgres-array",
 ] }
-anyhow.workspace = true
-blockscout-display-bytes.workspace = true
-tracing.workspace = true
-alloy-primitives.workspace = true
-futures.workspace = true
 serde.workspace = true
 serde_with.workspace = true
-golem-base-sdk.workspace = true
-alloy-rlp.workspace = true
-alloy-sol-types.workspace = true
 tokio.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 blockscout-service-launcher = { workspace = true, features = [

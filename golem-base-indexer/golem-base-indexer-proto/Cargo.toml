@@ -4,14 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-actix-web.workspace = true
-actix-prost.workspace = true
 actix-prost-macros.workspace = true
+actix-prost.workspace = true
+actix-web.workspace = true
+const-hex.workspace = true
+golem-base-indexer-logic = { path = "../golem-base-indexer-logic" }
 prost.workspace = true
 serde.workspace = true
 serde_with.workspace = true
 tonic.workspace = true
-golem-base-indexer-logic = { path = "../golem-base-indexer-logic" }
 
 [build-dependencies]
 actix-prost-build.workspace = true

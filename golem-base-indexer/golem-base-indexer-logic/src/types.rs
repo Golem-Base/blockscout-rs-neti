@@ -1,21 +1,38 @@
 use alloy_primitives::B256;
+use chrono::{DateTime, Utc};
 
-pub use alloy_primitives::{Address, BlockHash, BlockNumber, TxHash};
+pub use alloy_primitives::{Address, BlockHash, BlockNumber, TxHash, U256 as CurrencyAmount};
 pub use alloy_rlp::Bytes;
+
+pub type Timestamp = DateTime<Utc>;
 
 pub type EntityKey = B256;
 
 #[derive(Clone, Debug)]
-pub struct Annotation<T: std::fmt::Debug> {
+pub struct FullAnnotation<T: std::fmt::Debug> {
     pub entity_key: EntityKey,
     pub operation_tx_hash: TxHash,
     pub operation_index: u64,
+    pub annotation: Annotation<T>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Annotation<T: std::fmt::Debug> {
     pub key: String,
     pub value: T,
 }
 
+impl<T: std::fmt::Debug> From<FullAnnotation<T>> for Annotation<T> {
+    fn from(v: FullAnnotation<T>) -> Self {
+        v.annotation
+    }
+}
+
 pub type StringAnnotation = Annotation<String>;
 pub type NumericAnnotation = Annotation<u64>;
+
+pub type FullStringAnnotation = FullAnnotation<String>;
+pub type FullNumericAnnotation = FullAnnotation<u64>;
 
 #[derive(Clone, Debug)]
 pub struct Log {
@@ -103,8 +120,29 @@ pub enum EntityStatus {
 pub struct Entity {
     pub key: EntityKey,
     pub data: Option<Bytes>,
+    pub owner: Address,
     pub status: EntityStatus,
     pub created_at_tx_hash: Option<TxHash>,
     pub last_updated_at_tx_hash: TxHash,
     pub expires_at_block_number: BlockNumber,
+}
+
+#[derive(Debug, Clone)]
+pub struct FullEntity {
+    pub key: EntityKey,
+    pub data: Option<Bytes>,
+    pub status: EntityStatus,
+
+    pub created_at_tx_hash: Option<TxHash>,
+    pub created_at_operation_index: Option<u64>,
+    pub created_at_block_number: Option<BlockNumber>,
+    pub created_at_timestamp: Option<Timestamp>,
+
+    pub last_updated_at_tx_hash: TxHash,
+    pub expires_at_block_number: BlockNumber,
+    pub expires_at_timestamp: Timestamp,
+
+    pub owner: Address,
+    pub gas_used: CurrencyAmount,
+    pub fees_paid: CurrencyAmount,
 }
