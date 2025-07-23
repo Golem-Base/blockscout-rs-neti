@@ -11,7 +11,7 @@ use sea_orm::{
 };
 use tracing::instrument;
 
-use crate::types::{BlockNumber, Bytes, EntityKey, TxHash};
+use crate::types::{BlockNumber, Bytes, Entity, EntityKey, EntityStatus, TxHash};
 
 #[derive(Debug)]
 pub struct GolemBaseEntityCreate {
@@ -34,6 +34,7 @@ pub struct GolemBaseEntityDelete {
     pub key: EntityKey,
     pub deleted_at_tx: TxHash,
     pub deleted_at_block: BlockNumber,
+    pub status: EntityStatus,
 }
 
 #[derive(Debug)]
@@ -41,6 +42,44 @@ pub struct GolemBaseEntityExtend {
     pub key: EntityKey,
     pub extended_at: TxHash,
     pub expires_at: BlockNumber,
+}
+
+impl From<EntityStatus> for GolemBaseEntityStatusType {
+    fn from(value: EntityStatus) -> Self {
+        match value {
+            EntityStatus::Active => GolemBaseEntityStatusType::Active,
+            EntityStatus::Deleted => GolemBaseEntityStatusType::Deleted,
+            EntityStatus::Expired => GolemBaseEntityStatusType::Expired,
+        }
+    }
+}
+
+impl From<GolemBaseEntityStatusType> for EntityStatus {
+    fn from(value: GolemBaseEntityStatusType) -> Self {
+        match value {
+            GolemBaseEntityStatusType::Active => EntityStatus::Active,
+            GolemBaseEntityStatusType::Deleted => EntityStatus::Deleted,
+            GolemBaseEntityStatusType::Expired => EntityStatus::Expired,
+        }
+    }
+}
+
+impl TryFrom<golem_base_entities::Model> for Entity {
+    type Error = anyhow::Error;
+
+    fn try_from(value: golem_base_entities::Model) -> Result<Self> {
+        Ok(Self {
+            key: value.key.as_slice().try_into()?,
+            data: value.data.map(|v| v.into()),
+            status: value.status.into(),
+            created_at_tx_hash: value
+                .created_at_tx_hash
+                .map(|v| v.as_slice().try_into())
+                .transpose()?,
+            last_updated_at_tx_hash: value.last_updated_at_tx_hash.as_slice().try_into()?,
+            expires_at_block_number: value.expires_at_block_number.try_into()?,
+        })
+    }
 }
 
 #[instrument(name = "repository::entities::insert_entity", skip(db))]
@@ -115,7 +154,7 @@ pub async fn delete_entity<T: ConnectionTrait>(
 ) -> Result<()> {
     let model = golem_base_entities::ActiveModel {
         key: Set(entity.key.as_slice().into()),
-        status: Set(GolemBaseEntityStatusType::Deleted),
+        status: Set(entity.status.into()),
         last_updated_at_tx_hash: Set(entity.deleted_at_tx.as_slice().into()),
         updated_at: Set(Utc::now().naive_utc()),
         data: Set(None),
@@ -174,21 +213,23 @@ pub async fn extend_entity<T: ConnectionTrait>(
 }
 
 #[instrument(name = "repository::entities::get_entity", skip(db))]
-pub async fn get_entity<T: ConnectionTrait>(
-    db: &T,
-    key: Vec<u8>,
-) -> Result<Option<golem_base_entities::Model>> {
+pub async fn get_entity<T: ConnectionTrait>(db: &T, key: Vec<u8>) -> Result<Option<Entity>> {
     golem_base_entities::Entity::find_by_id(key.clone())
         .one(db)
         .await
-        .with_context(|| format!("Failed to get entity: {key:?}"))
+        .with_context(|| format!("Failed to get entity: {key:?}"))?
+        .map(|v| v.try_into())
+        .transpose()
 }
 
 #[instrument(name = "repository::entities::list_entities", skip(db))]
-pub async fn list_entities<T: ConnectionTrait>(db: &T) -> Result<Vec<golem_base_entities::Model>> {
+pub async fn list_entities<T: ConnectionTrait>(db: &T) -> Result<Vec<Entity>> {
     golem_base_entities::Entity::find()
         .order_by_asc(golem_base_entities::Column::Key)
         .all(db)
         .await
-        .context("Failed to list entities")
+        .context("Failed to list entities")?
+        .into_iter()
+        .map(|v| v.try_into())
+        .collect()
 }

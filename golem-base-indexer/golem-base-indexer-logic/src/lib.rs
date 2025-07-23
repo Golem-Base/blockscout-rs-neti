@@ -19,8 +19,8 @@ use crate::{
         GolemBaseEntityCreate, GolemBaseEntityDelete, GolemBaseEntityExtend, GolemBaseEntityUpdate,
     },
     types::{
-        EntityKey, Log, NumericAnnotation, Operation, OperationData, OperationMetadata,
-        StringAnnotation, Tx, TxHash,
+        EntityKey, EntityStatus, Log, NumericAnnotation, Operation, OperationData,
+        OperationMetadata, StringAnnotation, Tx, TxHash,
     },
 };
 
@@ -142,7 +142,7 @@ impl Indexer {
             .await?;
 
             for delete_log in logs {
-                self.handle_delete_log(&txn, &tx, delete_log).await?;
+                self.handle_expire_log(&txn, &tx, delete_log).await?;
             }
         }
 
@@ -345,6 +345,7 @@ impl Indexer {
             txn,
             GolemBaseEntityDelete {
                 key: delete,
+                status: EntityStatus::Deleted,
                 deleted_at_tx: tx.hash,
                 deleted_at_block: tx.block_number,
             },
@@ -457,7 +458,7 @@ impl Indexer {
     }
 
     #[instrument(skip(self, tx, log), fields(tx_hash = ?tx.hash))]
-    async fn handle_delete_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
+    async fn handle_expire_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
         let entity_key = if let Some(k) = log.second_topic {
             k
         } else {
@@ -486,6 +487,7 @@ impl Indexer {
             txn,
             GolemBaseEntityDelete {
                 key: entity_key,
+                status: EntityStatus::Expired,
                 deleted_at_tx: tx.hash,
                 deleted_at_block: tx.block_number,
             },
