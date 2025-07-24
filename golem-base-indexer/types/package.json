@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/blockscout/blockscout-rs#readme",
   "devDependencies": {
-    "ts-proto": "1.176.2",
-    "typescript": "5.4.5"
+    "ts-proto": "^2.7.5",
+    "typescript": "^5.8.3"
   }
 }
