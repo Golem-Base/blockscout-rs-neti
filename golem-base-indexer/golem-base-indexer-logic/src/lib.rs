@@ -19,7 +19,7 @@ use crate::{
         GolemBaseEntityCreate, GolemBaseEntityDelete, GolemBaseEntityExtend, GolemBaseEntityUpdate,
     },
     types::{
-        EntityKey, EntityStatus, FullNumericAnnotation, FullStringAnnotation, Log,
+        Entity, EntityKey, EntityStatus, FullNumericAnnotation, FullStringAnnotation, Log,
         NumericAnnotation, Operation, OperationData, OperationMetadata, StringAnnotation, Tx,
         TxHash,
     },
@@ -59,7 +59,6 @@ pub struct Indexer {
 }
 
 // FIXME integration tests
-// FIXME what about chain reorgs (use debug_setHead for testing)
 // FIXME test what happens when DB connection fails
 impl Indexer {
     pub fn new(db: Arc<DatabaseConnection>, settings: IndexerSettings) -> Self {
@@ -87,7 +86,143 @@ impl Indexer {
             .try_for_each_concurrent(self.settings.concurrency, |tx| async move {
                 self.handle_tx(tx).await
             })
+            .await?;
+
+        repository::blockscout::stream_tx_hashes_for_cleanup(&*self.db)
+            .await?
+            .map(Ok)
+            .try_for_each_concurrent(self.settings.concurrency, |tx| async move {
+                self.handle_tx_cleanup(tx).await
+            })
             .await
+    }
+
+    #[instrument(skip(self))]
+    async fn handle_tx_cleanup(&self, tx_hash: TxHash) -> Result<()> {
+        tracing::info!("Processing tx cleanup after reorg");
+        let txn = self.db.begin().await?;
+
+        let affected_entities: Vec<EntityKey> =
+            repository::entities::find_by_tx_hash(&txn, tx_hash)
+                .await
+                .with_context(|| format!("Finding entities for tx hash {tx_hash}"))?
+                .into_iter()
+                .map(|e| e.key)
+                .collect();
+
+        repository::operations::delete_by_tx_hash(&txn, tx_hash)
+            .await
+            .with_context(|| format!("Deleting operations for tx hash {tx_hash}"))?;
+
+        for entity in affected_entities {
+            // FIXME refactor
+            let latest_op = repository::operations::find_latest_operation(&txn, entity).await?;
+            match latest_op {
+                None => {
+                    repository::entities::drop_entity(&txn, entity).await?;
+                }
+                Some(latest_op) => {
+                    let create_op =
+                        repository::operations::find_create_operation(&txn, entity).await?;
+                    let delete_op =
+                        repository::operations::find_delete_operation(&txn, entity).await?;
+                    let update_op =
+                        repository::operations::find_latest_update_operation(&txn, entity).await?;
+
+                    let create_op = create_op.as_ref();
+                    let delete_op = delete_op.as_ref();
+                    let update_op = update_op.as_ref();
+
+                    let last_extend_expires_at =
+                        repository::logs::find_latest_extend_log(&txn, entity)
+                            .await?
+                            .map(|log| -> Result<u64> {
+                                // FIXME deduplicate parsing with handle_extend_log
+                                type EventArgs = (U256, U256);
+                                let (_, expires_at_block_number) =
+                                    EventArgs::abi_decode(&log.data)?;
+                                Ok(expires_at_block_number.try_into()?)
+                            })
+                            .transpose()
+                            .ok()
+                            .flatten();
+
+                    let data = match delete_op {
+                        Some(_) => None,
+                        None => update_op
+                            .map(|v| v.operation.data().expect("Update op always has data"))
+                            .or(create_op
+                                .map(|v| v.operation.data().expect("Create op always has data"))),
+                    };
+
+                    let status = match delete_op {
+                        Some(x)
+                            if x.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
+                        {
+                            EntityStatus::Expired
+                        }
+                        Some(_) => EntityStatus::Deleted,
+                        _ => EntityStatus::Active,
+                    };
+
+                    let expires_at_block_number = match latest_op.operation {
+                        OperationData::Create(_, _) => {
+                            let op = create_op.expect("It's latest tx so it exists");
+                            let btl = op.operation.btl().expect("Creates have BTL");
+                            let create_tx =
+                                repository::blockscout::get_tx(&txn, op.metadata.tx_hash)
+                                    .await?
+                                    .expect("If we have op, then we have tx");
+
+                            // taking default for block number here might look bad, but if there's no block
+                            // number it means that we had a chain reorg and tx was dropped. we're not handling it right
+                            // now, or we would have dropped the create_tx, so it must still be in the queue - so it will
+                            // be processed right after we finish with what we're doing here and we'll reprocess the
+                            // expiration either way
+                            create_tx.block_number.unwrap_or_default() + btl
+                        }
+
+                        OperationData::Update(_, _) => {
+                            let op = update_op.expect("It's latest tx so it exists");
+                            let btl = op.operation.btl().expect("Updates have BTL");
+                            let update_tx =
+                                repository::blockscout::get_tx(&txn, op.metadata.tx_hash)
+                                    .await?
+                                    .expect("If we have op, then we have tx");
+                            update_tx.block_number.unwrap_or_default() + btl
+                        }
+
+                        OperationData::Delete => {
+                            let op = delete_op.expect("It's latest tx so it exists");
+                            let delete_tx =
+                                repository::blockscout::get_tx(&txn, op.metadata.tx_hash)
+                                    .await?
+                                    .expect("If we have op, then we have tx");
+                            delete_tx.block_number.unwrap_or_default()
+                        }
+
+                        OperationData::Extend(_) => {
+                            last_extend_expires_at.expect("It's latest so it exists")
+                        }
+                    };
+
+                    let entity = Entity {
+                        key: entity,
+                        data: data.map(|v| v.to_owned()),
+                        owner: latest_op.metadata.sender,
+                        status,
+                        created_at_tx_hash: create_op.map(|v| v.metadata.tx_hash),
+                        last_updated_at_tx_hash: latest_op.metadata.tx_hash,
+                        expires_at_block_number,
+                    };
+
+                    repository::entities::replace_entity(&txn, entity).await?;
+                }
+            }
+        }
+
+        txn.commit().await?;
+        Ok(())
     }
 
     #[instrument(skip(self))]
@@ -190,8 +325,9 @@ impl Indexer {
                 metadata: OperationMetadata {
                     entity_key: key,
                     sender: tx.from_address_hash,
+                    recipient: tx.to_address_hash,
                     tx_hash: tx.hash,
-                    block_hash: tx.block_hash,
+                    block_hash: tx.block_hash.expect("We only process txes with block hash"),
                     index: idx,
                 },
                 operation: OperationData::create(create.data.clone(), create.btl),
@@ -206,7 +342,10 @@ impl Indexer {
                 data: create.data,
                 sender: tx.from_address_hash,
                 created_at: tx.hash,
-                expires_at: tx.block_number.saturating_add(create.btl),
+                expires_at: tx
+                    .block_number
+                    .expect("We only process txes with block number")
+                    .saturating_add(create.btl),
             },
         )
         .await?;
@@ -268,8 +407,11 @@ impl Indexer {
                 metadata: OperationMetadata {
                     entity_key: update.entity_key,
                     sender: tx.from_address_hash,
+                    recipient: tx.to_address_hash,
                     tx_hash: tx.hash,
-                    block_hash: tx.block_hash,
+                    block_hash: tx
+                        .block_hash
+                        .expect("We only process txses with block hash"),
                     index: idx,
                 },
                 operation: OperationData::update(update.data.clone(), update.btl),
@@ -285,7 +427,10 @@ impl Indexer {
                     data: update.data,
                     sender: tx.from_address_hash,
                     updated_at: tx.hash,
-                    expires_at: tx.block_number.saturating_add(update.btl),
+                    expires_at: tx
+                        .block_number
+                        .expect("We only process txes with block number")
+                        .saturating_add(update.btl),
                 },
             )
             .await?;
@@ -346,8 +491,11 @@ impl Indexer {
                 metadata: OperationMetadata {
                     entity_key: delete,
                     sender: tx.from_address_hash,
+                    recipient: tx.to_address_hash,
                     tx_hash: tx.hash,
-                    block_hash: tx.block_hash,
+                    block_hash: tx
+                        .block_hash
+                        .expect("We only process txses with block hash"),
                     index: idx,
                 },
                 operation: OperationData::delete(),
@@ -362,7 +510,9 @@ impl Indexer {
                 status: EntityStatus::Deleted,
                 sender: tx.from_address_hash,
                 deleted_at_tx: tx.hash,
-                deleted_at_block: tx.block_number,
+                deleted_at_block: tx
+                    .block_number
+                    .expect("We only process txses with block number"),
             },
         )
         .await?;
@@ -386,8 +536,11 @@ impl Indexer {
                 metadata: OperationMetadata {
                     entity_key: extend.entity_key,
                     sender: tx.from_address_hash,
+                    recipient: tx.to_address_hash,
                     tx_hash: tx.hash,
-                    block_hash: tx.block_hash,
+                    block_hash: tx
+                        .block_hash
+                        .expect("We only process txses with block hash"),
                     index: idx,
                 },
                 operation: OperationData::extend(extend.number_of_blocks),
@@ -424,8 +577,12 @@ impl Indexer {
         };
 
         let candidate_update = (
-            candidate_update.block_number,
-            candidate_update.index,
+            candidate_update
+                .block_number
+                .expect("We only process txses with block number"),
+            candidate_update
+                .index
+                .expect("We only process txses with index"),
             operation_index,
         );
 
@@ -486,8 +643,11 @@ impl Indexer {
                 metadata: OperationMetadata {
                     entity_key,
                     sender: tx.from_address_hash,
+                    recipient: tx.to_address_hash,
                     tx_hash: tx.hash,
-                    block_hash: tx.block_hash,
+                    block_hash: tx
+                        .block_hash
+                        .expect("We only process txses with block hash"),
                     index: log.index, // FIXME this should be an operation index, not log index,
                                       // but we don't really have an operation in this case...
                 },
@@ -503,7 +663,9 @@ impl Indexer {
                 status: EntityStatus::Expired,
                 sender: tx.from_address_hash,
                 deleted_at_tx: tx.hash,
-                deleted_at_block: tx.block_number,
+                deleted_at_block: tx
+                    .block_number
+                    .expect("We only process txses with block number"),
             },
         )
         .await?;

@@ -5,6 +5,7 @@ use migration::{
     SchemaManager,
 };
 use reqwest::Url;
+use sea_orm::{ConnectionTrait, Statement, TransactionTrait};
 
 pub struct TestMigrator;
 #[async_trait::async_trait]
@@ -33,7 +34,6 @@ impl MigrationName for TestMigrationBefore {
 impl MigrationTrait for TestMigrationBefore {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         from_sql(manager, include_str!("../fixtures/blockscout_tables.sql")).await?;
-        from_sql(manager, include_str!("../fixtures/sample_data.sql")).await?;
         Ok(())
     }
 }
@@ -47,6 +47,8 @@ pub async fn init_golem_base_indexer_server<F>(db: TestDbGuard, settings_setup: 
 where
     F: Fn(Settings) -> Settings,
 {
+    tracing_subscriber::fmt::init();
+
     let (settings, base) = {
         let mut settings = Settings::default(db.db_url());
         let (server_settings, base) = test_server::get_test_server_settings();
@@ -63,4 +65,20 @@ where
     )
     .await;
     base
+}
+
+#[allow(dead_code)]
+pub async fn load_data<T: TransactionTrait + ConnectionTrait>(db: &T, content: &str) {
+    let stmts: Vec<&str> = content.split(';').collect();
+    let txn = db.begin().await.unwrap();
+
+    for st in stmts {
+        txn.execute(Statement::from_string(
+            db.get_database_backend(),
+            st.to_string(),
+        ))
+        .await
+        .unwrap();
+    }
+    txn.commit().await.unwrap()
 }

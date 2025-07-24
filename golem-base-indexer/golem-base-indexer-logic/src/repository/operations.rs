@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use golem_base_indexer_entity::{
-    golem_base_operations, sea_orm_active_enums::GolemBaseOperationType,
+    golem_base_numeric_annotations, golem_base_operations, golem_base_string_annotations,
+    sea_orm_active_enums::GolemBaseOperationType,
 };
 use sea_orm::{
     prelude::*,
@@ -53,6 +54,7 @@ impl TryFrom<golem_base_operations::Model> for Operation {
             metadata: OperationMetadata {
                 entity_key: v.entity_key.as_slice().try_into()?,
                 sender: v.sender.as_slice().try_into()?,
+                recipient: v.recipient.as_slice().try_into()?,
                 tx_hash: v.transaction_hash.as_slice().try_into()?,
                 block_hash: v.block_hash.as_slice().try_into()?,
                 index: v.index.try_into()?,
@@ -79,6 +81,7 @@ impl TryFrom<Operation> for golem_base_operations::ActiveModel {
         Ok(Self {
             entity_key: Set(md.entity_key.as_slice().into()),
             sender: Set(md.sender.as_slice().into()),
+            recipient: Set(md.recipient.as_slice().into()),
             operation: Set((&op.operation).into()),
             data: Set(op.operation.data().map(|v| v.to_owned().into())),
             btl: Set(op.operation.btl().map(Into::into)),
@@ -172,4 +175,74 @@ pub async fn find_create_operation<T: ConnectionTrait>(
         .context("Failed to find create operation")?
         .map(Operation::try_from)
         .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn find_delete_operation<T: ConnectionTrait>(
+    db: &T,
+    entity_key: EntityKey,
+) -> Result<Option<Operation>> {
+    let entity_key: Vec<u8> = entity_key.as_slice().into();
+    golem_base_operations::Entity::find()
+        .filter(golem_base_operations::Column::EntityKey.eq(entity_key))
+        .filter(golem_base_operations::Column::Operation.eq(GolemBaseOperationType::Delete))
+        .one(db)
+        .await
+        .context("Failed to find delete operation")?
+        .map(Operation::try_from)
+        .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn find_latest_update_operation<T: ConnectionTrait>(
+    db: &T,
+    entity_key: EntityKey,
+) -> Result<Option<Operation>> {
+    let entity_key: Vec<u8> = entity_key.as_slice().into();
+    golem_base_operations::Model::find_by_statement(Statement::from_sql_and_values(
+        db.get_database_backend(),
+        sql::FIND_LATEST_UPDATE_OPERATION,
+        [entity_key.into()],
+    ))
+    .one(db)
+    .await
+    .context("Failed to find latest update operation")?
+    .map(Operation::try_from)
+    .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn delete_by_tx_hash<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> Result<()> {
+    let db_tx_hash: Vec<u8> = tx_hash.as_slice().into();
+    golem_base_string_annotations::Entity::delete_many()
+        .filter(golem_base_string_annotations::Column::OperationTxHash.eq(db_tx_hash.clone()))
+        .exec(db)
+        .await?;
+    golem_base_numeric_annotations::Entity::delete_many()
+        .filter(golem_base_numeric_annotations::Column::OperationTxHash.eq(db_tx_hash.clone()))
+        .exec(db)
+        .await?;
+    golem_base_operations::Entity::delete_many()
+        .filter(golem_base_operations::Column::TransactionHash.eq(db_tx_hash))
+        .exec(db)
+        .await?;
+    Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn find_latest_operation<T: ConnectionTrait>(
+    db: &T,
+    entity_key: EntityKey,
+) -> Result<Option<Operation>> {
+    let entity_key: Vec<u8> = entity_key.as_slice().into();
+    golem_base_operations::Model::find_by_statement(Statement::from_sql_and_values(
+        db.get_database_backend(),
+        sql::FIND_LATEST_OPERATION,
+        [entity_key.into()],
+    ))
+    .one(db)
+    .await
+    .context("Failed to find latest operation")?
+    .map(Operation::try_from)
+    .transpose()
 }

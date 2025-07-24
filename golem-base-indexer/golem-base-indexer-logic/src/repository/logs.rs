@@ -1,5 +1,8 @@
-use super::sql::GET_LOGS;
-use crate::types::{Log, TxHash};
+use super::sql::{FIND_LATEST_LOG, GET_LOGS};
+use crate::{
+    types::{EntityKey, Log, TxHash},
+    well_known,
+};
 use alloy_primitives::B256;
 use anyhow::{Context, Result};
 use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement};
@@ -14,6 +17,7 @@ pub struct DbLog {
     pub second_topic: Option<Vec<u8>>,
     pub third_topic: Option<Vec<u8>>,
     pub fourth_topic: Option<Vec<u8>>,
+    pub transaction_hash: Vec<u8>,
 }
 
 impl TryFrom<DbLog> for Log {
@@ -33,6 +37,7 @@ impl TryFrom<DbLog> for Log {
                 .fourth_topic
                 .map(|v| v.as_slice().try_into())
                 .transpose()?,
+            tx_hash: v.transaction_hash.as_slice().try_into()?,
         })
     }
 }
@@ -54,4 +59,21 @@ pub async fn get_tx_logs<T: ConnectionTrait>(
     .into_iter()
     .map(TryInto::try_into)
     .collect()
+}
+
+#[instrument(skip(db))]
+pub async fn find_latest_extend_log<T: ConnectionTrait>(
+    db: &T,
+    entity_key: EntityKey,
+) -> Result<Option<Log>> {
+    let signature = well_known::GOLEM_BASE_STORAGE_ENTITY_BTL_EXTENDED;
+    DbLog::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        FIND_LATEST_LOG,
+        [signature.as_slice().into(), entity_key.as_slice().into()],
+    ))
+    .one(db)
+    .await?
+    .map(TryInto::try_into)
+    .transpose()
 }

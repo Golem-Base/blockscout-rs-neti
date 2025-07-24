@@ -26,6 +26,8 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub index: i64,
     pub inserted_at: DateTime,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub recipient: Vec<u8>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -147,7 +147,10 @@ execute function golem_base_queue_transaction_processing();
             r#"
 insert into golem_base_pending_transaction_operations (hash)
 select hash from transactions
-where to_address_hash in ('\x4200000000000000000000000000000000000015', '\x0000000000000000000000000000000060138453');
+where
+    to_address_hash in ('\x4200000000000000000000000000000000000015', '\x0000000000000000000000000000000060138453')
+    and block_hash is not null
+    and status = 1;
 "#,
         );
 
