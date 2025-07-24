@@ -1,6 +1,7 @@
 use crate::repository::sql::GET_TX_BY_HASH;
 use anyhow::{Context, Result};
 use futures::{Stream, StreamExt};
+use golem_base_indexer_entity::golem_base_pending_transaction_cleanups;
 use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement, StreamTrait};
 use tracing::instrument;
 
@@ -32,10 +33,10 @@ pub struct DbTx {
     pub hash: Vec<u8>,
     pub from_address_hash: Vec<u8>,
     pub to_address_hash: Vec<u8>,
-    pub block_number: i32,
-    pub block_hash: Vec<u8>,
+    pub block_number: Option<i32>,
+    pub block_hash: Option<Vec<u8>>,
     pub input: Vec<u8>,
-    pub index: i32,
+    pub index: Option<i32>,
 }
 
 impl TryFrom<DbTx> for Tx {
@@ -43,12 +44,12 @@ impl TryFrom<DbTx> for Tx {
     fn try_from(tx: DbTx) -> Result<Self> {
         Ok(Self {
             input: tx.input.into(),
-            block_hash: tx.block_hash.as_slice().try_into()?,
-            block_number: tx.block_number.try_into()?,
+            block_hash: tx.block_hash.map(|v| v.as_slice().try_into()).transpose()?,
+            block_number: tx.block_number.map(|v| v.try_into()).transpose()?,
             from_address_hash: tx.from_address_hash.as_slice().try_into()?,
             to_address_hash: tx.to_address_hash.as_slice().try_into()?,
             hash: tx.hash.as_slice().try_into()?,
-            index: tx.index.try_into()?,
+            index: tx.index.map(|v| v.try_into()).transpose()?,
         })
     }
 }
@@ -79,6 +80,25 @@ pub async fn stream_unprocessed_tx_hashes<T: StreamTrait + ConnectionTrait>(
             }
         }
     }))
+}
+
+#[instrument(skip(db))]
+pub async fn stream_tx_hashes_for_cleanup<T: StreamTrait + ConnectionTrait>(
+    db: &T,
+) -> Result<impl Stream<Item = TxHash> + '_> {
+    Ok(golem_base_pending_transaction_cleanups::Entity::find()
+        .stream(db)
+        .await
+        .context("Failed to get tx hashes for cleanup")?
+        .filter_map(|tx| async {
+            match tx {
+                Ok(tx) => Some(TxHash::from_slice(&tx.hash)),
+                Err(err) => {
+                    tracing::error!(error = ?err, "error during tx hashes for cleanup retrieval");
+                    None
+                }
+            }
+        }))
 }
 
 #[instrument(skip(db))]

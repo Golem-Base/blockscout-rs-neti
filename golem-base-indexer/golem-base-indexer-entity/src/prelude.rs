@@ -4,6 +4,7 @@ pub use super::{
     golem_base_entities::Entity as GolemBaseEntities,
     golem_base_numeric_annotations::Entity as GolemBaseNumericAnnotations,
     golem_base_operations::Entity as GolemBaseOperations,
+    golem_base_pending_transaction_cleanups::Entity as GolemBasePendingTransactionCleanups,
     golem_base_pending_transaction_operations::Entity as GolemBasePendingTransactionOperations,
     golem_base_string_annotations::Entity as GolemBaseStringAnnotations,
     transactions::Entity as Transactions,

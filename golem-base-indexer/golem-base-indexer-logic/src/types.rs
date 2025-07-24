@@ -42,6 +42,7 @@ pub struct Log {
     pub second_topic: Option<B256>,
     pub third_topic: Option<B256>,
     pub fourth_topic: Option<B256>,
+    pub tx_hash: TxHash,
 }
 
 #[derive(Clone, Debug)]
@@ -54,6 +55,7 @@ pub struct Operation {
 pub struct OperationMetadata {
     pub entity_key: EntityKey,
     pub sender: Address,
+    pub recipient: Address,
     pub tx_hash: TxHash,
     pub block_hash: BlockHash,
     pub index: u64,
@@ -88,12 +90,12 @@ impl OperationData {
             Self::Extend(_) => None,
         }
     }
-    pub fn btl(self) -> Option<u64> {
+    pub fn btl(&self) -> Option<u64> {
         match self {
-            Self::Create(_, btl) => Some(btl),
-            Self::Update(_, btl) => Some(btl),
+            Self::Create(_, btl) => Some(*btl),
+            Self::Update(_, btl) => Some(*btl),
             Self::Delete => None,
-            Self::Extend(btl) => Some(btl),
+            Self::Extend(btl) => Some(*btl),
         }
     }
 }
@@ -103,10 +105,10 @@ pub struct Tx {
     pub hash: TxHash,
     pub from_address_hash: Address,
     pub to_address_hash: Address,
-    pub block_number: BlockNumber,
-    pub block_hash: BlockHash,
+    pub block_number: Option<BlockNumber>,
+    pub block_hash: Option<BlockHash>,
     pub input: Bytes,
-    pub index: u64,
+    pub index: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy)]

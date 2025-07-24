@@ -8,12 +8,13 @@ use sea_orm::{
     sea_query::OnConflict,
     sqlx::types::chrono::Utc,
     ActiveValue::{NotSet, Set},
-    QueryOrder,
+    FromQueryResult, Iterable, QueryOrder, Statement,
 };
 use tracing::instrument;
 
-use crate::types::{
-    Address, BlockNumber, Bytes, Entity, EntityKey, EntityStatus, FullEntity, TxHash,
+use crate::{
+    repository::sql,
+    types::{Address, BlockNumber, Bytes, Entity, EntityKey, EntityStatus, FullEntity, TxHash},
 };
 
 #[derive(Debug)]
@@ -299,4 +300,55 @@ pub async fn get_full_entity<T: ConnectionTrait>(
         gas_used: Default::default(), // FIXME when we have gas per operation
         fees_paid: Default::default(), // FIXME when we have gas per operation
     }))
+}
+
+#[instrument(skip(db))]
+pub async fn find_by_tx_hash<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> Result<Vec<Entity>> {
+    let db_tx_hash: Vec<u8> = tx_hash.as_slice().into();
+    golem_base_entities::Model::find_by_statement(Statement::from_sql_and_values(
+        db.get_database_backend(),
+        sql::FIND_ENTITIES_BY_TX_HASH,
+        [db_tx_hash.into()],
+    ))
+    .all(db)
+    .await
+    .with_context(|| format!("Failed to find entities by tx hash: {tx_hash}"))?
+    .into_iter()
+    .map(|v| v.try_into())
+    .collect()
+}
+
+#[instrument(skip(db))]
+pub async fn replace_entity<T: ConnectionTrait>(db: &T, entity: Entity) -> Result<()> {
+    let entity = golem_base_entities::ActiveModel {
+        key: Set(entity.key.as_slice().into()),
+        data: Set(entity.data.map(|v| v.into())),
+        status: Set(entity.status.into()),
+        owner: Set(entity.owner.as_slice().into()),
+        created_at_tx_hash: Set(entity.created_at_tx_hash.map(|v| v.as_slice().into())),
+        expires_at_block_number: Set(entity.expires_at_block_number.try_into()?),
+        last_updated_at_tx_hash: Set(entity.last_updated_at_tx_hash.as_slice().into()),
+        inserted_at: NotSet,
+        updated_at: Set(Utc::now().naive_utc()),
+    };
+    golem_base_entities::Entity::insert(entity)
+        .on_conflict(
+            OnConflict::column(golem_base_entities::Column::Key)
+                .update_columns(golem_base_entities::Column::iter())
+                .to_owned(),
+        )
+        .exec(db)
+        .await
+        .context("Failed to replace entity")?;
+    Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn drop_entity<T: ConnectionTrait>(db: &T, entity: EntityKey) -> Result<()> {
+    let entity: Vec<u8> = entity.as_slice().into();
+    golem_base_entities::Entity::delete_by_id(entity)
+        .exec(db)
+        .await
+        .context("Failed to drop entity")?;
+    Ok(())
 }

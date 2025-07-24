@@ -13,12 +13,23 @@ pub struct Model {
     pub hash: Vec<u8>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub to_address_hash: Option<Vec<u8>>,
+    pub status: Option<i32>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
+    pub block_hash: Option<Vec<u8>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_one = "super::golem_base_pending_transaction_cleanups::Entity")]
+    GolemBasePendingTransactionCleanups,
     #[sea_orm(has_one = "super::golem_base_pending_transaction_operations::Entity")]
     GolemBasePendingTransactionOperations,
+}
+
+impl Related<super::golem_base_pending_transaction_cleanups::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::GolemBasePendingTransactionCleanups.def()
+    }
 }
 
 impl Related<super::golem_base_pending_transaction_operations::Entity> for Entity {

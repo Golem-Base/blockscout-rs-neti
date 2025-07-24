@@ -5,7 +5,8 @@ select
     first_topic,
     second_topic,
     third_topic,
-    fourth_topic
+    fourth_topic,
+    transaction_hash
 from logs
 where
     transaction_hash = $1
@@ -35,10 +36,9 @@ pub const GET_UNPROCESSED_TX_HASHES: &str = r#"
 select hash
 from golem_base_pending_transaction_operations as pendings
 inner join transactions using (hash)
-left join golem_base_operations
-    on pendings.hash = golem_base_operations.transaction_hash
+left join golem_base_pending_transaction_cleanups using (hash)
 where
-    golem_base_operations.transaction_hash is null
+    golem_base_pending_transaction_cleanups is null
     and transactions.to_address_hash in ($1, $2) 
     and transactions.status = 1
     and transactions.block_hash is not null
@@ -56,4 +56,72 @@ select
 from transactions
 where
     hash = $1
+"#;
+
+pub const FIND_ENTITIES_BY_TX_HASH: &str = r#"
+select 
+    e.*,
+    e.status::text as status
+from golem_base_entities as e
+where
+    exists (
+        select 1
+        from golem_base_operations as o
+        where
+            o.entity_key = e.key
+            and o.transaction_hash = $1
+    )
+"#;
+
+pub const FIND_LATEST_UPDATE_OPERATION: &str = r#"
+select 
+    o.*,
+    o.operation::text as operation
+from golem_base_operations o
+inner join transactions t
+    on t.hash = o.transaction_hash
+where
+    o.operation = 'update'
+    and o.entity_key = $1
+order by
+    t.block_number desc,
+    t.index desc,
+    o.index desc
+limit 1;
+"#;
+
+pub const FIND_LATEST_LOG: &str = r#"
+select
+    data,
+    logs.index,
+    first_topic,
+    second_topic,
+    third_topic,
+    fourth_topic,
+    transaction_hash
+from logs
+inner join transactions on transactions.hash = logs.transaction_hash
+where
+    first_topic = $1
+    and second_topic = $2
+order by
+    transactions.block_number desc,
+    transactions.index desc,
+    logs.index desc
+"#;
+
+pub const FIND_LATEST_OPERATION: &str = r#"
+select 
+    o.*,
+    o.operation::text as operation
+from golem_base_operations o
+inner join transactions t
+    on t.hash = o.transaction_hash
+where
+    o.entity_key = $1
+order by
+    t.block_number desc,
+    t.index desc,
+    o.index desc
+limit 1;
 "#;

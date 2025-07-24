@@ -10,6 +10,7 @@ async fn test_get_entity_endpoint_works() {
     let db = helpers::init_db("test", "get_entity_endpoint_works").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
+    helpers::load_data(&*client, include_str!("fixtures/sample_data.sql")).await;
 
     Indexer::new(client, Default::default())
         .tick()
