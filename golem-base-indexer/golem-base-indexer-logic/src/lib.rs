@@ -1,12 +1,10 @@
-use alloy_primitives::U256;
 use alloy_rlp::Decodable;
-use alloy_sol_types::SolValue;
 use anyhow::{anyhow, Context, Result};
 use futures::{StreamExt, TryStreamExt};
 use golem_base_sdk::entity::{
     Create, EncodableGolemBaseTransaction, Extend, GolemBaseDelete, Update,
 };
-use sea_orm::{DatabaseConnection, DatabaseTransaction, TransactionTrait};
+use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::{sync::Arc, time};
@@ -14,7 +12,7 @@ use tokio::time::sleep;
 use tracing::instrument;
 
 use crate::{
-    golem_base::entity_key,
+    golem_base::{decode_extend_log_data, entity_key},
     repository::entities::{
         GolemBaseEntityCreate, GolemBaseEntityDelete, GolemBaseEntityExtend, GolemBaseEntityUpdate,
     },
@@ -115,113 +113,108 @@ impl Indexer {
             .with_context(|| format!("Deleting operations for tx hash {tx_hash}"))?;
 
         for entity in affected_entities {
-            // FIXME refactor
-            let latest_op = repository::operations::find_latest_operation(&txn, entity).await?;
-            match latest_op {
-                None => {
-                    repository::entities::drop_entity(&txn, entity).await?;
-                }
-                Some(latest_op) => {
-                    let create_op =
-                        repository::operations::find_create_operation(&txn, entity).await?;
-                    let delete_op =
-                        repository::operations::find_delete_operation(&txn, entity).await?;
-                    let update_op =
-                        repository::operations::find_latest_update_operation(&txn, entity).await?;
-
-                    let create_op = create_op.as_ref();
-                    let delete_op = delete_op.as_ref();
-                    let update_op = update_op.as_ref();
-
-                    let last_extend_expires_at =
-                        repository::logs::find_latest_extend_log(&txn, entity)
-                            .await?
-                            .map(|log| -> Result<u64> {
-                                // FIXME deduplicate parsing with handle_extend_log
-                                type EventArgs = (U256, U256);
-                                let (_, expires_at_block_number) =
-                                    EventArgs::abi_decode(&log.data)?;
-                                Ok(expires_at_block_number.try_into()?)
-                            })
-                            .transpose()
-                            .ok()
-                            .flatten();
-
-                    let data = match delete_op {
-                        Some(_) => None,
-                        None => update_op
-                            .map(|v| v.operation.data().expect("Update op always has data"))
-                            .or(create_op
-                                .map(|v| v.operation.data().expect("Create op always has data"))),
-                    };
-
-                    let status = match delete_op {
-                        Some(x)
-                            if x.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
-                        {
-                            EntityStatus::Expired
-                        }
-                        Some(_) => EntityStatus::Deleted,
-                        _ => EntityStatus::Active,
-                    };
-
-                    let expires_at_block_number = match latest_op.operation {
-                        OperationData::Create(_, _) => {
-                            let op = create_op.expect("It's latest tx so it exists");
-                            let btl = op.operation.btl().expect("Creates have BTL");
-                            let create_tx =
-                                repository::blockscout::get_tx(&txn, op.metadata.tx_hash)
-                                    .await?
-                                    .expect("If we have op, then we have tx");
-
-                            // taking default for block number here might look bad, but if there's no block
-                            // number it means that we had a chain reorg and tx was dropped. we're not handling it right
-                            // now, or we would have dropped the create_tx, so it must still be in the queue - so it will
-                            // be processed right after we finish with what we're doing here and we'll reprocess the
-                            // expiration either way
-                            create_tx.block_number.unwrap_or_default() + btl
-                        }
-
-                        OperationData::Update(_, _) => {
-                            let op = update_op.expect("It's latest tx so it exists");
-                            let btl = op.operation.btl().expect("Updates have BTL");
-                            let update_tx =
-                                repository::blockscout::get_tx(&txn, op.metadata.tx_hash)
-                                    .await?
-                                    .expect("If we have op, then we have tx");
-                            update_tx.block_number.unwrap_or_default() + btl
-                        }
-
-                        OperationData::Delete => {
-                            let op = delete_op.expect("It's latest tx so it exists");
-                            let delete_tx =
-                                repository::blockscout::get_tx(&txn, op.metadata.tx_hash)
-                                    .await?
-                                    .expect("If we have op, then we have tx");
-                            delete_tx.block_number.unwrap_or_default()
-                        }
-
-                        OperationData::Extend(_) => {
-                            last_extend_expires_at.expect("It's latest so it exists")
-                        }
-                    };
-
-                    let entity = Entity {
-                        key: entity,
-                        data: data.map(|v| v.to_owned()),
-                        owner: latest_op.metadata.sender,
-                        status,
-                        created_at_tx_hash: create_op.map(|v| v.metadata.tx_hash),
-                        last_updated_at_tx_hash: latest_op.metadata.tx_hash,
-                        expires_at_block_number,
-                    };
-
-                    repository::entities::replace_entity(&txn, entity).await?;
-                }
-            }
+            self.reindex_entity(&txn, entity).await?;
         }
 
         txn.commit().await?;
+        Ok(())
+    }
+
+    async fn reindex_entity_with_latest_operation<T: ConnectionTrait>(
+        &self,
+        txn: &T,
+        latest_op: Operation,
+        entity: EntityKey,
+    ) -> Result<()> {
+        let create_op = repository::operations::find_create_operation(txn, entity).await?;
+        let delete_op = repository::operations::find_delete_operation(txn, entity).await?;
+        let update_op = repository::operations::find_latest_update_operation(txn, entity).await?;
+
+        let create_op = create_op.as_ref();
+        let delete_op = delete_op.as_ref();
+        let update_op = update_op.as_ref();
+
+        let last_extend_expires_at = repository::logs::find_latest_extend_log(txn, entity)
+            .await?
+            .map(|v| decode_extend_log_data(&v.data))
+            .transpose()
+            .ok()
+            .flatten();
+
+        let data = match delete_op {
+            Some(_) => None,
+            None => update_op
+                .map(|v| v.operation.data().expect("Update op always has data"))
+                .or(create_op.map(|v| v.operation.data().expect("Create op always has data"))),
+        };
+
+        let status = match delete_op {
+            Some(x) if x.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS => {
+                EntityStatus::Expired
+            }
+            Some(_) => EntityStatus::Deleted,
+            _ => EntityStatus::Active,
+        };
+
+        let expires_at_block_number = match latest_op.operation {
+            OperationData::Create(_, _) => {
+                let op = create_op.expect("It's latest tx so it exists");
+                let btl = op.operation.btl().expect("Creates have BTL");
+                let create_tx = repository::blockscout::get_tx(txn, op.metadata.tx_hash)
+                    .await?
+                    .expect("If we have op, then we have tx");
+
+                // taking default for block number here might look bad, but if there's no block
+                // number it means that we had a chain reorg and tx was dropped. we're not handling it right
+                // now, or we would have dropped the create_tx, so it must still be in the queue - so it will
+                // be processed right after we finish with what we're doing here and we'll reprocess the
+                // expiration either way
+                create_tx.block_number.unwrap_or_default() + btl
+            }
+
+            OperationData::Update(_, _) => {
+                let op = update_op.expect("It's latest tx so it exists");
+                let btl = op.operation.btl().expect("Updates have BTL");
+                let update_tx = repository::blockscout::get_tx(txn, op.metadata.tx_hash)
+                    .await?
+                    .expect("If we have op, then we have tx");
+                update_tx.block_number.unwrap_or_default() + btl
+            }
+
+            OperationData::Delete => {
+                let op = delete_op.expect("It's latest tx so it exists");
+                let delete_tx = repository::blockscout::get_tx(txn, op.metadata.tx_hash)
+                    .await?
+                    .expect("If we have op, then we have tx");
+                delete_tx.block_number.unwrap_or_default()
+            }
+
+            OperationData::Extend(_) => last_extend_expires_at.expect("It's latest so it exists"),
+        };
+
+        let entity = Entity {
+            key: entity,
+            data: data.map(|v| v.to_owned()),
+            owner: latest_op.metadata.sender,
+            status,
+            created_at_tx_hash: create_op.map(|v| v.metadata.tx_hash),
+            last_updated_at_tx_hash: latest_op.metadata.tx_hash,
+            expires_at_block_number,
+        };
+
+        repository::entities::replace_entity(txn, entity).await?;
+        Ok(())
+    }
+
+    #[instrument(skip(self, txn))]
+    async fn reindex_entity<T: ConnectionTrait>(&self, txn: &T, entity: EntityKey) -> Result<()> {
+        match repository::operations::find_latest_operation(txn, entity).await? {
+            Some(latest_op) => {
+                self.reindex_entity_with_latest_operation(txn, latest_op, entity)
+                    .await?
+            }
+            None => repository::entities::drop_entity(txn, entity).await?,
+        }
         Ok(())
     }
 
@@ -605,9 +598,8 @@ impl Indexer {
             .await?;
 
         if latest_update {
-            type EventArgs = (U256, U256);
-            let (_, expires_at_block_number) = if let Ok(res) = EventArgs::abi_decode(&log.data) {
-                res
+            let expires_at_block_number = if let Ok(v) = decode_extend_log_data(&log.data) {
+                v
             } else {
                 tracing::warn!(data=?log.data, "Invalid GolemBaseStorageEntityBTLExtended event data encountered");
                 return Ok(());
@@ -618,7 +610,7 @@ impl Indexer {
                     key: entity_key,
                     extended_at: tx.hash,
                     sender: tx.from_address_hash,
-                    expires_at: expires_at_block_number.try_into().unwrap_or(u64::MAX),
+                    expires_at: expires_at_block_number,
                 },
             )
             .await?;

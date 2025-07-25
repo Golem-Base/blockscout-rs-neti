@@ -1,5 +1,7 @@
 use crate::types::{Bytes, EntityKey, TxHash};
 use alloy_primitives::U256;
+use alloy_sol_types::SolValue;
+use anyhow::Result;
 use golem_base_sdk::keccak256;
 
 pub fn entity_key(tx_hash: TxHash, data: Bytes, create_op_idx: u64) -> EntityKey {
@@ -12,6 +14,12 @@ pub fn entity_key(tx_hash: TxHash, data: Bytes, create_op_idx: u64) -> EntityKey
         .expect("Array index is always positive");
     buf.extend_from_slice(&idx.to_be_bytes::<32>());
     keccak256(buf)
+}
+
+pub fn decode_extend_log_data(data: &Bytes) -> Result<u64> {
+    type EventArgs = (U256, U256);
+    let (_, expires_at_block_number) = EventArgs::abi_decode(data)?;
+    Ok(expires_at_block_number.try_into()?)
 }
 
 #[cfg(test)]

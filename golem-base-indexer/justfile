@@ -18,6 +18,13 @@ test *args:
   env DATABASE_URL={{TEST_DATABASE_URL}} cargo test {{args}} -- --include-ignored --nocapture
   docker stop golem-base-indexer-postgres
 
+coverage *args:
+  - docker stop golem-base-indexer-postgres
+  docker run -p 8432:5432 --name golem-base-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
+  sleep 3
+  env DATABASE_URL={{TEST_DATABASE_URL}} cargo llvm-cov --open {{args}} -- --include-ignored
+  docker stop golem-base-indexer-postgres
+
 run:
     GOLEM_BASE_INDEXER__DATABASE__CONNECT__URL={{DATABASE_URL}} \
     GOLEM_BASE_INDEXER__DATABASE__RUN_MIGRATIONS=true \
