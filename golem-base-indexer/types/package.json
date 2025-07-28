@@ -6,7 +6,7 @@
   "types": "./dist/golem-base-indexer-proto/proto/v1/golem-base-indexer.d.ts",
   "scripts": {
     "build": "npm run compile:proto && npm run compile:ts",
-    "compile:proto": "mkdir -p ./dist && protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=snakeToCamel=false --ts_proto_opt=exportCommonSymbols=false --ts_proto_opt=stringEnums=true --ts_proto_opt=onlyTypes=true --ts_proto_opt=emitImportedFiles=false --proto_path=../ --proto_path=../../proto/ --ts_proto_out=./dist ../golem-base-indexer-proto/proto/v1/golem-base-indexer.proto",
+    "compile:proto": "mkdir -p ./dist && protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=snakeToCamel=false --ts_proto_opt=exportCommonSymbols=false --ts_proto_opt=stringEnums=true --ts_proto_opt=onlyTypes=true --ts_proto_opt=emitImportedFiles=false --ts_proto_opt=forceLong=string --proto_path=../ --proto_path=../../proto/ --ts_proto_out=./dist ../golem-base-indexer-proto/proto/v1/golem-base-indexer.proto",
     "compile:ts": "tsc --declaration ./dist/golem-base-indexer-proto/proto/v1/golem-base-indexer.ts"
   },
   "repository": {
