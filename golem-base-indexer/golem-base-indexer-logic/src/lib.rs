@@ -553,6 +553,14 @@ impl Indexer {
         tx_hash: TxHash,
         operation_index: u64,
     ) -> Result<bool> {
+        let entity = repository::entities::get_entity(txn, entity_key).await?;
+
+        if let Some(entity) = entity {
+            if !matches!(entity.status, EntityStatus::Active) {
+                return Ok(false);
+            }
+        }
+
         let latest_stored_update =
             repository::operations::get_latest_update(txn, entity_key).await?;
         let latest_stored_update = if let Some(update) = latest_stored_update {
