@@ -1,10 +1,10 @@
-FROM ghcr.io/blockscout/services-base:latest as chef
+FROM ghcr.io/blockscout/services-base:latest AS chef
 
 FROM chef AS plan
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM chef as cache
+FROM chef AS cache
 COPY --from=plan /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
