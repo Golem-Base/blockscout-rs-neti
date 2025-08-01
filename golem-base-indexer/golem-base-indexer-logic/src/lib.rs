@@ -116,6 +116,8 @@ impl Indexer {
             self.reindex_entity(&txn, entity).await?;
         }
 
+        repository::transactions::finish_tx_cleanup(&txn, tx_hash).await?;
+
         txn.commit().await?;
         Ok(())
     }
