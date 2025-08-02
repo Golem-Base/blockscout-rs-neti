@@ -6,11 +6,14 @@ use golem_base_indexer_entity::{
 use sea_orm::{
     prelude::*,
     ActiveValue::{NotSet, Set},
-    DbBackend, FromQueryResult, QueryOrder, Statement,
+    DbBackend, FromQueryResult, QueryOrder, QuerySelect, Statement,
 };
 use tracing::instrument;
 
-use crate::types::{BlockNumber, EntityKey, Operation, OperationData, OperationMetadata, TxHash};
+use crate::types::{
+    BlockNumber, EntityKey, Operation, OperationData, OperationMetadata, OperationsCount,
+    OperationsCounterFilter, OperationsFilter, PaginationMetadata, TxHash,
+};
 
 use super::sql;
 
@@ -19,6 +22,88 @@ pub struct FullOperationIndex {
     pub block_number: i32,
     pub transaction_index: i32,
     pub operation_index: i64,
+}
+
+#[derive(Debug)]
+pub struct DbOperationsFilter {
+    pub page: u64,
+    pub page_size: u64,
+    pub entity_key: Option<Vec<u8>>,
+    pub sender: Option<Vec<u8>>,
+    pub operation_type: Option<GolemBaseOperationType>,
+    pub block_hash: Option<Vec<u8>>,
+    pub transaction_hash: Option<Vec<u8>>,
+}
+
+#[derive(Debug)]
+pub struct DbOperationsCounterFilter {
+    pub entity_key: Option<Vec<u8>>,
+    pub sender: Option<Vec<u8>>,
+    pub block_hash: Option<Vec<u8>>,
+    pub transaction_hash: Option<Vec<u8>>,
+}
+
+#[derive(Debug, FromQueryResult)]
+struct OperationGroupCount {
+    operation: GolemBaseOperationType,
+    count: i64,
+}
+impl Default for OperationsCount {
+    fn default() -> Self {
+        Self {
+            create_count: 0,
+            update_count: 0,
+            delete_count: 0,
+            extend_count: 0,
+        }
+    }
+}
+
+impl From<Vec<OperationGroupCount>> for OperationsCount {
+    fn from(rows: Vec<OperationGroupCount>) -> Self {
+        let mut counts = Self::default();
+
+        for row in rows {
+            match row.operation {
+                GolemBaseOperationType::Create => counts.create_count = row.count as u64,
+                GolemBaseOperationType::Update => counts.update_count = row.count as u64,
+                GolemBaseOperationType::Delete => counts.delete_count = row.count as u64,
+                GolemBaseOperationType::Extend => counts.extend_count = row.count as u64,
+            }
+        }
+
+        counts
+    }
+}
+
+impl From<OperationsFilter> for DbOperationsFilter {
+    fn from(v: OperationsFilter) -> Self {
+        Self {
+            page: v.page.into(),
+            page_size: v.page_size.into(),
+            entity_key: v.entity_key.map(|key| key.as_slice().into()),
+            sender: v.sender.map(|s| s.as_slice().into()),
+            block_hash: v.block_hash.map(|hash| hash.as_slice().into()),
+            transaction_hash: v.transaction_hash.map(|hash| hash.as_slice().into()),
+            operation_type: v.operation_type.map(|op| match op {
+                OperationData::Create(_, _) => GolemBaseOperationType::Create,
+                OperationData::Update(_, _) => GolemBaseOperationType::Update,
+                OperationData::Delete => GolemBaseOperationType::Delete,
+                OperationData::Extend(_) => GolemBaseOperationType::Extend,
+            }),
+        }
+    }
+}
+
+impl From<OperationsCounterFilter> for DbOperationsCounterFilter {
+    fn from(v: OperationsCounterFilter) -> Self {
+        Self {
+            entity_key: v.entity_key.map(|key| key.as_slice().into()),
+            sender: v.sender.map(|s| s.as_slice().into()),
+            block_hash: v.block_hash.map(|hash| hash.as_slice().into()),
+            transaction_hash: v.transaction_hash.map(|hash| hash.as_slice().into()),
+        }
+    }
 }
 
 impl TryFrom<golem_base_operations::Model> for Operation {
@@ -149,16 +234,89 @@ pub async fn get_operation<T: ConnectionTrait>(
 }
 
 #[instrument(skip(db))]
-pub async fn list_operations<T: ConnectionTrait>(db: &T) -> Result<Vec<Operation>> {
-    golem_base_operations::Entity::find()
+pub async fn list_operations<T: ConnectionTrait>(
+    db: &T,
+    filter: DbOperationsFilter,
+) -> Result<(Vec<Operation>, PaginationMetadata)> {
+    let mut query = golem_base_operations::Entity::find();
+
+    if let Some(sender) = filter.sender {
+        query = query.filter(golem_base_operations::Column::Sender.eq(sender));
+    }
+    if let Some(operation_type) = filter.operation_type {
+        query = query.filter(golem_base_operations::Column::Operation.eq(operation_type));
+    }
+    if let Some(block_hash) = filter.block_hash {
+        query = query.filter(golem_base_operations::Column::BlockHash.eq(block_hash));
+    }
+    if let Some(transaction_hash) = filter.transaction_hash {
+        query = query.filter(golem_base_operations::Column::TransactionHash.eq(transaction_hash));
+    }
+
+    let paginator = query
         .order_by_asc(golem_base_operations::Column::TransactionHash)
         .order_by_asc(golem_base_operations::Column::Index)
-        .all(db)
+        .paginate(db, filter.page_size);
+
+    let total_items = paginator
+        .num_items()
         .await
-        .context("Failed to list operations")?
+        .context("Failed to count total items")?;
+    let total_pages = paginator
+        .num_pages()
+        .await
+        .context("Failed to count total pages")?;
+
+    let page_index = filter.page.saturating_sub(1);
+    let operations = paginator
+        .fetch_page(page_index)
+        .await
+        .context("Failed to fetch paged operations")?
         .into_iter()
         .map(Operation::try_from)
-        .collect()
+        .collect::<Result<Vec<_>, _>>()
+        .context("Failed to map operations")?;
+
+    let pagination = PaginationMetadata {
+        page: filter.page,
+        page_size: filter.page_size,
+        total_pages,
+        total_items,
+    };
+
+    Ok((operations, pagination))
+}
+
+#[instrument(skip(db))]
+pub async fn count_operations<T: ConnectionTrait>(
+    db: &T,
+    filter: DbOperationsCounterFilter,
+) -> Result<OperationsCount> {
+    let mut query = golem_base_operations::Entity::find().select_only();
+
+    if let Some(sender) = filter.sender {
+        query = query.filter(golem_base_operations::Column::Sender.eq(sender));
+    }
+    if let Some(block_hash) = filter.block_hash {
+        query = query.filter(golem_base_operations::Column::BlockHash.eq(block_hash));
+    }
+    if let Some(transaction_hash) = filter.transaction_hash {
+        query = query.filter(golem_base_operations::Column::TransactionHash.eq(transaction_hash));
+    }
+    if let Some(entity_key) = filter.entity_key {
+        query = query.filter(golem_base_operations::Column::EntityKey.eq(entity_key));
+    }
+
+    let rows: Vec<OperationGroupCount> = query
+        .column(golem_base_operations::Column::Operation)
+        .expr_as(Expr::cust("COUNT(*)"), "count")
+        .group_by(golem_base_operations::Column::Operation)
+        .into_model::<OperationGroupCount>()
+        .all(db)
+        .await
+        .context("Failed to count operations")?;
+
+    Ok(rows.into())
 }
 
 #[instrument(skip(db))]

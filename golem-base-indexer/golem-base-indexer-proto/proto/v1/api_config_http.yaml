@@ -6,6 +6,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntity
       get: /api/v1/entities/{key}
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.CountOperations
+      get: /api/v1/operations/count
+
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetOperation
       get: /api/v1/operations/{tx_hash}/{index}
 

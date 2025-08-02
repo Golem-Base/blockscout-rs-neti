@@ -1,7 +1,10 @@
 use crate::proto::{
     golem_base_indexer_service_server::GolemBaseIndexerService as GolemBaseIndexer, *,
 };
-use golem_base_indexer_logic::repository;
+use golem_base_indexer_logic::{
+    repository::{self},
+    types::{OperationsCounterFilter, OperationsFilter},
+};
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
@@ -97,17 +100,49 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
 
     async fn list_operations(
         &self,
-        _request: Request<ListOperationsRequest>,
+        request: Request<ListOperationsRequest>,
     ) -> Result<Response<ListOperationsResponse>, Status> {
-        let operations = repository::operations::list_operations(&*self.db)
-            .await
-            .map_err(|err| {
-                tracing::error!(?err, "failed to query operations");
-                Status::internal("failed to query operations")
-            })?;
+        let inner = request.into_inner();
+        let filter: OperationsFilter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid operations filter: {}", err))
+        })?;
+
+        let (operations, pagination) =
+            repository::operations::list_operations(&*self.db, filter.into())
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query operations");
+                    Status::internal("failed to query operations")
+                })?;
 
         let items = operations.into_iter().map(Into::into).collect();
+        let pagination = pagination.into();
 
-        Ok(Response::new(ListOperationsResponse { items }))
+        Ok(Response::new(ListOperationsResponse {
+            items,
+            // for some reason, the protobuf forces pagination to be an option
+            pagination: Some(pagination),
+        }))
+    }
+
+    async fn count_operations(
+        &self,
+        request: Request<CountOperationsRequest>,
+    ) -> Result<Response<CountOperationsResponse>, Status> {
+        let inner = request.into_inner();
+        let filter: OperationsCounterFilter = inner
+            .try_into()
+            .map_err(|e| Status::invalid_argument(format!("Invalid operations filter: {}", e)))?;
+
+        let operations_count = repository::operations::count_operations(&*self.db, filter.into())
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to count operations");
+                Status::internal("failed to count operations")
+            })?;
+
+        let operations_count = operations_count.into();
+
+        Ok(Response::new(operations_count))
     }
 }

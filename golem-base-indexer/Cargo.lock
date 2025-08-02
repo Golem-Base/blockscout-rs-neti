@@ -2929,6 +2929,7 @@ dependencies = [
  "actix-prost-build",
  "actix-prost-macros",
  "actix-web",
+ "anyhow",
  "const-hex",
  "golem-base-indexer-logic",
  "prost",

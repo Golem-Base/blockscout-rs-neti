@@ -11,6 +11,8 @@ service GolemBaseIndexerService {
   
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse);
   rpc ListOperations(ListOperationsRequest) returns (ListOperationsResponse);
+
+  rpc CountOperations(CountOperationsRequest) returns (CountOperationsResponse);
 }
 
 message GetEntityRequest {
@@ -32,12 +34,41 @@ message ListEntitiesResponse {
 }
 
 message ListOperationsRequest {
-  // FIXME add filtering & paging options
+  OperationType operation = 1;
+  optional uint64 page = 2;
+  optional uint64 page_size = 3;
+  optional string block_hash = 4;
+  optional string transaction_hash = 5;
+  optional string sender = 6;
+  optional string entity_key = 7;
 }
 
 message ListOperationsResponse {
   repeated Operation items = 1;
-  // FIXME add pagination metadata
+  Pagination pagination = 2;
+}
+
+message Pagination {
+  uint64 page = 1;
+  uint64 page_size = 2;
+  uint64 total_pages = 3;
+  uint64 total_items = 4;
+}
+
+message CountOperationsRequest {
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
+  optional string block_hash = 3;
+  optional string transaction_hash = 4;
+  optional string sender = 5;
+  optional string entity_key = 6;
+}
+
+message CountOperationsResponse {
+  uint64 create_count = 1;
+  uint64 update_count = 2;
+  uint64 delete_count = 3;
+  uint64 extend_count = 4;
 }
 
 enum EntityStatus {
@@ -89,10 +120,10 @@ message FullEntity {
 }
 
 enum OperationType {
-  Create = 0;
-  Update = 1;
-  Delete = 2;
-  Extend = 3;
+  CREATE = 0;
+  UPDATE = 1;
+  DELETE = 2;
+  EXTEND = 3;
 }
 
 message Operation {

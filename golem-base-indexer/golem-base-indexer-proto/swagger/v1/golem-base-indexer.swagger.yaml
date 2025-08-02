@@ -55,6 +55,84 @@ paths:
           description: An unexpected error response.
           schema:
             $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: operation
+          in: query
+          required: false
+          type: string
+          enum:
+            - Create
+            - Update
+            - Delete
+            - Extend
+          default: Create
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: block_hash
+          in: query
+          required: false
+          type: string
+        - name: transaction_hash
+          in: query
+          required: false
+          type: string
+        - name: sender
+          in: query
+          required: false
+          type: string
+        - name: entity_key
+          in: query
+          required: false
+          type: string
+      tags:
+        - GolemBaseIndexerService
+  /api/v1/operations/count:
+    get:
+      operationId: GolemBaseIndexerService_CountOperations
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1CountOperationsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: block_hash
+          in: query
+          required: false
+          type: string
+        - name: transaction_hash
+          in: query
+          required: false
+          type: string
+        - name: sender
+          in: query
+          required: false
+          type: string
+        - name: entity_key
+          in: query
+          required: false
+          type: string
       tags:
         - GolemBaseIndexerService
   /api/v1/operations/{tx_hash}/{index}:
@@ -132,6 +210,21 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/protobufAny'
+  v1CountOperationsResponse:
+    type: object
+    properties:
+      create_count:
+        type: string
+        format: uint64
+      update_count:
+        type: string
+        format: uint64
+      delete_count:
+        type: string
+        format: uint64
+      extend_count:
+        type: string
+        format: uint64
   v1Entity:
     type: object
     properties:
@@ -219,7 +312,8 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1Operation'
-        title: FIXME add pagination metadata
+      pagination:
+        $ref: '#/definitions/v1Pagination'
   v1NumericAnnotation:
     type: object
     properties:
@@ -257,6 +351,21 @@ definitions:
       - Delete
       - Extend
     default: Create
+  v1Pagination:
+    type: object
+    properties:
+      page:
+        type: string
+        format: uint64
+      page_size:
+        type: string
+        format: uint64
+      total_pages:
+        type: string
+        format: uint64
+      total_items:
+        type: string
+        format: uint64
   v1StringAnnotation:
     type: object
     properties:
