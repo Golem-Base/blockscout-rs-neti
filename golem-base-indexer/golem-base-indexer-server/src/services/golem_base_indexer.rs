@@ -103,9 +103,9 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         request: Request<ListOperationsRequest>,
     ) -> Result<Response<ListOperationsResponse>, Status> {
         let inner = request.into_inner();
-        let filter: OperationsFilter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!("Invalid operations filter: {}", err))
-        })?;
+        let filter: OperationsFilter = inner
+            .try_into()
+            .map_err(|err| Status::invalid_argument(format!("Invalid operations filter: {err}")))?;
 
         let (operations, pagination) =
             repository::operations::list_operations(&*self.db, filter.into())
@@ -132,7 +132,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         let inner = request.into_inner();
         let filter: OperationsCounterFilter = inner
             .try_into()
-            .map_err(|e| Status::invalid_argument(format!("Invalid operations filter: {}", e)))?;
+            .map_err(|e| Status::invalid_argument(format!("Invalid operations filter: {e}")))?;
 
         let operations_count = repository::operations::count_operations(&*self.db, filter.into())
             .await

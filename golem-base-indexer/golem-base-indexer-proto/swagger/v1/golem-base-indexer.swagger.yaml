@@ -61,11 +61,11 @@ paths:
           required: false
           type: string
           enum:
-            - Create
-            - Update
-            - Delete
-            - Extend
-          default: Create
+            - CREATE
+            - UPDATE
+            - DELETE
+            - EXTEND
+          default: CREATE
         - name: page
           in: query
           required: false
@@ -346,11 +346,11 @@ definitions:
   v1OperationType:
     type: string
     enum:
-      - Create
-      - Update
-      - Delete
-      - Extend
-    default: Create
+      - CREATE
+      - UPDATE
+      - DELETE
+      - EXTEND
+    default: CREATE
   v1Pagination:
     type: object
     properties:

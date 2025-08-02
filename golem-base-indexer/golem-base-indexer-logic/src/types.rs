@@ -168,7 +168,7 @@ pub struct OperationsCounterFilter {
     pub transaction_hash: Option<TxHash>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct OperationsCount {
     pub create_count: u64,
     pub update_count: u64,

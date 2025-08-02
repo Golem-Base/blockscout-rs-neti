@@ -48,16 +48,6 @@ struct OperationGroupCount {
     operation: GolemBaseOperationType,
     count: i64,
 }
-impl Default for OperationsCount {
-    fn default() -> Self {
-        Self {
-            create_count: 0,
-            update_count: 0,
-            delete_count: 0,
-            extend_count: 0,
-        }
-    }
-}
 
 impl From<Vec<OperationGroupCount>> for OperationsCount {
     fn from(rows: Vec<OperationGroupCount>) -> Self {
@@ -79,8 +69,8 @@ impl From<Vec<OperationGroupCount>> for OperationsCount {
 impl From<OperationsFilter> for DbOperationsFilter {
     fn from(v: OperationsFilter) -> Self {
         Self {
-            page: v.page.into(),
-            page_size: v.page_size.into(),
+            page: v.page,
+            page_size: v.page_size,
             entity_key: v.entity_key.map(|key| key.as_slice().into()),
             sender: v.sender.map(|s| s.as_slice().into()),
             block_hash: v.block_hash.map(|hash| hash.as_slice().into()),
