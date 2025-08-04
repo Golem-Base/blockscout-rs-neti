@@ -2,8 +2,10 @@
 
 use const_hex::traits::ToHexExt;
 
+use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    Entity, EntityStatus, FullEntity, NumericAnnotation, Operation, OperationData, StringAnnotation,
+    Entity, EntityStatus, FullEntity, NumericAnnotation, Operation, OperationData, OperationsCount,
+    OperationsCounterFilter, OperationsFilter, PaginationMetadata, StringAnnotation,
 };
 
 pub mod blockscout {
@@ -78,6 +80,102 @@ impl From<&OperationData> for v1::OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
+        }
+    }
+}
+impl From<v1::OperationType> for OperationData {
+    fn from(value: v1::OperationType) -> Self {
+        match value {
+            v1::OperationType::Create => Self::Create(Vec::new().into(), 0),
+            v1::OperationType::Update => Self::Update(Vec::new().into(), 0),
+            v1::OperationType::Delete => Self::Delete,
+            v1::OperationType::Extend => Self::Extend(0),
+        }
+    }
+}
+
+impl TryFrom<v1::ListOperationsRequest> for OperationsFilter {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListOperationsRequest) -> Result<Self> {
+        let operation_type = v1::OperationType::try_from(request.operation)
+            .map_err(|_| anyhow!("Invalid operation"))?
+            .into();
+
+        Ok(Self {
+            page: request.page.unwrap_or(1).min(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+
+            operation_type: Some(operation_type),
+            block_hash: request
+                .block_hash
+                .map(|hash| hash.parse().map_err(|_| anyhow!("Invalid block_hash")))
+                .transpose()?,
+            transaction_hash: request
+                .transaction_hash
+                .map(|hash| {
+                    hash.parse()
+                        .map_err(|_| anyhow!("Invalid transaction_hash"))
+                })
+                .transpose()?,
+            sender: request
+                .sender
+                .map(|addr| addr.parse().map_err(|_| anyhow!("Invalid sender")))
+                .transpose()?,
+            entity_key: request
+                .entity_key
+                .map(|key| key.parse().map_err(|_| anyhow!("Invalid entity_key")))
+                .transpose()?,
+        })
+    }
+}
+
+impl From<PaginationMetadata> for v1::Pagination {
+    fn from(value: PaginationMetadata) -> Self {
+        Self {
+            page: value.page,
+            page_size: value.page_size,
+            total_pages: value.total_pages,
+            total_items: value.total_items,
+        }
+    }
+}
+
+impl TryFrom<v1::CountOperationsRequest> for OperationsCounterFilter {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::CountOperationsRequest) -> Result<Self> {
+        Ok(Self {
+            block_hash: request
+                .block_hash
+                .map(|hash| hash.parse().map_err(|_| anyhow!("Invalid block_hash")))
+                .transpose()?,
+            transaction_hash: request
+                .transaction_hash
+                .map(|hash| {
+                    hash.parse()
+                        .map_err(|_| anyhow!("Invalid transaction_hash"))
+                })
+                .transpose()?,
+            sender: request
+                .sender
+                .map(|addr| addr.parse().map_err(|_| anyhow!("Invalid sender")))
+                .transpose()?,
+            entity_key: request
+                .entity_key
+                .map(|key| key.parse().map_err(|_| anyhow!("Invalid entity_key")))
+                .transpose()?,
+        })
+    }
+}
+
+impl From<OperationsCount> for v1::CountOperationsResponse {
+    fn from(counts: OperationsCount) -> Self {
+        Self {
+            create_count: counts.create_count,
+            update_count: counts.update_count,
+            delete_count: counts.delete_count,
+            extend_count: counts.extend_count,
         }
     }
 }

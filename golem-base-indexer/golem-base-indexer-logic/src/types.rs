@@ -148,3 +148,38 @@ pub struct FullEntity {
     pub gas_used: CurrencyAmount,
     pub fees_paid: CurrencyAmount,
 }
+
+#[derive(Debug, Clone)]
+pub struct OperationsFilter {
+    pub page: u64,
+    pub page_size: u64,
+    pub entity_key: Option<EntityKey>,
+    pub operation_type: Option<OperationData>,
+    pub sender: Option<Address>,
+    pub block_hash: Option<BlockHash>,
+    pub transaction_hash: Option<TxHash>,
+}
+
+#[derive(Debug, Clone)]
+pub struct OperationsCounterFilter {
+    pub entity_key: Option<EntityKey>,
+    pub sender: Option<Address>,
+    pub block_hash: Option<BlockHash>,
+    pub transaction_hash: Option<TxHash>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct OperationsCount {
+    pub create_count: u64,
+    pub update_count: u64,
+    pub delete_count: u64,
+    pub extend_count: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct PaginationMetadata {
+    pub page: u64,
+    pub page_size: u64,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
