@@ -17,19 +17,22 @@ RUN cargo build --release
 
 FROM ubuntu:22.04 AS run
 RUN apt-get update \
-    && apt-get install -y libssl-dev ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+  && apt-get install -y libssl-dev ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 ENV APP_USER=app
 # Processes in a container should not run as root, so we need to create app user
 # https://medium.com/@mccode/processes-in-containers-should-not-run-as-root-2feae3f0df3b
 RUN groupadd $APP_USER \
-    && useradd -g $APP_USER $APP_USER
+  && useradd -g $APP_USER $APP_USER
 
 COPY --from=build /app/target/release/golem-base-indexer-server /app/golem-base-indexer-server
+COPY --from=build /app/golem-base-indexer-proto/swagger/v1/golem-base-indexer.swagger.yaml /app/golem-base-indexer.swagger.yaml
+
 # Change directory access for app user
 RUN chown -R $APP_USER:$APP_USER /app
 USER app
 
+ENV GOLEM_BASE_INDEXER__SWAGGER_PATH=/app/golem-base-indexer.swagger.yaml
 CMD ["./golem-base-indexer-server"]
