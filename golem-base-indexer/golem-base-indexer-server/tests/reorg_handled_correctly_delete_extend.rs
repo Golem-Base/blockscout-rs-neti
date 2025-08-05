@@ -28,7 +28,7 @@ async fn test_delete_extend_reorg_handling_works() {
       "status": "DELETED",
       "created_at_tx_hash": "0xae9430e348f74284c3c91443b134b835961901862dd6ef24f32e646f346449a1",
       "last_updated_at_tx_hash": "0xdac82fe3f61d518aefddb840e859699f50ab0713ce1ab0c0123ebbcee05fb325",
-      "expires_at_block_number": "125"
+      "expires_at_block_number": "3"
             }
         ]
     });

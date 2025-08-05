@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use blockscout_service_launcher::{test_database::TestDbGuard, test_server};
 use golem_base_indexer_server::Settings;
 use migration::{
@@ -6,6 +7,8 @@ use migration::{
 };
 use reqwest::Url;
 use sea_orm::{ConnectionTrait, Statement, TransactionTrait};
+
+pub mod sample;
 
 pub struct TestMigrator;
 #[async_trait::async_trait]

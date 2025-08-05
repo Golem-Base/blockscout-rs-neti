@@ -183,6 +183,7 @@ pub async fn delete_entity<T: ConnectionTrait>(
                     golem_base_entities::Column::Status,
                     golem_base_entities::Column::LastUpdatedAtTxHash,
                     golem_base_entities::Column::UpdatedAt,
+                    golem_base_entities::Column::ExpiresAtBlockNumber,
                 ])
                 .to_owned(),
         )

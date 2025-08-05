@@ -617,6 +617,7 @@ dependencies = [
  "const-hex",
  "derive_more 2.0.1",
  "foldhash",
+ "getrandom 0.3.3",
  "hashbrown 0.15.4",
  "indexmap 2.10.0",
  "itoa",
@@ -2945,6 +2946,8 @@ name = "golem-base-indexer-server"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "alloy-primitives",
+ "alloy-rlp",
  "anyhow",
  "async-trait",
  "blockscout-endpoint-swagger",
@@ -2954,6 +2957,7 @@ dependencies = [
  "golem-base-indexer-logic",
  "golem-base-indexer-migration",
  "golem-base-indexer-proto",
+ "golem-base-sdk",
  "hex",
  "pretty_assertions",
  "reqwest",
@@ -5175,6 +5179,9 @@ name = "rustc-hash"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
+dependencies = [
+ "rand 0.8.5",
+]
 
 [[package]]
 name = "rustc-hex"
