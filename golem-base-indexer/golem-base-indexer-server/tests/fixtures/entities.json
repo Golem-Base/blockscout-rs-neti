@@ -6,7 +6,7 @@
       "status": "DELETED",
       "created_at_tx_hash": "0xfa8bf8be71819ab01a6fa57f280540398bac5c8b74429c6f35e2eeb3c751f884",
       "last_updated_at_tx_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
-      "expires_at_block_number": "1002"
+      "expires_at_block_number": "6"
     },
     {
       "key": "0x4455e54a419991f302a495eea0be0fe37c121aae1f9c0048e7a1ec45900cd0cf",
