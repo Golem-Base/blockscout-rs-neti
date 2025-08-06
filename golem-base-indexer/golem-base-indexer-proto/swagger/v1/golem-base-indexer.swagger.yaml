@@ -338,7 +338,7 @@ definitions:
         format: uint64
       block_hash:
         type: string
-      transaction_Hash:
+      transaction_hash:
         type: string
       index:
         type: string

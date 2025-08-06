@@ -133,6 +133,6 @@ message Operation {
   optional string data = 4;
   optional uint64 btl = 5;
   string block_hash = 6;
-  string transaction_Hash = 7;
+  string transaction_hash = 7;
   uint64 index = 8;
 }
