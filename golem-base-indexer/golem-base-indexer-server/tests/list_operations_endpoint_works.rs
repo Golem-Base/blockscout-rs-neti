@@ -133,4 +133,49 @@ async fn test_list_operations_endpoint_works() {
     .await;
     let expected: serde_json::Value = empty_response.clone();
     assert_eq!(response, expected);
+
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/operations?operation=CREATE&page=2&page_size=2",
+    )
+    .await;
+    let expected_count = 2;
+    let expected_pagination = serde_json::json!({
+        "page": "2",
+        "page_size": "2",
+        "total_items": "6",
+        "total_pages": "3"
+    });
+    assert_eq!(response["items"].as_array().unwrap().len(), expected_count);
+    assert_eq!(response["pagination"], expected_pagination);
+
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/operations?operation=CREATE&page=4&page_size=2",
+    )
+    .await;
+    let expected_count = 0;
+    let expected_pagination = serde_json::json!({
+        "page": "4",
+        "page_size": "2",
+        "total_items": "6",
+        "total_pages": "3"
+    });
+    assert_eq!(response["items"].as_array().unwrap().len(), expected_count);
+    assert_eq!(response["pagination"], expected_pagination);
+
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/operations?operation=CREATE&page=0&page_size=256",
+    )
+    .await;
+    let expected_count = 6;
+    let expected_pagination = serde_json::json!({
+        "page": "1",
+        "page_size": "100",
+        "total_items": "6",
+        "total_pages": "1"
+    });
+    assert_eq!(response["items"].as_array().unwrap().len(), expected_count);
+    assert_eq!(response["pagination"], expected_pagination);
 }

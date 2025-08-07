@@ -103,7 +103,7 @@ impl TryFrom<v1::ListOperationsRequest> for OperationsFilter {
             .into();
 
         Ok(Self {
-            page: request.page.unwrap_or(1).min(1),
+            page: request.page.unwrap_or(1).max(1),
             page_size: request.page_size.unwrap_or(100).clamp(1, 100),
 
             operation_type: Some(operation_type),
