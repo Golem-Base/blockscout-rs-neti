@@ -13,8 +13,13 @@ use sea_orm::{
 use tracing::instrument;
 
 use crate::{
+    model::entity_history,
+    pagination::paginate_try_from,
     repository::sql,
-    types::{Address, BlockNumber, Bytes, Entity, EntityKey, EntityStatus, FullEntity, TxHash},
+    types::{
+        Address, BlockNumber, Bytes, Entity, EntityHistoryFilter, EntityKey, EntityStatus,
+        FullEntity, OperationData, PaginationMetadata, Timestamp, TxHash,
+    },
 };
 
 #[derive(Debug)]
@@ -87,6 +92,52 @@ impl TryFrom<golem_base_entities::Model> for Entity {
                 .transpose()?,
             last_updated_at_tx_hash: value.last_updated_at_tx_hash.as_slice().try_into()?,
             expires_at_block_number: value.expires_at_block_number.try_into()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EntityHistoryEntry {
+    pub entity_key: EntityKey,
+    pub block_number: BlockNumber,
+    pub transaction_hash: TxHash,
+    pub tx_index: u64,
+    pub op_index: u64,
+    pub block_timestamp: Timestamp,
+    pub sender: Address,
+    pub data: Option<Bytes>,
+    pub prev_data: Option<Bytes>,
+    pub operation: OperationData,
+    pub status: EntityStatus,
+    pub prev_status: Option<EntityStatus>,
+    pub expires_at_block_number: BlockNumber,
+    pub prev_expires_at_block_number: Option<BlockNumber>,
+    pub btl: Option<u64>,
+}
+
+impl TryFrom<entity_history::Model> for EntityHistoryEntry {
+    type Error = anyhow::Error;
+
+    fn try_from(value: entity_history::Model) -> Result<Self> {
+        Ok(Self {
+            entity_key: value.entity_key.as_slice().try_into()?,
+            block_number: value.block_number.try_into()?,
+            transaction_hash: value.transaction_hash.as_slice().try_into()?,
+            tx_index: value.tx_index.try_into()?,
+            op_index: value.op_index.try_into()?,
+            block_timestamp: value.block_timestamp.and_utc(),
+            sender: value.sender.as_slice().try_into()?,
+            operation: value.operation.into(),
+            data: value.data.map(|v| v.into()),
+            prev_data: value.prev_data.map(|v| v.into()),
+            status: value.status.into(),
+            prev_status: value.prev_status.map(|v| v.into()),
+            expires_at_block_number: value.expires_at_block_number.try_into()?,
+            prev_expires_at_block_number: value
+                .prev_expires_at_block_number
+                .map(|v| v.try_into())
+                .transpose()?,
+            btl: value.btl.map(|v| v.try_into()).transpose()?,
         })
     }
 }
@@ -352,4 +403,22 @@ pub async fn drop_entity<T: ConnectionTrait>(db: &T, entity: EntityKey) -> Resul
         .await
         .context("Failed to drop entity")?;
     Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn get_entity_history<T: ConnectionTrait>(
+    db: &T,
+    filter: EntityHistoryFilter,
+) -> Result<(Vec<EntityHistoryEntry>, PaginationMetadata)> {
+    let entity_key: Vec<u8> = filter.entity_key.as_slice().into();
+
+    let paginator = entity_history::Entity::find()
+        .filter(entity_history::Column::EntityKey.eq(entity_key))
+        .order_by_asc(entity_history::Column::BlockNumber)
+        .order_by_asc(entity_history::Column::TransactionHash)
+        .order_by_asc(entity_history::Column::TxIndex)
+        .order_by_asc(entity_history::Column::OpIndex)
+        .paginate(db, filter.page_size);
+
+    paginate_try_from(paginator, filter.page, filter.page_size).await
 }
