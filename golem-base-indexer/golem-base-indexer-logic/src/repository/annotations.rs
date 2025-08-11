@@ -35,6 +35,7 @@ impl TryFrom<FullStringAnnotation> for golem_base_string_annotations::ActiveMode
 
     fn try_from(value: FullStringAnnotation) -> Result<Self> {
         Ok(Self {
+            id: NotSet,
             entity_key: Set(value.entity_key.as_slice().into()),
             operation_tx_hash: Set(value.operation_tx_hash.as_slice().into()),
             operation_index: Set(value.operation_index.try_into()?),
@@ -51,6 +52,7 @@ impl TryFrom<FullNumericAnnotation> for golem_base_numeric_annotations::ActiveMo
 
     fn try_from(value: FullNumericAnnotation) -> Result<Self> {
         Ok(Self {
+            id: NotSet,
             entity_key: Set(value.entity_key.as_slice().into()),
             operation_tx_hash: Set(value.operation_tx_hash.as_slice().into()),
             operation_index: Set(value.operation_index.try_into()?),

@@ -10,6 +10,8 @@ pub struct Model {
     pub entity_key: Vec<u8>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub sender: Vec<u8>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub recipient: Vec<u8>,
     pub operation: GolemBaseOperationType,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub data: Option<Vec<u8>>,
@@ -26,16 +28,28 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub index: i64,
     pub inserted_at: DateTime,
-    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
-    pub recipient: Vec<u8>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::blocks::Entity",
+        from = "Column::BlockHash",
+        to = "super::blocks::Column::Hash",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    Blocks,
     #[sea_orm(has_many = "super::golem_base_numeric_annotations::Entity")]
     GolemBaseNumericAnnotations,
     #[sea_orm(has_many = "super::golem_base_string_annotations::Entity")]
     GolemBaseStringAnnotations,
+}
+
+impl Related<super::blocks::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Blocks.def()
+    }
 }
 
 impl Related<super::golem_base_numeric_annotations::Entity> for Entity {

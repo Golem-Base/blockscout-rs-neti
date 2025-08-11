@@ -5,19 +5,10 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "golem_base_string_annotations")]
 pub struct Model {
-    #[sea_orm(
-        primary_key,
-        auto_increment = false,
-        column_type = "VarBinary(StringLen::None)"
-    )]
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub entity_key: Vec<u8>,
-    #[sea_orm(
-        primary_key,
-        auto_increment = false,
-        column_type = "VarBinary(StringLen::None)"
-    )]
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub operation_tx_hash: Vec<u8>,
-    #[sea_orm(primary_key, auto_increment = false)]
     pub operation_index: i64,
     pub active: bool,
     #[sea_orm(column_type = "Text")]
@@ -25,6 +16,8 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub value: String,
     pub inserted_at: DateTime,
+    #[sea_orm(primary_key)]
+    pub id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -56,19 +49,6 @@ impl Related<super::golem_base_entities::Entity> for Entity {
 impl Related<super::golem_base_operations::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::GolemBaseOperations.def()
-    }
-}
-
-impl Related<super::golem_base_numeric_annotations::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::golem_base_operations::Relation::GolemBaseNumericAnnotations.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::golem_base_operations::Relation::GolemBaseStringAnnotations
-                .def()
-                .rev(),
-        )
     }
 }
 

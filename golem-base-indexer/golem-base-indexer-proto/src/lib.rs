@@ -107,9 +107,12 @@ impl TryFrom<v1::ListOperationsRequest> for OperationsFilter {
             page_size: request.page_size.unwrap_or(100).clamp(1, 100),
 
             operation_type: Some(operation_type),
-            block_hash: request
-                .block_hash
-                .map(|hash| hash.parse().map_err(|_| anyhow!("Invalid block_hash")))
+            block_number_or_hash: request
+                .block_number_or_hash
+                .map(|v| {
+                    v.parse()
+                        .map_err(|_| anyhow!("Invalid block_number_or_hash"))
+                })
                 .transpose()?,
             transaction_hash: request
                 .transaction_hash
@@ -146,9 +149,12 @@ impl TryFrom<v1::CountOperationsRequest> for OperationsCounterFilter {
 
     fn try_from(request: v1::CountOperationsRequest) -> Result<Self> {
         Ok(Self {
-            block_hash: request
-                .block_hash
-                .map(|hash| hash.parse().map_err(|_| anyhow!("Invalid block_hash")))
+            block_number_or_hash: request
+                .block_number_or_hash
+                .map(|v| {
+                    v.parse()
+                        .map_err(|_| anyhow!("Invalid block_number_or_hash"))
+                })
                 .transpose()?,
             transaction_hash: request
                 .transaction_hash

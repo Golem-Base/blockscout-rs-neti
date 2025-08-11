@@ -107,13 +107,16 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             .try_into()
             .map_err(|err| Status::invalid_argument(format!("Invalid operations filter: {err}")))?;
 
-        let (operations, pagination) =
-            repository::operations::list_operations(&*self.db, filter.into())
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query operations");
-                    Status::internal("failed to query operations")
-                })?;
+        let filter = filter
+            .try_into()
+            .map_err(|err| Status::invalid_argument(format!("Invalid operations filter: {err}")))?;
+
+        let (operations, pagination) = repository::operations::list_operations(&*self.db, filter)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query operations");
+                Status::internal("failed to query operations")
+            })?;
 
         let items = operations.into_iter().map(Into::into).collect();
         let pagination = pagination.into();
@@ -134,7 +137,11 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             .try_into()
             .map_err(|e| Status::invalid_argument(format!("Invalid operations filter: {e}")))?;
 
-        let operations_count = repository::operations::count_operations(&*self.db, filter.into())
+        let filter = filter
+            .try_into()
+            .map_err(|err| Status::invalid_argument(format!("Invalid operations filter: {err}")))?;
+
+        let operations_count = repository::operations::count_operations(&*self.db, filter)
             .await
             .map_err(|err| {
                 tracing::error!(?err, "failed to count operations");
