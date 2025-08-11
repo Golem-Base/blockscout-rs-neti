@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 
 pub use alloy_primitives::{Address, BlockHash, BlockNumber, TxHash, U256 as CurrencyAmount};
 pub use alloy_rlp::Bytes;
+use anyhow::{Context, Result};
 
 pub type Timestamp = DateTime<Utc>;
 
@@ -148,6 +149,26 @@ pub struct FullEntity {
     pub gas_used: CurrencyAmount,
     pub fees_paid: CurrencyAmount,
 }
+#[derive(Debug, Clone)]
+pub enum BlockNumberOrHashFilter {
+    Number(BlockNumber),
+    Hash(BlockHash),
+}
+
+impl core::str::FromStr for BlockNumberOrHashFilter {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        s.parse::<BlockHash>()
+            .context("Parsing as block hash")
+            .map(Self::Hash)
+            .or_else(|_| {
+                s.parse::<BlockNumber>()
+                    .map(Self::Number)
+                    .context("Parsing as block number")
+            })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct OperationsFilter {
@@ -156,7 +177,7 @@ pub struct OperationsFilter {
     pub entity_key: Option<EntityKey>,
     pub operation_type: Option<OperationData>,
     pub sender: Option<Address>,
-    pub block_hash: Option<BlockHash>,
+    pub block_number_or_hash: Option<BlockNumberOrHashFilter>,
     pub transaction_hash: Option<TxHash>,
 }
 
@@ -164,7 +185,7 @@ pub struct OperationsFilter {
 pub struct OperationsCounterFilter {
     pub entity_key: Option<EntityKey>,
     pub sender: Option<Address>,
-    pub block_hash: Option<BlockHash>,
+    pub block_number_or_hash: Option<BlockNumberOrHashFilter>,
     pub transaction_hash: Option<TxHash>,
 }
 

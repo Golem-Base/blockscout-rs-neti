@@ -76,7 +76,7 @@ paths:
           required: false
           type: string
           format: uint64
-        - name: block_hash
+        - name: block_number_or_hash
           in: query
           required: false
           type: string
@@ -117,7 +117,7 @@ paths:
           required: false
           type: string
           format: uint64
-        - name: block_hash
+        - name: block_number_or_hash
           in: query
           required: false
           type: string

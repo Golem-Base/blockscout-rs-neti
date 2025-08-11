@@ -46,7 +46,16 @@ async fn test_get_operations_count_endpoint_works() {
             }),
         ),
         (
-            "/api/v1/operations/count?block_hash=0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
+            "/api/v1/operations/count?block_number_or_hash=0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
+            serde_json::json!({
+                "create_count": "2",
+                "delete_count": "1",
+                "extend_count": "1",
+                "update_count": "2"
+            }),
+        ),
+        (
+            "/api/v1/operations/count?block_number_or_hash=6",
             serde_json::json!({
                 "create_count": "2",
                 "delete_count": "1",

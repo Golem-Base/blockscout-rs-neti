@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod blocks;
 pub mod golem_base_entities;
 pub mod golem_base_numeric_annotations;
 pub mod golem_base_operations;

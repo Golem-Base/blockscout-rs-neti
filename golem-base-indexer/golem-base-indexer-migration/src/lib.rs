@@ -4,6 +4,8 @@ use sea_orm_migration::sea_orm::{Statement, TransactionTrait};
 mod m20220101_000001_create_table;
 mod m20250802_103147_annotations_pk_fix;
 mod m20250807_143733_annotations_pk_fix2;
+mod m20250811_084027_annotations_pk_fix3;
+mod m20250811_091505_operations_reference_blocks;
 
 pub struct Migrator;
 
@@ -14,6 +16,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20220101_000001_create_table::Migration),
             Box::new(m20250802_103147_annotations_pk_fix::Migration),
             Box::new(m20250807_143733_annotations_pk_fix2::Migration),
+            Box::new(m20250811_084027_annotations_pk_fix3::Migration),
+            Box::new(m20250811_091505_operations_reference_blocks::Migration),
         ]
     }
 

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use golem_base_indexer_entity::{
-    golem_base_numeric_annotations, golem_base_operations, golem_base_string_annotations,
+    blocks, golem_base_numeric_annotations, golem_base_operations, golem_base_string_annotations,
     sea_orm_active_enums::GolemBaseOperationType,
 };
 use sea_orm::{
@@ -11,8 +11,8 @@ use sea_orm::{
 use tracing::instrument;
 
 use crate::types::{
-    BlockNumber, EntityKey, Operation, OperationData, OperationMetadata, OperationsCount,
-    OperationsCounterFilter, OperationsFilter, PaginationMetadata, TxHash,
+    BlockNumber, BlockNumberOrHashFilter, EntityKey, Operation, OperationData, OperationMetadata,
+    OperationsCount, OperationsCounterFilter, OperationsFilter, PaginationMetadata, TxHash,
 };
 
 use super::sql;
@@ -25,13 +25,19 @@ pub struct FullOperationIndex {
 }
 
 #[derive(Debug)]
+pub enum DbBlockNumberOrHash {
+    Number(i32),
+    Hash(Vec<u8>),
+}
+
+#[derive(Debug)]
 pub struct DbOperationsFilter {
     pub page: u64,
     pub page_size: u64,
     pub entity_key: Option<Vec<u8>>,
     pub sender: Option<Vec<u8>>,
     pub operation_type: Option<GolemBaseOperationType>,
-    pub block_hash: Option<Vec<u8>>,
+    pub block_number_or_hash: Option<DbBlockNumberOrHash>,
     pub transaction_hash: Option<Vec<u8>>,
 }
 
@@ -39,7 +45,7 @@ pub struct DbOperationsFilter {
 pub struct DbOperationsCounterFilter {
     pub entity_key: Option<Vec<u8>>,
     pub sender: Option<Vec<u8>>,
-    pub block_hash: Option<Vec<u8>>,
+    pub block_number_or_hash: Option<DbBlockNumberOrHash>,
     pub transaction_hash: Option<Vec<u8>>,
 }
 
@@ -47,6 +53,16 @@ pub struct DbOperationsCounterFilter {
 struct OperationGroupCount {
     operation: GolemBaseOperationType,
     count: i64,
+}
+
+impl TryFrom<BlockNumberOrHashFilter> for DbBlockNumberOrHash {
+    type Error = anyhow::Error;
+    fn try_from(value: BlockNumberOrHashFilter) -> Result<Self> {
+        Ok(match value {
+            BlockNumberOrHashFilter::Number(number) => Self::Number(number.try_into()?),
+            BlockNumberOrHashFilter::Hash(hash) => Self::Hash(hash.as_slice().into()),
+        })
+    }
 }
 
 impl From<Vec<OperationGroupCount>> for OperationsCount {
@@ -66,14 +82,16 @@ impl From<Vec<OperationGroupCount>> for OperationsCount {
     }
 }
 
-impl From<OperationsFilter> for DbOperationsFilter {
-    fn from(v: OperationsFilter) -> Self {
-        Self {
+impl TryFrom<OperationsFilter> for DbOperationsFilter {
+    type Error = anyhow::Error;
+
+    fn try_from(v: OperationsFilter) -> Result<Self> {
+        Ok(Self {
             page: v.page,
             page_size: v.page_size,
             entity_key: v.entity_key.map(|key| key.as_slice().into()),
             sender: v.sender.map(|s| s.as_slice().into()),
-            block_hash: v.block_hash.map(|hash| hash.as_slice().into()),
+            block_number_or_hash: v.block_number_or_hash.map(TryInto::try_into).transpose()?,
             transaction_hash: v.transaction_hash.map(|hash| hash.as_slice().into()),
             operation_type: v.operation_type.map(|op| match op {
                 OperationData::Create(_, _) => GolemBaseOperationType::Create,
@@ -81,18 +99,20 @@ impl From<OperationsFilter> for DbOperationsFilter {
                 OperationData::Delete => GolemBaseOperationType::Delete,
                 OperationData::Extend(_) => GolemBaseOperationType::Extend,
             }),
-        }
+        })
     }
 }
 
-impl From<OperationsCounterFilter> for DbOperationsCounterFilter {
-    fn from(v: OperationsCounterFilter) -> Self {
-        Self {
+impl TryFrom<OperationsCounterFilter> for DbOperationsCounterFilter {
+    type Error = anyhow::Error;
+
+    fn try_from(v: OperationsCounterFilter) -> Result<Self> {
+        Ok(Self {
             entity_key: v.entity_key.map(|key| key.as_slice().into()),
             sender: v.sender.map(|s| s.as_slice().into()),
-            block_hash: v.block_hash.map(|hash| hash.as_slice().into()),
+            block_number_or_hash: v.block_number_or_hash.map(TryInto::try_into).transpose()?,
             transaction_hash: v.transaction_hash.map(|hash| hash.as_slice().into()),
-        }
+        })
     }
 }
 
@@ -236,9 +256,18 @@ pub async fn list_operations<T: ConnectionTrait>(
     if let Some(operation_type) = filter.operation_type {
         query = query.filter(golem_base_operations::Column::Operation.eq(operation_type));
     }
-    if let Some(block_hash) = filter.block_hash {
-        query = query.filter(golem_base_operations::Column::BlockHash.eq(block_hash));
-    }
+    query = match filter.block_number_or_hash {
+        Some(DbBlockNumberOrHash::Number(number)) => query
+            .join(
+                sea_orm::JoinType::LeftJoin,
+                golem_base_operations::Relation::Blocks.def(),
+            )
+            .filter(blocks::Column::Number.eq(number)),
+        Some(DbBlockNumberOrHash::Hash(hash)) => {
+            query.filter(golem_base_operations::Column::BlockHash.eq(hash))
+        }
+        _ => query,
+    };
     if let Some(transaction_hash) = filter.transaction_hash {
         query = query.filter(golem_base_operations::Column::TransactionHash.eq(transaction_hash));
     }
@@ -287,9 +316,18 @@ pub async fn count_operations<T: ConnectionTrait>(
     if let Some(sender) = filter.sender {
         query = query.filter(golem_base_operations::Column::Sender.eq(sender));
     }
-    if let Some(block_hash) = filter.block_hash {
-        query = query.filter(golem_base_operations::Column::BlockHash.eq(block_hash));
-    }
+    query = match filter.block_number_or_hash {
+        Some(DbBlockNumberOrHash::Number(number)) => query
+            .join(
+                sea_orm::JoinType::LeftJoin,
+                golem_base_operations::Relation::Blocks.def(),
+            )
+            .filter(blocks::Column::Number.eq(number)),
+        Some(DbBlockNumberOrHash::Hash(hash)) => {
+            query.filter(golem_base_operations::Column::BlockHash.eq(hash))
+        }
+        _ => query,
+    };
     if let Some(transaction_hash) = filter.transaction_hash {
         query = query.filter(golem_base_operations::Column::TransactionHash.eq(transaction_hash));
     }
