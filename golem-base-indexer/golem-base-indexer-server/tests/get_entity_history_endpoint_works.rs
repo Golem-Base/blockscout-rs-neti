@@ -18,7 +18,6 @@ async fn test_get_entity_history_endpoint_works() {
         .unwrap();
 
     let entity_key = "0x9eac1ce575a48fc3dff0b2c68b9025c5645b12b148106546e723ff4372dfa1ba";
-
     let response: serde_json::Value =
         test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}/history"))
             .await;
@@ -64,7 +63,6 @@ async fn test_get_entity_history_endpoint_works() {
     );
 
     let entity_key = "0x901799b2f558af736716b4dc4427424e1d07d420cbb8bc53ba15489c5727e84b";
-
     let response: serde_json::Value =
         test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}/history"))
             .await;
@@ -108,6 +106,17 @@ async fn test_get_entity_history_endpoint_works() {
                 "op_index": "5",
         }])
     );
+
+    let entity_key = "0x9eac1ce575a48fc3dff0b2c68b9025c5645b12b148106546e723ff4372dfa1ba";
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        &format!("/api/v1/entities/{entity_key}/history?page=2&page_size=1"),
+    )
+    .await;
+
+    assert_eq!(response["items"].as_array().unwrap().len(), 1);
+    assert_eq!(response["pagination"]["page"], "2");
+    assert_eq!(response["pagination"]["page_size"], "1");
 }
 
 fn one_page_default_pagination(expected_total_items: u64) -> serde_json::Value {

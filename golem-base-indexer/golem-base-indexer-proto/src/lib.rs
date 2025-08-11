@@ -251,7 +251,7 @@ impl TryFrom<v1::GetEntityHistoryRequest> for EntityHistoryFilter {
 
     fn try_from(request: v1::GetEntityHistoryRequest) -> Result<Self> {
         Ok(Self {
-            page: request.page.unwrap_or(1).min(1),
+            page: request.page.unwrap_or(1).max(1),
             page_size: request.page_size.unwrap_or(100).clamp(1, 100),
             entity_key: request
                 .key
