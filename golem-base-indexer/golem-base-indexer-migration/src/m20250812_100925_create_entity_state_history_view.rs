@@ -9,18 +9,18 @@ impl MigrationTrait for Migration {
         let sql = r#"
 CREATE OR REPLACE VIEW golem_base_entity_history AS
 WITH 
-entity_state AS (
+entity_state_raw AS (
   SELECT
     o.entity_key,
     t.block_number,
-    o.transaction_hash as transaction_hash,
-    t.index as tx_index,
-    o.index as op_index,
-    o.inserted_at as op_inserted_at,
-    b.timestamp as block_timestamp,
-    o.sender as sender,
+    o.transaction_hash AS transaction_hash,
+    t.index AS tx_index,
+    o.index AS op_index,
+    o.inserted_at AS op_inserted_at,
+    b.timestamp AS block_timestamp,
+    o.sender AS sender,
     o.operation AS operation,
-    o.data as data,
+    o.data AS original_data,
     o.btl AS btl,
 
     CASE
@@ -42,6 +42,26 @@ entity_state AS (
   JOIN blocks b ON t.block_number = b.number
 ),
 
+entity_state AS (
+  SELECT
+    esr.*,
+    COALESCE(esr.original_data, latest_data.data) AS data
+  FROM 
+    entity_state_raw esr
+  LEFT JOIN LATERAL (
+    SELECT prev.original_data AS data
+    FROM entity_state_raw prev
+  WHERE prev.entity_key = esr.entity_key
+    AND prev.original_data IS NOT NULL
+    AND (
+      (prev.block_number, prev.tx_index, prev.op_index, prev.op_inserted_at) < 
+      (esr.block_number, esr.tx_index, esr.op_index, esr.op_inserted_at)
+    )
+    ORDER BY prev.block_number DESC, prev.tx_index DESC, prev.op_index DESC, prev.op_inserted_at DESC
+    LIMIT 1
+  ) latest_data ON true
+),
+
 entity_state_diff AS (
   SELECT 
     es.*,
@@ -57,7 +77,7 @@ entity_state_diff AS (
     PARTITION BY es.entity_key
     ORDER BY es.block_number, es.tx_index, es.op_index, es.op_inserted_at
   )
-)
+) 
 
 SELECT
   entity_key,
@@ -77,12 +97,6 @@ SELECT
   prev_expires_at_block_number
 FROM
   entity_state_diff
-WHERE 
-(
-  data IS DISTINCT FROM prev_data 
-  OR status IS DISTINCT FROM prev_status 
-  OR expires_at_block_number IS DISTINCT FROM prev_expires_at_block_number
-)
 ORDER BY
   block_number,
   tx_index,

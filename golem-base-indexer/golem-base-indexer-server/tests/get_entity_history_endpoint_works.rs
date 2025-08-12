@@ -12,10 +12,8 @@ async fn test_get_entity_history_endpoint_works() {
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
     helpers::load_data(&*client, include_str!("fixtures/sample_data.sql")).await;
 
-    Indexer::new(client, Default::default())
-        .tick()
-        .await
-        .unwrap();
+    let indexer = Indexer::new(client.clone(), Default::default());
+    indexer.tick().await.unwrap();
 
     let entity_key = "0x9eac1ce575a48fc3dff0b2c68b9025c5645b12b148106546e723ff4372dfa1ba";
     let response: serde_json::Value =
@@ -98,7 +96,7 @@ async fn test_get_entity_history_endpoint_works() {
                 "prev_status": "ACTIVE",
                 "sender": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
                 "operation": "EXTEND",
-                "data": null,
+                "data": "0x6461746120746861742077696C6C20626520657874656E646564",
                 "prev_data": "0x6461746120746861742077696C6C20626520657874656E646564",
                 "btl": "2001",
                 "expires_at_block_number": "2007",
