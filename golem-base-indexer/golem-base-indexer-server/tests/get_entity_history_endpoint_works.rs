@@ -1,8 +1,16 @@
 mod helpers;
 
+use alloy_primitives::Address;
 use blockscout_service_launcher::test_server;
-use golem_base_indexer_logic::Indexer;
-use pretty_assertions::assert_eq;
+use bytes::Bytes;
+use golem_base_indexer_logic::{types::EntityKey, Indexer};
+use golem_base_sdk::entity::{EncodableGolemBaseTransaction, Extend, Update};
+
+use crate::helpers::{
+    assert_json::{assert_fields, assert_fields_array},
+    sample::{Block, Transaction},
+    utils::bytes_to_hex,
+};
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
@@ -10,118 +18,173 @@ async fn test_get_entity_history_endpoint_works() {
     let db = helpers::init_db("test", "get_entity_history_endpoint_works").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
-    helpers::load_data(&*client, include_str!("fixtures/sample_data.sql")).await;
+    let entity_key = EntityKey::random();
+    let sender = Address::random();
 
     let indexer = Indexer::new(client.clone(), Default::default());
     indexer.tick().await.unwrap();
 
-    let entity_key = "0x9eac1ce575a48fc3dff0b2c68b9025c5645b12b148106546e723ff4372dfa1ba";
+    let data: Bytes = b"data".as_slice().into();
+    let data_hex = bytes_to_hex(&data);
+    let extend_by = 123;
+
+    helpers::sample::insert_data(
+        &*client,
+        Block {
+            number: 1,
+            transactions: vec![Transaction {
+                sender,
+                operations: EncodableGolemBaseTransaction {
+                    updates: vec![Update {
+                        entity_key,
+                        btl: 100,
+                        data: data.clone(),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+            }],
+        },
+    )
+    .await
+    .unwrap();
+
+    indexer.tick().await.unwrap();
+
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}")).await;
+
+    assert_fields(
+        &response,
+        serde_json::json!({
+            "key": entity_key.to_string(),
+            "data": data_hex,
+            "data_size": "4",
+            "expires_at_block_number": "101",
+            "status": "ACTIVE",
+        }),
+    );
+
+    helpers::sample::insert_data(
+        &*client,
+        Block {
+            number: 2,
+            transactions: vec![Transaction {
+                sender,
+                operations: EncodableGolemBaseTransaction {
+                    extensions: vec![Extend {
+                        entity_key,
+                        number_of_blocks: extend_by,
+                    }],
+                    ..Default::default()
+                },
+            }],
+        },
+    )
+    .await
+    .unwrap();
+
+    indexer.tick().await.unwrap();
+
+    helpers::sample::insert_data(
+        &*client,
+        Block {
+            number: 3,
+            transactions: vec![Transaction {
+                sender,
+                operations: EncodableGolemBaseTransaction {
+                    deletes: vec![entity_key],
+                    ..Default::default()
+                },
+            }],
+        },
+    )
+    .await
+    .unwrap();
+
+    indexer.tick().await.unwrap();
+
     let response: serde_json::Value =
         test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}/history"))
             .await;
 
-    assert_eq!(response["pagination"], one_page_default_pagination(2));
-    assert_eq!(
-        response["items"],
-        serde_json::json!([
-            {
-                "entity_key": entity_key,
-                "block_timestamp": "2025-07-22T11:31:31+00:00",
-                "block_number": "3",
-                "transaction_hash": "0xe6f8d9804b3c90d037ada0f2becec32375fab8a76a813df9e589d7729302d8e9",
-                "tx_index": "1",
-                "status": "ACTIVE",
-                "prev_status": null,
-                "sender": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
-                "operation": "CREATE",
-                "data": "0x6461746120746861742077696C6C2062652075706461746564",
-                "prev_data": null,
-                "btl": "1000",
-                "expires_at_block_number": "1003",
-                "prev_expires_at_block_number": null,
-                "op_index": "0",
-            },
-            {
-                "entity_key": entity_key,
-                "block_timestamp": "2025-07-22T11:31:34+00:00",
-                "block_number": "6",
-                "transaction_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
-                "tx_index": "1",
-                "status": "ACTIVE",
-                "prev_status": "ACTIVE",
-                "sender": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
+    assert_fields(
+        &response["pagination"],
+        serde_json::json!({
+            "page": "1",
+            "page_size": "100",
+            "total_items": "3",
+            "total_pages": "1",
+        }),
+    );
+
+    assert_fields_array(
+        &response["items"],
+        vec![
+            serde_json::json!({
+                "entity_key": entity_key.to_string(),
                 "operation": "UPDATE",
-                "data": "0x757064617465642064617461",
-                "prev_data": "0x6461746120746861742077696C6C2062652075706461746564",
-                "btl": "2000",
-                "expires_at_block_number": "2006",
-                "prev_expires_at_block_number": "1003",
-                "op_index": "3",
-        }])
-    );
-
-    let entity_key = "0x901799b2f558af736716b4dc4427424e1d07d420cbb8bc53ba15489c5727e84b";
-    let response: serde_json::Value =
-        test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}/history"))
-            .await;
-
-    assert_eq!(response["pagination"], one_page_default_pagination(2));
-    assert_eq!(
-        response["items"],
-        serde_json::json!([
-            {
-                "entity_key": entity_key,
-                "block_timestamp": "2025-07-22T11:31:33+00:00",
-                "block_number": "5",
-                "transaction_hash": "0xcda0828e3bddc077c05487533aef77fc52f417e1beccea1962996a23de3e32f5",
-                "tx_index": "1",
                 "status": "ACTIVE",
                 "prev_status": null,
-                "sender": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
-                "operation": "CREATE",
-                "data": "0x6461746120746861742077696C6C20626520657874656E646564",
+                "data": data_hex,
                 "prev_data": null,
-                "btl": "1000",
-                "expires_at_block_number": "1005",
+                "block_number": "1",
+                "btl": "100",
+                "expires_at_block_number": "101",
                 "prev_expires_at_block_number": null,
-                "op_index": "0",
-            },
-            {
-                "entity_key": entity_key,
-                "block_timestamp": "2025-07-22T11:31:34+00:00",
-                "block_number": "6",
-                "transaction_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
-                "tx_index": "1",
-                "status": "ACTIVE",
-                "prev_status": "ACTIVE",
-                "sender": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
+            }),
+            serde_json::json!({
+                "entity_key": entity_key.to_string(),
                 "operation": "EXTEND",
-                "data": "0x6461746120746861742077696C6C20626520657874656E646564",
-                "prev_data": "0x6461746120746861742077696C6C20626520657874656E646564",
-                "btl": "2001",
-                "expires_at_block_number": "2007",
-                "prev_expires_at_block_number": "1005",
-                "op_index": "5",
-        }])
+                "block_number": "2",
+                "data": data_hex,
+                "prev_data": data_hex,
+                "expires_at_block_number": format!("{}", 101 + extend_by),
+                "prev_expires_at_block_number": "101",
+            }),
+            serde_json::json!({
+                "entity_key": entity_key.to_string(),
+                "operation": "DELETE",
+                "status": "EXPIRED",
+                "prev_status": "ACTIVE",
+                "data": null,
+                "prev_data": data_hex,
+                "block_number": "3",
+                "btl": null,
+                "expires_at_block_number": "3",
+                "prev_expires_at_block_number": "224",
+            }),
+        ],
     );
 
-    let entity_key = "0x9eac1ce575a48fc3dff0b2c68b9025c5645b12b148106546e723ff4372dfa1ba";
     let response: serde_json::Value = test_server::send_get_request(
         &base,
         &format!("/api/v1/entities/{entity_key}/history?page=2&page_size=1"),
     )
     .await;
 
-    assert_eq!(response["items"].as_array().unwrap().len(), 1);
-    assert_eq!(response["pagination"]["page"], "2");
-    assert_eq!(response["pagination"]["page_size"], "1");
-}
+    assert_fields(
+        &response["pagination"],
+        serde_json::json!({
+            "page": "2",
+            "page_size": "1",
+            "total_items": "3",
+            "total_pages": "3",
+        }),
+    );
 
-fn one_page_default_pagination(expected_total_items: u64) -> serde_json::Value {
-    serde_json::json!({
-        "page": "1",
-        "page_size": "100",
-        "total_items": expected_total_items.to_string(),
-        "total_pages": "1"
-    })
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}")).await;
+
+    assert_fields(
+        &response,
+        serde_json::json!({
+            "key": entity_key.to_string(),
+            "data": null,
+            "data_size": null,
+            "btl": null,
+            "expires_at_block_number": "3",
+            "status": "DELETED",
+        }),
+    );
 }

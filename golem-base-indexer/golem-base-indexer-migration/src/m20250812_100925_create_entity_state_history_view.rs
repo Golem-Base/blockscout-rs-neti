@@ -28,14 +28,7 @@ entity_state_raw AS (
         THEN 'expired'
       WHEN o.operation = 'delete' THEN 'deleted'
       ELSE 'active'
-    END AS status,
-
-    CASE 
-      WHEN o.operation IN ('create', 'update', 'extend') 
-        THEN t.block_number + o.btl
-      WHEN o.operation = 'delete' 
-        THEN t.block_number
-    END AS expires_at_block_number
+    END AS status
 
   FROM golem_base_operations o
   JOIN transactions t ON o.transaction_hash = t.hash
@@ -45,7 +38,13 @@ entity_state_raw AS (
 entity_state AS (
   SELECT
     esr.*,
-    COALESCE(esr.original_data, latest_data.data) AS data
+    CASE
+      WHEN 
+        esr.operation = 'delete' 
+      THEN NULL
+      ELSE 
+        COALESCE(esr.original_data, latest_data.data) 
+    END AS data
   FROM 
     entity_state_raw esr
   LEFT JOIN LATERAL (
@@ -62,6 +61,47 @@ entity_state AS (
   ) latest_data ON true
 ),
 
+entity_state_base_exp AS (
+  SELECT
+    es.*,
+    CASE
+      WHEN es.operation IN ('create', 'update')
+        THEN es.block_number + es.btl
+      ELSE NULL
+    END AS base_expires_at
+  FROM
+    entity_state es
+),
+
+entity_state_prev_exp AS (
+  SELECT
+    es.*,
+    LAG(es.base_expires_at) OVER w AS prev_expires_at
+  FROM
+    entity_state_base_exp es
+  WINDOW w AS (
+    PARTITION BY es.entity_key
+    ORDER BY es.block_number, es.tx_index, es.op_index, es.op_inserted_at
+  )
+),
+
+entity_state_final_exp AS (
+  SELECT
+    es.*,
+
+    CASE
+      WHEN es.operation IN ('create', 'update')
+        THEN es.base_expires_at
+      WHEN es.operation = 'extend'
+        THEN es.prev_expires_at + es.btl
+      WHEN es.operation = 'delete'
+        THEN es.block_number
+      ELSE NULL
+    END AS expires_at_block_number
+  FROM
+    entity_state_prev_exp es
+),
+
 entity_state_diff AS (
   SELECT 
     es.*,
@@ -69,15 +109,15 @@ entity_state_diff AS (
     LAG(es.operation) OVER w AS prev_operation,
     LAG(es.data) OVER w AS prev_data,
     LAG(es.status) OVER w AS prev_status,
-    LAG(expires_at_block_number) OVER w AS prev_expires_at_block_number
+    LAG(es.expires_at_block_number) OVER w AS prev_expires_at_block_number
 
   FROM
-    entity_state es
+    entity_state_final_exp es
   WINDOW w AS (
     PARTITION BY es.entity_key
     ORDER BY es.block_number, es.tx_index, es.op_index, es.op_inserted_at
   )
-) 
+)
 
 SELECT
   entity_key,
