@@ -39,7 +39,7 @@ entity_state_raw AS (
 
   FROM golem_base_operations o
   JOIN transactions t ON o.transaction_hash = t.hash
-  JOIN blocks b ON t.block_number = b.number
+  JOIN blocks b ON t.block_hash = b.hash
 ),
 
 entity_state AS (
