@@ -85,7 +85,6 @@ entity_state_group AS (
     ) OVER (
       PARTITION BY es.entity_key
       ORDER BY es.block_number, es.tx_index, es.op_index, es.op_inserted_at
-      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ) AS group_id
   FROM entity_state_base_exp es
 ),
@@ -107,7 +106,6 @@ entity_state_sum_group_exp AS (
     ) OVER (
       PARTITION BY entity_key, group_id
       ORDER BY block_number, tx_index, op_index, op_inserted_at
-      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ) AS group_exp_sum
   FROM entity_state_group es
 ),
