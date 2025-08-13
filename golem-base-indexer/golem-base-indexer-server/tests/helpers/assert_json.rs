@@ -30,3 +30,15 @@ pub fn assert_fields_array(actual: &Value, expected: Vec<Value>) {
         assert_fields(actual, expected.clone());
     }
 }
+
+/// Assert JSON object has specific keys
+pub fn assert_has_keys(actual: &Value, keys: &[&str]) {
+    let actual_obj = actual.as_object().expect("actual has to be an object");
+
+    for key in keys {
+        assert!(
+            actual_obj.contains_key(*key),
+            "key '{key}' not found in the JSON object"
+        );
+    }
+}

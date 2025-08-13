@@ -15,6 +15,8 @@ pub struct Model {
     pub op_index: i64,
     pub block_number: i32,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub block_hash: Vec<u8>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub transaction_hash: Vec<u8>,
     pub tx_index: i32,
     pub block_timestamp: DateTime,

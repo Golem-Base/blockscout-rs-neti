@@ -278,6 +278,7 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
         Self {
             entity_key: v.entity_key.to_string(),
             block_number: v.block_number,
+            block_hash: v.block_hash.to_string(),
             transaction_hash: v.transaction_hash.to_string(),
             tx_index: v.tx_index,
             op_index: v.op_index,

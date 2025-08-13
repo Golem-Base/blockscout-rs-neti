@@ -278,6 +278,8 @@ definitions:
       block_number:
         type: string
         format: uint64
+      block_hash:
+        type: string
       transaction_hash:
         type: string
       tx_index:

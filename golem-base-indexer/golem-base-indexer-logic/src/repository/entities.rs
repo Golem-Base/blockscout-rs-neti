@@ -17,8 +17,8 @@ use crate::{
     pagination::paginate_try_from,
     repository::sql,
     types::{
-        Address, BlockNumber, Bytes, Entity, EntityHistoryFilter, EntityKey, EntityStatus,
-        FullEntity, OperationData, PaginationMetadata, Timestamp, TxHash,
+        Address, BlockHash, BlockNumber, Bytes, Entity, EntityHistoryFilter, EntityKey,
+        EntityStatus, FullEntity, OperationData, PaginationMetadata, Timestamp, TxHash,
     },
 };
 
@@ -100,6 +100,7 @@ impl TryFrom<golem_base_entities::Model> for Entity {
 pub struct EntityHistoryEntry {
     pub entity_key: EntityKey,
     pub block_number: BlockNumber,
+    pub block_hash: BlockHash,
     pub transaction_hash: TxHash,
     pub tx_index: u64,
     pub op_index: u64,
@@ -122,6 +123,7 @@ impl TryFrom<entity_history::Model> for EntityHistoryEntry {
         Ok(Self {
             entity_key: value.entity_key.as_slice().try_into()?,
             block_number: value.block_number.try_into()?,
+            block_hash: value.block_hash.as_slice().try_into()?,
             transaction_hash: value.transaction_hash.as_slice().try_into()?,
             tx_index: value.tx_index.try_into()?,
             op_index: value.op_index.try_into()?,

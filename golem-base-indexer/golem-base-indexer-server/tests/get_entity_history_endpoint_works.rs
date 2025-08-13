@@ -7,7 +7,7 @@ use golem_base_indexer_logic::{types::EntityKey, Indexer};
 use golem_base_sdk::entity::{EncodableGolemBaseTransaction, Extend, Update};
 
 use crate::helpers::{
-    assert_json::{assert_fields, assert_fields_array},
+    assert_json::{assert_fields, assert_fields_array, assert_has_keys},
     sample::{Block, Transaction},
     utils::bytes_to_hex,
 };
@@ -122,6 +122,28 @@ async fn test_get_entity_history_endpoint_works() {
             "total_items": "4",
             "total_pages": "1",
         }),
+    );
+
+    assert_has_keys(
+        &response["items"][0],
+        &[
+            "entity_key",
+            "block_number",
+            "block_hash",
+            "transaction_hash",
+            "tx_index",
+            "op_index",
+            "block_timestamp",
+            "sender",
+            "operation",
+            "btl",
+            "data",
+            "prev_data",
+            "status",
+            "prev_status",
+            "expires_at_block_number",
+            "prev_expires_at_block_number",
+        ],
     );
 
     assert_fields_array(

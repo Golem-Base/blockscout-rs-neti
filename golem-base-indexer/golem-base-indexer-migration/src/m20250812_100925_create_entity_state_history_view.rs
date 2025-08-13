@@ -13,6 +13,7 @@ entity_state_raw AS (
   SELECT
     o.entity_key,
     t.block_number,
+    b.hash AS block_hash,
     o.transaction_hash AS transaction_hash,
     t.index AS tx_index,
     o.index AS op_index,
@@ -142,6 +143,7 @@ entity_state_diff AS (
 SELECT
   entity_key,
   block_number,
+  block_hash,
   transaction_hash,
   tx_index,
   op_index,
