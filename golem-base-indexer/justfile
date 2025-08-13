@@ -37,8 +37,8 @@ generate-entities:
   - docker stop golem-base-indexer-postgres
   docker run -p 8432:5432 --name golem-base-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
   sleep 3
-  docker exec -it golem-base-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres -c 'create table transactions (hash bytea primary key, to_address_hash bytea, status int, block_hash bytea)';
-  docker exec -it golem-base-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres -c 'create table blocks (hash bytea primary key, number bigint not null)';
+  docker exec -it golem-base-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres -c 'create table transactions (hash bytea primary key, to_address_hash bytea, status int, block_hash bytea, block_number integer, index integer)';
+  docker exec -it golem-base-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres -c 'create table blocks (hash bytea primary key, number bigint not null, timestamp timestamp without time zone not null)';
   env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli migrate -d golem-base-indexer-migration up
   env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli generate entity --ignore-tables golem_base_indexer_migrations --lib -o golem-base-indexer-entity/src
   cargo fmt -p golem-base-indexer-entity -- --config imports_granularity=Crate

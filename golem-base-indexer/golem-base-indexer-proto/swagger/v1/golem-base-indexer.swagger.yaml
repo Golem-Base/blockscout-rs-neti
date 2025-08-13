@@ -43,6 +43,35 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
+  /api/v1/entities/{key}/history:
+    get:
+      operationId: GolemBaseIndexerService_GetEntityHistory
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1GetEntityHistoryResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: key
+          in: path
+          required: true
+          type: string
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
   /api/v1/operations:
     get:
       operationId: GolemBaseIndexerService_ListOperations
@@ -241,6 +270,46 @@ definitions:
       expires_at_block_number:
         type: string
         format: uint64
+  v1EntityHistoryEntry:
+    type: object
+    properties:
+      entity_key:
+        type: string
+      block_number:
+        type: string
+        format: uint64
+      block_hash:
+        type: string
+      transaction_hash:
+        type: string
+      tx_index:
+        type: string
+        format: uint64
+      op_index:
+        type: string
+        format: uint64
+      block_timestamp:
+        type: string
+      sender:
+        type: string
+      operation:
+        $ref: '#/definitions/v1OperationType'
+      btl:
+        type: string
+      data:
+        type: string
+      prev_data:
+        type: string
+      status:
+        $ref: '#/definitions/v1EntityStatus'
+      prev_status:
+        type: string
+      expires_at_block_number:
+        type: string
+        format: uint64
+      prev_expires_at_block_number:
+        type: string
+        format: uint64
   v1EntityStatus:
     type: string
     enum:
@@ -290,6 +359,16 @@ definitions:
         type: string
       fees_paid:
         type: string
+  v1GetEntityHistoryResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1EntityHistoryEntry'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
   v1HealthCheckResponse:
     type: object
     properties:

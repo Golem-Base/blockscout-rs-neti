@@ -204,3 +204,10 @@ pub struct PaginationMetadata {
     pub total_pages: u64,
     pub total_items: u64,
 }
+
+#[derive(Debug, Clone)]
+pub struct EntityHistoryFilter {
+    pub entity_key: EntityKey,
+    pub page: u64,
+    pub page_size: u64,
+}

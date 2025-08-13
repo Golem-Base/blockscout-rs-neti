@@ -3,9 +3,13 @@
 use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
-use golem_base_indexer_logic::types::{
-    Entity, EntityStatus, FullEntity, NumericAnnotation, Operation, OperationData, OperationsCount,
-    OperationsCounterFilter, OperationsFilter, PaginationMetadata, StringAnnotation,
+use golem_base_indexer_logic::{
+    repository::entities::EntityHistoryEntry,
+    types::{
+        Entity, EntityHistoryFilter, EntityStatus, FullEntity, NumericAnnotation, Operation,
+        OperationData, OperationsCount, OperationsCounterFilter, OperationsFilter,
+        PaginationMetadata, StringAnnotation,
+    },
 };
 
 pub mod blockscout {
@@ -75,6 +79,16 @@ impl From<NumericAnnotation> for v1::NumericAnnotation {
 
 impl From<&OperationData> for v1::OperationType {
     fn from(value: &OperationData) -> Self {
+        match value {
+            OperationData::Create(_, _) => Self::Create,
+            OperationData::Update(_, _) => Self::Update,
+            OperationData::Delete => Self::Delete,
+            OperationData::Extend(_) => Self::Extend,
+        }
+    }
+}
+impl From<OperationData> for v1::OperationType {
+    fn from(value: OperationData) -> Self {
         match value {
             OperationData::Create(_, _) => Self::Create,
             OperationData::Update(_, _) => Self::Update,
@@ -228,6 +242,56 @@ impl From<Entity> for v1::Entity {
             created_at_tx_hash: entity.created_at_tx_hash.map(|v| v.to_string()),
             last_updated_at_tx_hash: entity.last_updated_at_tx_hash.to_string(),
             expires_at_block_number: entity.expires_at_block_number,
+        }
+    }
+}
+
+impl TryFrom<v1::GetEntityHistoryRequest> for EntityHistoryFilter {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::GetEntityHistoryRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+            entity_key: request
+                .key
+                .parse()
+                .map_err(|_| anyhow!("Invalid entity_key"))?,
+        })
+    }
+}
+
+pub fn logic_status_to_str(s: &EntityStatus) -> String {
+    match s {
+        EntityStatus::Active => "ACTIVE",
+        EntityStatus::Deleted => "DELETED",
+        EntityStatus::Expired => "EXPIRED",
+    }
+    .to_owned()
+}
+
+impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
+    fn from(v: EntityHistoryEntry) -> Self {
+        let status: v1::EntityStatus = v.status.into();
+        let operation: v1::OperationType = v.operation.into();
+
+        Self {
+            entity_key: v.entity_key.to_string(),
+            block_number: v.block_number,
+            block_hash: v.block_hash.to_string(),
+            transaction_hash: v.transaction_hash.to_string(),
+            tx_index: v.tx_index,
+            op_index: v.op_index,
+            block_timestamp: v.block_timestamp.to_rfc3339(),
+            sender: v.sender.to_checksum(None),
+            operation: operation.into(),
+            data: v.data.map(|v| v.encode_hex_upper_with_prefix()),
+            prev_data: v.prev_data.map(|v| v.encode_hex_upper_with_prefix()),
+            status: status.into(),
+            prev_status: v.prev_status.map(|s| logic_status_to_str(&s)),
+            btl: v.btl.map(|v| v.to_string()),
+            expires_at_block_number: v.expires_at_block_number,
+            prev_expires_at_block_number: v.prev_expires_at_block_number,
         }
     }
 }

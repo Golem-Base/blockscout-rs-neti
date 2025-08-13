@@ -24,6 +24,8 @@ use crate::{
 };
 
 mod golem_base;
+pub mod model;
+pub mod pagination;
 pub mod repository;
 pub mod types;
 mod well_known;

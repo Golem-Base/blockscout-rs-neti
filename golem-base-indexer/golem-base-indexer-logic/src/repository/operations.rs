@@ -10,9 +10,13 @@ use sea_orm::{
 };
 use tracing::instrument;
 
-use crate::types::{
-    BlockNumber, BlockNumberOrHashFilter, EntityKey, Operation, OperationData, OperationMetadata,
-    OperationsCount, OperationsCounterFilter, OperationsFilter, PaginationMetadata, TxHash,
+use crate::{
+    pagination::paginate_try_from,
+    types::{
+        BlockNumber, BlockNumberOrHashFilter, EntityKey, Operation, OperationData,
+        OperationMetadata, OperationsCount, OperationsCounterFilter, OperationsFilter,
+        PaginationMetadata, TxHash,
+    },
 };
 
 use super::sql;
@@ -169,6 +173,17 @@ impl From<&OperationData> for GolemBaseOperationType {
     }
 }
 
+impl From<GolemBaseOperationType> for OperationData {
+    fn from(value: GolemBaseOperationType) -> Self {
+        match value {
+            GolemBaseOperationType::Create => OperationData::Create(Vec::new().into(), 0),
+            GolemBaseOperationType::Update => OperationData::Update(Vec::new().into(), 0),
+            GolemBaseOperationType::Delete => OperationData::Delete,
+            GolemBaseOperationType::Extend => OperationData::Extend(0),
+        }
+    }
+}
+
 impl TryFrom<Operation> for golem_base_operations::ActiveModel {
     type Error = anyhow::Error;
     fn try_from(op: Operation) -> std::result::Result<Self, Self::Error> {
@@ -277,33 +292,7 @@ pub async fn list_operations<T: ConnectionTrait>(
         .order_by_asc(golem_base_operations::Column::Index)
         .paginate(db, filter.page_size);
 
-    let total_items = paginator
-        .num_items()
-        .await
-        .context("Failed to count total items")?;
-    let total_pages = paginator
-        .num_pages()
-        .await
-        .context("Failed to count total pages")?;
-
-    let page_index = filter.page.saturating_sub(1);
-    let operations = paginator
-        .fetch_page(page_index)
-        .await
-        .context("Failed to fetch paged operations")?
-        .into_iter()
-        .map(Operation::try_from)
-        .collect::<Result<Vec<_>, _>>()
-        .context("Failed to map operations")?;
-
-    let pagination = PaginationMetadata {
-        page: filter.page,
-        page_size: filter.page_size,
-        total_pages,
-        total_items,
-    };
-
-    Ok((operations, pagination))
+    paginate_try_from(paginator, filter.page, filter.page_size).await
 }
 
 #[instrument(skip(db))]

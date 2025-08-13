@@ -8,7 +8,9 @@ use migration::{
 use reqwest::Url;
 use sea_orm::{ConnectionTrait, Statement, TransactionTrait};
 
+pub mod assert_json;
 pub mod sample;
+pub mod utils;
 
 pub struct TestMigrator;
 #[async_trait::async_trait]
