@@ -72,10 +72,16 @@ async fn test_get_entity_history_endpoint_works() {
             transactions: vec![Transaction {
                 sender,
                 operations: EncodableGolemBaseTransaction {
-                    extensions: vec![Extend {
-                        entity_key,
-                        number_of_blocks: extend_by,
-                    }],
+                    extensions: vec![
+                        Extend {
+                            entity_key,
+                            number_of_blocks: extend_by,
+                        },
+                        Extend {
+                            entity_key,
+                            number_of_blocks: extend_by,
+                        },
+                    ],
                     ..Default::default()
                 },
             }],
@@ -113,7 +119,7 @@ async fn test_get_entity_history_endpoint_works() {
         serde_json::json!({
             "page": "1",
             "page_size": "100",
-            "total_items": "3",
+            "total_items": "4",
             "total_pages": "1",
         }),
     );
@@ -144,6 +150,15 @@ async fn test_get_entity_history_endpoint_works() {
             }),
             serde_json::json!({
                 "entity_key": entity_key.to_string(),
+                "operation": "EXTEND",
+                "block_number": "2",
+                "data": data_hex,
+                "prev_data": data_hex,
+                "expires_at_block_number": format!("{}", 101 + extend_by + extend_by),
+                "prev_expires_at_block_number": format!("{}", 101 + extend_by),
+            }),
+            serde_json::json!({
+                "entity_key": entity_key.to_string(),
                 "operation": "DELETE",
                 "status": "EXPIRED",
                 "prev_status": "ACTIVE",
@@ -152,7 +167,7 @@ async fn test_get_entity_history_endpoint_works() {
                 "block_number": "3",
                 "btl": null,
                 "expires_at_block_number": "3",
-                "prev_expires_at_block_number": "224",
+                "prev_expires_at_block_number": format!("{}", 101 + extend_by + extend_by),
             }),
         ],
     );
@@ -168,8 +183,8 @@ async fn test_get_entity_history_endpoint_works() {
         serde_json::json!({
             "page": "2",
             "page_size": "1",
-            "total_items": "3",
-            "total_pages": "3",
+            "total_items": "4",
+            "total_pages": "4",
         }),
     );
 

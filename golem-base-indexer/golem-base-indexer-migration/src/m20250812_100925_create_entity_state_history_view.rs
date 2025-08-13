@@ -66,40 +66,62 @@ entity_state_base_exp AS (
     es.*,
     CASE
       WHEN es.operation IN ('create', 'update')
-        THEN es.block_number + es.btl
+         THEN es.block_number + es.btl::bigint
       ELSE NULL
     END AS base_expires_at
-  FROM
-    entity_state es
+  FROM entity_state es
 ),
 
-entity_state_prev_exp AS (
+entity_state_group AS (
   SELECT
     es.*,
-    LAG(es.base_expires_at) OVER w AS prev_expires_at
-  FROM
-    entity_state_base_exp es
-  WINDOW w AS (
-    PARTITION BY es.entity_key
-    ORDER BY es.block_number, es.tx_index, es.op_index, es.op_inserted_at
-  )
+    -- increment group id for each create/update operation
+    SUM(
+      CASE 
+        WHEN es.operation IN ('create','update') 
+        THEN 1 
+        ELSE 0 
+      END
+    ) OVER (
+      PARTITION BY es.entity_key
+      ORDER BY es.block_number, es.tx_index, es.op_index, es.op_inserted_at
+      ROWS UNBOUNDED PRECEDING
+    ) AS group_id
+  FROM entity_state_base_exp es
+),
+
+entity_state_sum_group_exp AS (
+  SELECT
+    es.*,
+
+    MAX(base_expires_at) 
+    FILTER (WHERE base_expires_at IS NOT NULL)
+    OVER (PARTITION BY entity_key, group_id) AS group_base_expires_at,
+
+    SUM(
+      CASE 
+        WHEN operation = 'extend' 
+        THEN btl::bigint 
+        ELSE 0 
+      END
+    ) OVER (
+      PARTITION BY entity_key, group_id
+      ORDER BY block_number, tx_index, op_index, op_inserted_at
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS group_exp_sum
+  FROM entity_state_group es
 ),
 
 entity_state_final_exp AS (
   SELECT
     es.*,
-
     CASE
-      WHEN es.operation IN ('create', 'update')
-        THEN es.base_expires_at
-      WHEN es.operation = 'extend'
-        THEN es.prev_expires_at + es.btl
-      WHEN es.operation = 'delete'
-        THEN es.block_number
+      WHEN es.operation IN ('create','update') THEN es.base_expires_at
+      WHEN es.operation = 'extend' THEN es.group_base_expires_at + es.group_exp_sum
+      WHEN es.operation = 'delete' THEN es.block_number
       ELSE NULL
     END AS expires_at_block_number
-  FROM
-    entity_state_prev_exp es
+  FROM entity_state_sum_group_exp es
 ),
 
 entity_state_diff AS (
@@ -149,7 +171,7 @@ ORDER BY
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"
-            DROP VIEW IF EXISTS golem_base_entity_history;
+DROP VIEW IF EXISTS golem_base_entity_history;
         "#;
 
         crate::from_sql(manager, sql).await
