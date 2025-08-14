@@ -79,9 +79,9 @@ message CountOperationsResponse {
 }
 
 enum EntityStatus {
-  Active = 0;
-  Deleted = 1;
-  Expired = 2;
+  ACTIVE = 0;
+  DELETED = 1;
+  EXPIRED = 2;
 }
 
 message Entity {
