@@ -211,3 +211,10 @@ pub struct EntityHistoryFilter {
     pub page: u64,
     pub page_size: u64,
 }
+
+#[derive(Debug, Clone)]
+pub struct EntityOperationFilter {
+    pub entity_key: EntityKey,
+    pub tx_hash: TxHash,
+    pub op_index: u64,
+}

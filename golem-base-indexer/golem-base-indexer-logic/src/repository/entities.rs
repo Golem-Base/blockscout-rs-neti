@@ -18,7 +18,8 @@ use crate::{
     repository::sql,
     types::{
         Address, BlockHash, BlockNumber, Bytes, Entity, EntityHistoryFilter, EntityKey,
-        EntityStatus, FullEntity, OperationData, PaginationMetadata, Timestamp, TxHash,
+        EntityOperationFilter, EntityStatus, FullEntity, OperationData, PaginationMetadata,
+        Timestamp, TxHash,
     },
 };
 
@@ -423,4 +424,23 @@ pub async fn get_entity_history<T: ConnectionTrait>(
         .paginate(db, filter.page_size);
 
     paginate_try_from(paginator, filter.page, filter.page_size).await
+}
+
+#[instrument(skip(db))]
+pub async fn get_entity_operation<T: ConnectionTrait>(
+    db: &T,
+    filter: EntityOperationFilter,
+) -> Result<EntityHistoryEntry> {
+    let entity_key: Vec<u8> = filter.entity_key.as_slice().into();
+    let tx_hash: Vec<u8> = filter.tx_hash.as_slice().into();
+
+    entity_history::Entity::find()
+        .filter(entity_history::Column::EntityKey.eq(entity_key))
+        .filter(entity_history::Column::TransactionHash.eq(tx_hash))
+        .filter(entity_history::Column::OpIndex.eq(filter.op_index as i64))
+        .one(db)
+        .await
+        .with_context(|| format!("Failed to get entity operation: {filter:?}"))?
+        .ok_or_else(|| anyhow!("Entity operation not found"))
+        .and_then(|v| v.try_into())
 }

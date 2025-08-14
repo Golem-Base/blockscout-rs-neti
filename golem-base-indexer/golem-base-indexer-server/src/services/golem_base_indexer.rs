@@ -175,4 +175,24 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn get_entity_operation(
+        &self,
+        request: Request<GetEntityOperationRequest>,
+    ) -> Result<Response<v1::EntityHistoryEntry>, Status> {
+        let inner = request.into_inner();
+
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entity operation filter: {err}"))
+        })?;
+
+        let operation = repository::entities::get_entity_operation(&*self.db, filter)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query entity operation");
+                Status::internal("failed to query entity operation")
+            })?;
+
+        Ok(Response::new(operation.into()))
+    }
 }

@@ -6,6 +6,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntityHistory
       get: /api/v1/entities/{key}/history
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntityOperation
+      get: /api/v1/entities/{key}/operation/{tx_hash}/{op_index}
+
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntity
       get: /api/v1/entities/{key}
 
