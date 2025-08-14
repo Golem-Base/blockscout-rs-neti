@@ -313,10 +313,10 @@ definitions:
   v1EntityStatus:
     type: string
     enum:
-      - Active
-      - Deleted
-      - Expired
-    default: Active
+      - ACTIVE
+      - DELETED
+      - EXPIRED
+    default: ACTIVE
   v1FullEntity:
     type: object
     properties:
