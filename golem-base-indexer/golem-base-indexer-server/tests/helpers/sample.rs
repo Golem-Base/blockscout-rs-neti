@@ -16,7 +16,7 @@ pub struct Transaction {
     pub operations: EncodableGolemBaseTransaction,
 }
 
-pub async fn insert_data<T: ConnectionTrait>(txn: &T, block: Block) -> Result<()> {
+pub async fn insert_data<T: ConnectionTrait>(txn: &T, block: Block) -> Result<(BlockHash, TxHash)> {
     let block_hash = BlockHash::random();
     let parent_hash = BlockHash::random();
     let tx_hash = TxHash::random();
@@ -41,5 +41,5 @@ pub async fn insert_data<T: ConnectionTrait>(txn: &T, block: Block) -> Result<()
                 tx.sender.as_slice().into(),
             ])).await?;
     }
-    Ok(())
+    Ok((block_hash, tx_hash))
 }
