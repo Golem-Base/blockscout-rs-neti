@@ -8,7 +8,7 @@ option go_package = "github.com/Golem-Base/blockscout-rs-neti/golem-base-indexer
 service GolemBaseIndexerService {
   rpc GetEntity(GetEntityRequest) returns (FullEntity);
   rpc GetEntityHistory(GetEntityHistoryRequest) returns (GetEntityHistoryResponse);
-  rpc GetOperation(GetOperationRequest) returns (Operation);
+  rpc GetOperation(GetOperationRequest) returns (EntityHistoryEntry);
   
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse);
   rpc ListOperations(ListOperationsRequest) returns (ListOperationsResponse);
@@ -28,7 +28,7 @@ message GetEntityHistoryRequest {
 
 message GetOperationRequest {
   string tx_hash = 1;
-  uint64 index = 2;
+  uint64 op_index = 2;
 }
 
 message ListEntitiesRequest {

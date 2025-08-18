@@ -7,7 +7,7 @@ use golem_base_indexer_logic::{
     repository::entities::EntityHistoryEntry,
     types::{
         Entity, EntityHistoryFilter, EntityStatus, FullEntity, NumericAnnotation, Operation,
-        OperationData, OperationsCount, OperationsCounterFilter, OperationsFilter,
+        OperationData, OperationFilter, OperationsCount, OperationsCounterFilter, OperationsFilter,
         PaginationMetadata, StringAnnotation,
     },
 };
@@ -293,5 +293,19 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             expires_at_block_number: v.expires_at_block_number,
             prev_expires_at_block_number: v.prev_expires_at_block_number,
         }
+    }
+}
+
+impl TryFrom<v1::GetOperationRequest> for OperationFilter {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::GetOperationRequest) -> Result<Self> {
+        Ok(Self {
+            tx_hash: request
+                .tx_hash
+                .parse()
+                .map_err(|_| anyhow!("Invalid tx_hash"))?,
+            op_index: request.op_index,
+        })
     }
 }

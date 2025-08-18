@@ -164,14 +164,14 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
-  /api/v1/operations/{tx_hash}/{index}:
+  /api/v1/operations/{tx_hash}/{op_index}:
     get:
       operationId: GolemBaseIndexerService_GetOperation
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1Operation'
+            $ref: '#/definitions/v1EntityHistoryEntry'
         default:
           description: An unexpected error response.
           schema:
@@ -181,7 +181,7 @@ paths:
           in: path
           required: true
           type: string
-        - name: index
+        - name: op_index
           in: path
           required: true
           type: string

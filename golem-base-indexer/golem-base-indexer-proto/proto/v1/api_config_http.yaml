@@ -13,7 +13,7 @@ http:
       get: /api/v1/operations/count
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetOperation
-      get: /api/v1/operations/{tx_hash}/{index}
+      get: /api/v1/operations/{tx_hash}/{op_index}
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListEntities
       get: /api/v1/entities
