@@ -64,20 +64,19 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
     async fn get_operation(
         &self,
         request: Request<GetOperationRequest>,
-    ) -> Result<Response<Operation>, Status> {
+    ) -> Result<Response<v1::EntityHistoryEntry>, Status> {
         let inner = request.into_inner();
-        let tx_hash = inner
-            .tx_hash
-            .parse()
-            .map_err(|_| Status::invalid_argument("Invalid tx hash"))?;
 
-        let operation = repository::operations::get_operation(&*self.db, tx_hash, inner.index)
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entity operation filter: {err}"))
+        })?;
+
+        let operation = repository::entities::get_entity_operation(&*self.db, filter)
             .await
             .map_err(|err| {
-                tracing::error!(?err, "failed to query operation");
-                Status::internal("failed to query operation")
-            })?
-            .ok_or(Status::not_found("operation not found"))?;
+                tracing::error!(?err, "failed to query entity operation");
+                Status::internal("failed to query entity operation")
+            })?;
 
         Ok(Response::new(operation.into()))
     }
@@ -174,25 +173,5 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             items: items.into_iter().map(Into::into).collect(),
             pagination: Some(pagination.into()),
         }))
-    }
-
-    async fn get_entity_operation(
-        &self,
-        request: Request<GetEntityOperationRequest>,
-    ) -> Result<Response<v1::EntityHistoryEntry>, Status> {
-        let inner = request.into_inner();
-
-        let filter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!("Invalid entity operation filter: {err}"))
-        })?;
-
-        let operation = repository::entities::get_entity_operation(&*self.db, filter)
-            .await
-            .map_err(|err| {
-                tracing::error!(?err, "failed to query entity operation");
-                Status::internal("failed to query entity operation")
-            })?;
-
-        Ok(Response::new(operation.into()))
     }
 }

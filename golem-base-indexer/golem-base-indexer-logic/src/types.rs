@@ -213,8 +213,7 @@ pub struct EntityHistoryFilter {
 }
 
 #[derive(Debug, Clone)]
-pub struct EntityOperationFilter {
-    pub entity_key: EntityKey,
+pub struct OperationFilter {
     pub tx_hash: TxHash,
     pub op_index: u64,
 }

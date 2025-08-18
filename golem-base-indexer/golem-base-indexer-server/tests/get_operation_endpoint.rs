@@ -14,8 +14,8 @@ use crate::helpers::{
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
-async fn test_get_entity_operation_endpoint() {
-    let db = helpers::init_db("test", "get_entity_operation_endpoint").await;
+async fn test_get_operation_endpoint() {
+    let db = helpers::init_db("test", "get_operation_endpoint").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
     let entity_key = EntityKey::random();
@@ -79,11 +79,9 @@ async fn test_get_entity_operation_endpoint() {
     indexer.tick().await.unwrap();
 
     let op_index = 0;
-    let response: serde_json::Value = test_server::send_get_request(
-        &base,
-        &format!("/api/v1/entities/{entity_key}/operation/{tx_hash}/{op_index}"),
-    )
-    .await;
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, &format!("/api/v1/operations/{tx_hash}/{op_index}"))
+            .await;
 
     assert_fields(
         &response,
@@ -102,11 +100,9 @@ async fn test_get_entity_operation_endpoint() {
     );
 
     let op_index = 1;
-    let response: serde_json::Value = test_server::send_get_request(
-        &base,
-        &format!("/api/v1/entities/{entity_key}/operation/{tx_hash}/{op_index}"),
-    )
-    .await;
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, &format!("/api/v1/operations/{tx_hash}/{op_index}"))
+            .await;
 
     assert_fields(
         &response,
@@ -169,11 +165,9 @@ async fn test_get_entity_operation_endpoint() {
     indexer.tick().await.unwrap();
 
     let op_index = 0;
-    let response: serde_json::Value = test_server::send_get_request(
-        &base,
-        &format!("/api/v1/entities/{entity_key}/operation/{tx_hash}/{op_index}"),
-    )
-    .await;
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, &format!("/api/v1/operations/{tx_hash}/{op_index}"))
+            .await;
 
     assert_fields(
         &response,
@@ -192,11 +186,9 @@ async fn test_get_entity_operation_endpoint() {
     );
 
     let op_index = 0;
-    let response: serde_json::Value = test_server::send_get_request(
-        &base,
-        &format!("/api/v1/entities/{entity_key}/operation/{tx_hash_2}/{op_index}"),
-    )
-    .await;
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, &format!("/api/v1/operations/{tx_hash_2}/{op_index}"))
+            .await;
 
     assert_fields(
         &response,

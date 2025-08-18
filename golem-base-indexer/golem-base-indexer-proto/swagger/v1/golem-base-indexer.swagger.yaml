@@ -72,34 +72,6 @@ paths:
           format: uint64
       tags:
         - GolemBaseIndexerService
-  /api/v1/entities/{key}/operation/{tx_hash}/{op_index}:
-    get:
-      operationId: GolemBaseIndexerService_GetEntityOperation
-      responses:
-        "200":
-          description: A successful response.
-          schema:
-            $ref: '#/definitions/v1EntityHistoryEntry'
-        default:
-          description: An unexpected error response.
-          schema:
-            $ref: '#/definitions/rpcStatus'
-      parameters:
-        - name: key
-          in: path
-          required: true
-          type: string
-        - name: tx_hash
-          in: path
-          required: true
-          type: string
-        - name: op_index
-          in: path
-          required: true
-          type: string
-          format: uint64
-      tags:
-        - GolemBaseIndexerService
   /api/v1/operations:
     get:
       operationId: GolemBaseIndexerService_ListOperations
@@ -192,14 +164,14 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
-  /api/v1/operations/{tx_hash}/{index}:
+  /api/v1/operations/{tx_hash}/{op_index}:
     get:
       operationId: GolemBaseIndexerService_GetOperation
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1Operation'
+            $ref: '#/definitions/v1EntityHistoryEntry'
         default:
           description: An unexpected error response.
           schema:
@@ -209,7 +181,7 @@ paths:
           in: path
           required: true
           type: string
-        - name: index
+        - name: op_index
           in: path
           required: true
           type: string

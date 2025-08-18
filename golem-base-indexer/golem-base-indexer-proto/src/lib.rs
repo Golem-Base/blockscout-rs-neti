@@ -6,9 +6,9 @@ use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::{
     repository::entities::EntityHistoryEntry,
     types::{
-        Entity, EntityHistoryFilter, EntityOperationFilter, EntityStatus, FullEntity,
-        NumericAnnotation, Operation, OperationData, OperationsCount, OperationsCounterFilter,
-        OperationsFilter, PaginationMetadata, StringAnnotation,
+        Entity, EntityHistoryFilter, EntityStatus, FullEntity, NumericAnnotation, Operation,
+        OperationData, OperationFilter, OperationsCount, OperationsCounterFilter, OperationsFilter,
+        PaginationMetadata, StringAnnotation,
     },
 };
 
@@ -296,15 +296,11 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
     }
 }
 
-impl TryFrom<v1::GetEntityOperationRequest> for EntityOperationFilter {
+impl TryFrom<v1::GetOperationRequest> for OperationFilter {
     type Error = anyhow::Error;
 
-    fn try_from(request: v1::GetEntityOperationRequest) -> Result<Self> {
+    fn try_from(request: v1::GetOperationRequest) -> Result<Self> {
         Ok(Self {
-            entity_key: request
-                .key
-                .parse()
-                .map_err(|_| anyhow!("Invalid entity_key"))?,
             tx_hash: request
                 .tx_hash
                 .parse()
