@@ -87,7 +87,7 @@ impl TryFrom<golem_base_entities::Model> for Entity {
             key: value.key.as_slice().try_into()?,
             data: value.data.map(|v| v.into()),
             status: value.status.into(),
-            owner: value.owner.as_slice().try_into()?,
+            owner: value.owner.map(|v| v.as_slice().try_into()).transpose()?,
             created_at_tx_hash: value
                 .created_at_tx_hash
                 .map(|v| v.as_slice().try_into())
@@ -156,7 +156,7 @@ pub async fn insert_entity<T: ConnectionTrait>(
         key: Set(entity.key.as_slice().into()),
         data: Set(Some(entity.data.clone().into())),
         status: Set(GolemBaseEntityStatusType::Active),
-        owner: Set(entity.sender.as_slice().into()),
+        owner: Set(Some(entity.sender.as_slice().into())),
         created_at_tx_hash: Set(Some(created_at.clone())),
         expires_at_block_number: Set(entity.expires_at.try_into()?),
         last_updated_at_tx_hash: Set(created_at),
@@ -167,6 +167,7 @@ pub async fn insert_entity<T: ConnectionTrait>(
         .on_conflict(
             OnConflict::column(golem_base_entities::Column::Key)
                 .update_columns([
+                    golem_base_entities::Column::Owner,
                     golem_base_entities::Column::CreatedAtTxHash,
                     golem_base_entities::Column::UpdatedAt,
                 ])
@@ -186,7 +187,7 @@ pub async fn update_entity<T: ConnectionTrait>(
     let model = golem_base_entities::ActiveModel {
         key: Set(entity.key.as_slice().into()),
         data: Set(Some(entity.data.clone().into())),
-        owner: Set(entity.sender.as_slice().into()),
+        owner: Set(Some(entity.sender.as_slice().into())),
         status: Set(GolemBaseEntityStatusType::Active),
         expires_at_block_number: Set(entity.expires_at.try_into()?),
         last_updated_at_tx_hash: Set(entity.updated_at.as_slice().into()),
@@ -199,6 +200,7 @@ pub async fn update_entity<T: ConnectionTrait>(
         .on_conflict(
             OnConflict::column(golem_base_entities::Column::Key)
                 .update_columns([
+                    golem_base_entities::Column::Owner,
                     golem_base_entities::Column::Data,
                     golem_base_entities::Column::ExpiresAtBlockNumber,
                     golem_base_entities::Column::LastUpdatedAtTxHash,
@@ -218,11 +220,17 @@ pub async fn delete_entity<T: ConnectionTrait>(
     db: &T,
     entity: GolemBaseEntityDelete,
 ) -> Result<()> {
+    let owner = if entity.status == EntityStatus::Deleted {
+        Set(Some(entity.sender.as_slice().into()))
+    } else {
+        NotSet
+    };
+
     let model = golem_base_entities::ActiveModel {
         key: Set(entity.key.as_slice().into()),
         status: Set(entity.status.into()),
         last_updated_at_tx_hash: Set(entity.deleted_at_tx.as_slice().into()),
-        owner: Set(entity.sender.as_slice().into()),
+        owner,
         updated_at: Set(Utc::now().naive_utc()),
         data: Set(None),
         expires_at_block_number: Set(entity.deleted_at_block.try_into()?),
@@ -257,7 +265,7 @@ pub async fn extend_entity<T: ConnectionTrait>(
         key: Set(entity.key.as_slice().into()),
         expires_at_block_number: Set(entity.expires_at.try_into()?),
         last_updated_at_tx_hash: Set(entity.extended_at.as_slice().into()),
-        owner: Set(entity.sender.as_slice().into()),
+        owner: Set(Some(entity.sender.as_slice().into())),
         updated_at: Set(Utc::now().naive_utc()),
         status: Set(GolemBaseEntityStatusType::Active),
         data: NotSet,
@@ -269,6 +277,7 @@ pub async fn extend_entity<T: ConnectionTrait>(
         .on_conflict(
             OnConflict::column(golem_base_entities::Column::Key)
                 .update_columns([
+                    golem_base_entities::Column::Owner,
                     golem_base_entities::Column::ExpiresAtBlockNumber,
                     golem_base_entities::Column::LastUpdatedAtTxHash,
                     golem_base_entities::Column::UpdatedAt,
@@ -380,7 +389,7 @@ pub async fn get_full_entity<T: ConnectionTrait>(
         last_updated_at_tx_hash: entity.last_updated_at_tx_hash.as_slice().try_into()?,
         expires_at_block_number: entity.expires_at_block_number.try_into()?,
         expires_at_timestamp,
-        owner: entity.owner.as_slice().try_into()?,
+        owner: entity.owner.map(|v| v.as_slice().try_into()).transpose()?,
         gas_used: Default::default(), // FIXME when we have gas per operation
         fees_paid: Default::default(), // FIXME when we have gas per operation
     }))
@@ -408,7 +417,7 @@ pub async fn replace_entity<T: ConnectionTrait>(db: &T, entity: Entity) -> Resul
         key: Set(entity.key.as_slice().into()),
         data: Set(entity.data.map(|v| v.into())),
         status: Set(entity.status.into()),
-        owner: Set(entity.owner.as_slice().into()),
+        owner: Set(entity.owner.map(|v| v.as_slice().into())),
         created_at_tx_hash: Set(entity.created_at_tx_hash.map(|v| v.as_slice().into())),
         expires_at_block_number: Set(entity.expires_at_block_number.try_into()?),
         last_updated_at_tx_hash: Set(entity.last_updated_at_tx_hash.as_slice().into()),

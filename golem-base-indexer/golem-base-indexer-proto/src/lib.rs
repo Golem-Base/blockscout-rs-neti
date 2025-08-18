@@ -38,7 +38,7 @@ impl v1::FullEntity {
             data: entity.data.map(|v| v.encode_hex_with_prefix()),
             data_size,
             status: status.into(),
-            owner: entity.owner.to_checksum(None),
+            owner: entity.owner.map(|v| v.to_checksum(None)),
 
             created_at_tx_hash: entity
                 .created_at_tx_hash

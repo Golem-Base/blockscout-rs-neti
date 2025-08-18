@@ -24,6 +24,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetOperation
       get: /api/v1/operation/{tx_hash}/{op_index}
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.AddressStats
+      get: /api/v1/address/{address}/stats
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check

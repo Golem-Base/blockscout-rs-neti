@@ -1,9 +1,12 @@
 mod helpers;
 
-use alloy_primitives::Address;
+use alloy_primitives::{Address, TxHash};
 use blockscout_service_launcher::test_server;
 use bytes::Bytes;
-use golem_base_indexer_logic::{types::EntityKey, Indexer};
+use golem_base_indexer_logic::{
+    types::{BlockHash, EntityKey},
+    Indexer,
+};
 use golem_base_sdk::entity::{EncodableGolemBaseTransaction, Extend, Update};
 
 use crate::helpers::{
@@ -43,7 +46,9 @@ async fn test_get_operation_endpoint() {
                     }],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
@@ -51,11 +56,15 @@ async fn test_get_operation_endpoint() {
 
     indexer.tick().await.unwrap();
 
-    let (block_hash, tx_hash) = helpers::sample::insert_data(
+    let block_hash = BlockHash::random();
+    let tx_hash = TxHash::random();
+    helpers::sample::insert_data(
         &*client,
         Block {
+            hash: Some(block_hash),
             number: 2,
             transactions: vec![Transaction {
+                hash: Some(tx_hash),
                 sender,
                 operations: EncodableGolemBaseTransaction {
                     extensions: vec![
@@ -123,11 +132,15 @@ async fn test_get_operation_endpoint() {
     let update_data: Bytes = b"data".as_slice().into();
     let update_data_hex = bytes_to_hex(&update_data);
 
-    let (block_hash, tx_hash) = helpers::sample::insert_data(
+    let block_hash = BlockHash::random();
+    let tx_hash = TxHash::random();
+    helpers::sample::insert_data(
         &*client,
         Block {
+            hash: Some(block_hash),
             number: 3,
             transactions: vec![Transaction {
+                hash: Some(tx_hash),
                 sender,
                 operations: EncodableGolemBaseTransaction {
                     updates: vec![Update {
@@ -146,11 +159,15 @@ async fn test_get_operation_endpoint() {
 
     indexer.tick().await.unwrap();
 
-    let (block_hash_2, tx_hash_2) = helpers::sample::insert_data(
+    let block_hash_2 = BlockHash::random();
+    let tx_hash_2 = TxHash::random();
+    helpers::sample::insert_data(
         &*client,
         Block {
+            hash: Some(block_hash_2),
             number: 4,
             transactions: vec![Transaction {
+                hash: Some(tx_hash_2),
                 sender,
                 operations: EncodableGolemBaseTransaction {
                     deletes: vec![entity_key],

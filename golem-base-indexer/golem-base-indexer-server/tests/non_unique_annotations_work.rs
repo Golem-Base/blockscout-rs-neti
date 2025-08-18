@@ -51,6 +51,7 @@ async fn test_non_unique_annotations_work() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
