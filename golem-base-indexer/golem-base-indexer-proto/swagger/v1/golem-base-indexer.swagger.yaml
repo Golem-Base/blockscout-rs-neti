@@ -10,6 +10,25 @@ consumes:
 produces:
   - application/json
 paths:
+  /api/v1/address/{address}/stats:
+    get:
+      operationId: GolemBaseIndexerService_AddressStats
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1AddressStatsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: address
+          in: path
+          required: true
+          type: string
+      tags:
+        - GolemBaseIndexerService
   /api/v1/entities:
     get:
       operationId: GolemBaseIndexerService_ListEntities
@@ -305,6 +324,26 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/protobufAny'
+  v1AddressStatsResponse:
+    type: object
+    properties:
+      created_entities:
+        type: string
+        format: uint64
+      active_entities:
+        type: string
+        format: uint64
+      size_of_active_entities:
+        type: string
+        format: uint64
+      total_transactions:
+        type: string
+        format: uint64
+      failed_transactions:
+        type: string
+        format: uint64
+      operations_counts:
+        $ref: '#/definitions/v1CountOperationsResponse'
   v1CountEntitiesResponse:
     type: object
     properties:

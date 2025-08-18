@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-mod golem_base;
+pub mod golem_base;
 pub mod model;
 pub mod pagination;
 pub mod repository;
@@ -196,10 +196,17 @@ impl Indexer {
             OperationData::Extend(_) => last_extend_expires_at.expect("It's latest so it exists"),
         };
 
+        let op = create_op.or(update_op).or(delete_op).unwrap_or(&latest_op);
+        let owner = if op.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS {
+            None
+        } else {
+            Some(op.metadata.sender)
+        };
+
         let entity = Entity {
             key: entity,
             data: data.map(|v| v.to_owned()),
-            owner: latest_op.metadata.sender,
+            owner,
             status,
             created_at_tx_hash: create_op.map(|v| v.metadata.tx_hash),
             last_updated_at_tx_hash: latest_op.metadata.tx_hash,

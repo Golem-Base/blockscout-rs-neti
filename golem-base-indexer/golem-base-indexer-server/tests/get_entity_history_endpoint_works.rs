@@ -43,7 +43,9 @@ async fn test_get_entity_history_endpoint_works() {
                     }],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
@@ -84,7 +86,9 @@ async fn test_get_entity_history_endpoint_works() {
                     ],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
@@ -102,7 +106,9 @@ async fn test_get_entity_history_endpoint_works() {
                     deletes: vec![entity_key],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await

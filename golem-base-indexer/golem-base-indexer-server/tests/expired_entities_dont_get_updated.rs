@@ -26,6 +26,7 @@ async fn test_expired_entities_dont_get_updated() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
@@ -47,6 +48,7 @@ async fn test_expired_entities_dont_get_updated() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await

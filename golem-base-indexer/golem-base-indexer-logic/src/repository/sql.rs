@@ -125,3 +125,22 @@ order by
     o.index desc
 limit 1;
 "#;
+
+pub const COUNT_ENTITIES_BY_OWNER: &str = r#"
+select
+    count(*) as total_entities,
+    count(*) filter (where status = 'active') as active_entities,
+    coalesce(sum(length(data)) filter (where status = 'active'), 0) as size_of_active_entities
+from golem_base_entities
+where owner = $1
+"#;
+
+pub const COUNT_TRANSACTIONS_BY_OWNER: &str = r#"
+select
+    count(*) as total_transactions,
+    count(*) filter (where status = 0) as failed_transactions
+from transactions
+where
+    from_address_hash = $1
+    and block_consensus = 't'
+"#;

@@ -51,6 +51,7 @@ async fn test_multiple_annotations_per_entity_work() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await

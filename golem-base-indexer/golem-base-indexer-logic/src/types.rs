@@ -112,7 +112,7 @@ pub struct Tx {
     pub index: Option<u64>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityStatus {
     Active,
     Deleted,
@@ -123,7 +123,7 @@ pub enum EntityStatus {
 pub struct Entity {
     pub key: EntityKey,
     pub data: Option<Bytes>,
-    pub owner: Address,
+    pub owner: Option<Address>,
     pub status: EntityStatus,
     pub created_at_tx_hash: Option<TxHash>,
     pub last_updated_at_tx_hash: TxHash,
@@ -145,7 +145,7 @@ pub struct FullEntity {
     pub expires_at_block_number: BlockNumber,
     pub expires_at_timestamp: Timestamp,
 
-    pub owner: Address,
+    pub owner: Option<Address>,
     pub gas_used: CurrencyAmount,
     pub fees_paid: CurrencyAmount,
 }
@@ -177,7 +177,7 @@ pub struct ListOperationsFilter {
     pub operations_filter: OperationsFilter,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct OperationsFilter {
     pub entity_key: Option<EntityKey>,
     pub sender: Option<Address>,
@@ -236,4 +236,21 @@ pub struct Block {
     pub hash: BlockHash,
     pub number: BlockNumber,
     pub timestamp: Timestamp,
+}
+
+pub struct AddressFilter {
+    pub address: Address,
+}
+
+#[derive(Debug, Clone)]
+pub struct AddressEntitiesCount {
+    pub total_entities: u64,
+    pub size_of_active_entities: u64,
+    pub active_entities: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct AddressTxsCount {
+    pub total_transactions: u64,
+    pub failed_transactions: u64,
 }

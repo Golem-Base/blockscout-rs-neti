@@ -1,3 +1,4 @@
+pub mod address;
 pub mod annotations;
 pub mod blockscout;
 pub mod entities;

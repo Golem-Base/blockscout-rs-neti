@@ -194,4 +194,50 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn address_stats(
+        &self,
+        request: Request<AddressStatsRequest>,
+    ) -> Result<Response<AddressStatsResponse>, Status> {
+        let AddressStatsRequest { address } = request.into_inner();
+        let address = address.parse().map_err(|err| {
+            tracing::error!(?err, "invalid address");
+            Status::invalid_argument("invalid address")
+        })?;
+
+        let entities_counts = repository::address::count_entities(&*self.db, address)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to count entities");
+                Status::internal("failed to count entities")
+            })?;
+
+        let tx_counts = repository::address::count_txs(&*self.db, address)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to count txs");
+                Status::internal("failed to count txs")
+            })?;
+
+        let filter = OperationsFilter {
+            sender: Some(address),
+            ..Default::default()
+        };
+
+        let operations_counts = repository::operations::count_operations(&*self.db, filter)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to count operations");
+                Status::internal("failed to count operations")
+            })?;
+
+        Ok(Response::new(AddressStatsResponse {
+            created_entities: entities_counts.total_entities,
+            active_entities: entities_counts.active_entities,
+            size_of_active_entities: entities_counts.size_of_active_entities,
+            total_transactions: tx_counts.total_transactions,
+            failed_transactions: tx_counts.failed_transactions,
+            operations_counts: Some(operations_counts.into()),
+        }))
+    }
 }

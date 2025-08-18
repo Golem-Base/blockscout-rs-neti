@@ -65,6 +65,7 @@ async fn test_list_entities_endpoint_works() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
