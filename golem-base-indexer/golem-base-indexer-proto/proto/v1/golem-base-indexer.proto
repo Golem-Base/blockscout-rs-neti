@@ -63,12 +63,10 @@ message Pagination {
 }
 
 message CountOperationsRequest {
-  optional uint64 page = 1;
-  optional uint64 page_size = 2;
-  optional string block_number_or_hash = 3;
-  optional string transaction_hash = 4;
-  optional string sender = 5;
-  optional string entity_key = 6;
+  optional string block_number_or_hash = 1;
+  optional string transaction_hash = 2;
+  optional string sender = 3;
+  optional string entity_key = 4;
 }
 
 message CountOperationsResponse {
