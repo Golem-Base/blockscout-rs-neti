@@ -3,23 +3,26 @@ config_version: 3
 
 http:
   rules:
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntityHistory
-      get: /api/v1/entities/{key}/history
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListEntities
+      get: /api/v1/entities
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.CountEntities
+      get: /api/v1/entities/count
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntity
-      get: /api/v1/entities/{key}
+      get: /api/v1/entity/{key}
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntityHistory
+      get: /api/v1/entity/{key}/history
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListOperations
+      get: /api/v1/operations
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.CountOperations
       get: /api/v1/operations/count
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetOperation
-      get: /api/v1/operations/{tx_hash}/{op_index}
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListEntities
-      get: /api/v1/entities
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListOperations
-      get: /api/v1/operations
+      get: /api/v1/operation/{tx_hash}/{op_index}
 
     #################### Health ####################
 

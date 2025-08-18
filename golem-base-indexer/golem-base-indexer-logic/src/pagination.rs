@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use sea_orm::{ConnectionTrait, Paginator, SelectorTrait};
 
-use crate::types::PaginationMetadata;
+use crate::types::{PaginationMetadata, PaginationParams};
 
 /// Paginate items with metadata
 /// C - connection
@@ -9,8 +9,7 @@ use crate::types::PaginationMetadata;
 /// D - destination type
 pub async fn paginate_try_from<'a, C, S, D>(
     paginator: Paginator<'a, C, S>,
-    page: u64,
-    page_size: u64,
+    pagination: PaginationParams,
 ) -> Result<(Vec<D>, PaginationMetadata)>
 where
     C: ConnectionTrait,
@@ -26,7 +25,7 @@ where
         .num_pages()
         .await
         .context("Failed to get number of pages")?;
-    let page_index = page.saturating_sub(1);
+    let page_index = pagination.page.saturating_sub(1);
     let items = paginator
         .fetch_page(page_index)
         .await
@@ -36,8 +35,8 @@ where
         .collect::<Result<Vec<_>>>()?;
 
     let pagination_metadata = PaginationMetadata {
-        page,
-        page_size,
+        pagination,
+
         total_pages,
         total_items,
     };

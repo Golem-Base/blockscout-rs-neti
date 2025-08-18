@@ -171,18 +171,14 @@ impl core::str::FromStr for BlockNumberOrHashFilter {
 }
 
 #[derive(Debug, Clone)]
-pub struct OperationsFilter {
-    pub page: u64,
-    pub page_size: u64,
-    pub entity_key: Option<EntityKey>,
+pub struct ListOperationsFilter {
+    pub pagination: PaginationParams,
     pub operation_type: Option<OperationData>,
-    pub sender: Option<Address>,
-    pub block_number_or_hash: Option<BlockNumberOrHashFilter>,
-    pub transaction_hash: Option<TxHash>,
+    pub operations_filter: OperationsFilter,
 }
 
 #[derive(Debug, Clone)]
-pub struct OperationsCounterFilter {
+pub struct OperationsFilter {
     pub entity_key: Option<EntityKey>,
     pub sender: Option<Address>,
     pub block_number_or_hash: Option<BlockNumberOrHashFilter>,
@@ -199,8 +195,7 @@ pub struct OperationsCount {
 
 #[derive(Debug, Clone)]
 pub struct PaginationMetadata {
-    pub page: u64,
-    pub page_size: u64,
+    pub pagination: PaginationParams,
     pub total_pages: u64,
     pub total_items: u64,
 }
@@ -208,12 +203,37 @@ pub struct PaginationMetadata {
 #[derive(Debug, Clone)]
 pub struct EntityHistoryFilter {
     pub entity_key: EntityKey,
+    pub pagination: PaginationParams,
+}
+
+#[derive(Debug, Clone)]
+pub struct EntitiesFilter {
+    pub status: Option<EntityStatus>,
+    pub string_annotation: Option<StringAnnotation>,
+    pub numeric_annotation: Option<NumericAnnotation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PaginationParams {
     pub page: u64,
     pub page_size: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListEntitiesFilter {
+    pub pagination: PaginationParams,
+    pub entities_filter: EntitiesFilter,
 }
 
 #[derive(Debug, Clone)]
 pub struct OperationFilter {
     pub tx_hash: TxHash,
     pub op_index: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct Block {
+    pub hash: BlockHash,
+    pub number: BlockNumber,
+    pub timestamp: Timestamp,
 }

@@ -3,7 +3,7 @@ use crate::proto::{
 };
 use golem_base_indexer_logic::{
     repository::{self},
-    types::{OperationsCounterFilter, OperationsFilter},
+    types::{ListOperationsFilter, OperationsFilter},
 };
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
@@ -83,9 +83,14 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
 
     async fn list_entities(
         &self,
-        _request: Request<ListEntitiesRequest>,
+        request: Request<ListEntitiesRequest>,
     ) -> Result<Response<ListEntitiesResponse>, Status> {
-        let entities = repository::entities::list_entities(&*self.db)
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            tracing::error!(?err, "Invalid filter");
+            Status::invalid_argument("Invalid filter")
+        })?;
+        let (entities, pagination) = repository::entities::list_entities(&*self.db, filter)
             .await
             .map_err(|err| {
                 tracing::error!(?err, "failed to query entities");
@@ -93,8 +98,31 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             })?;
 
         let items = entities.into_iter().map(Into::into).collect();
+        let pagination = pagination.into();
 
-        Ok(Response::new(ListEntitiesResponse { items }))
+        Ok(Response::new(ListEntitiesResponse {
+            items,
+            pagination: Some(pagination),
+        }))
+    }
+
+    async fn count_entities(
+        &self,
+        request: Request<CountEntitiesRequest>,
+    ) -> Result<Response<CountEntitiesResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            tracing::error!(?err, "Invalid filter");
+            Status::invalid_argument("Invalid filter")
+        })?;
+        let count = repository::entities::count_entities(&*self.db, filter)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query entities");
+                Status::internal("failed to query entities")
+            })?;
+
+        Ok(Response::new(CountEntitiesResponse { count }))
     }
 
     async fn list_operations(
@@ -102,11 +130,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         request: Request<ListOperationsRequest>,
     ) -> Result<Response<ListOperationsResponse>, Status> {
         let inner = request.into_inner();
-        let filter: OperationsFilter = inner
-            .try_into()
-            .map_err(|err| Status::invalid_argument(format!("Invalid operations filter: {err}")))?;
-
-        let filter = filter
+        let filter: ListOperationsFilter = inner
             .try_into()
             .map_err(|err| Status::invalid_argument(format!("Invalid operations filter: {err}")))?;
 
@@ -132,13 +156,9 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         request: Request<CountOperationsRequest>,
     ) -> Result<Response<CountOperationsResponse>, Status> {
         let inner = request.into_inner();
-        let filter: OperationsCounterFilter = inner
+        let filter: OperationsFilter = inner
             .try_into()
             .map_err(|e| Status::invalid_argument(format!("Invalid operations filter: {e}")))?;
-
-        let filter = filter
-            .try_into()
-            .map_err(|err| Status::invalid_argument(format!("Invalid operations filter: {err}")))?;
 
         let operations_count = repository::operations::count_operations(&*self.db, filter)
             .await

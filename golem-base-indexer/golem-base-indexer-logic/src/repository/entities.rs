@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Context, Result};
 use chrono::Duration;
 use golem_base_indexer_entity::{
-    golem_base_entities, sea_orm_active_enums::GolemBaseEntityStatusType,
+    golem_base_entities, golem_base_numeric_annotations, golem_base_string_annotations,
+    sea_orm_active_enums::GolemBaseEntityStatusType,
 };
 use sea_orm::{
     prelude::*,
@@ -17,9 +18,9 @@ use crate::{
     pagination::paginate_try_from,
     repository::sql,
     types::{
-        Address, BlockHash, BlockNumber, Bytes, Entity, EntityHistoryFilter, EntityKey,
-        EntityStatus, FullEntity, OperationData, OperationFilter, PaginationMetadata, Timestamp,
-        TxHash,
+        Address, BlockHash, BlockNumber, Bytes, EntitiesFilter, Entity, EntityHistoryFilter,
+        EntityKey, EntityStatus, FullEntity, ListEntitiesFilter, OperationData, OperationFilter,
+        PaginationMetadata, Timestamp, TxHash,
     },
 };
 
@@ -291,16 +292,46 @@ pub async fn get_entity<T: ConnectionTrait>(db: &T, key: EntityKey) -> Result<Op
         .transpose()
 }
 
+fn filtered_entities(filter: EntitiesFilter) -> Select<golem_base_entities::Entity> {
+    let mut q = golem_base_entities::Entity::find().order_by_asc(golem_base_entities::Column::Key);
+
+    if let Some(status) = filter.status {
+        let status: GolemBaseEntityStatusType = status.into();
+        q = q.filter(golem_base_entities::Column::Status.eq(status));
+    }
+
+    if let Some(ann) = filter.string_annotation {
+        q = q
+            .left_join(golem_base_string_annotations::Entity)
+            .filter(golem_base_string_annotations::Column::Key.eq(ann.key))
+            .filter(golem_base_string_annotations::Column::Value.eq(ann.value));
+    }
+
+    if let Some(ann) = filter.numeric_annotation {
+        q = q
+            .left_join(golem_base_numeric_annotations::Entity)
+            .filter(golem_base_numeric_annotations::Column::Key.eq(ann.key))
+            .filter(golem_base_numeric_annotations::Column::Value.eq(ann.value));
+    }
+
+    q
+}
+
 #[instrument(skip(db))]
-pub async fn list_entities<T: ConnectionTrait>(db: &T) -> Result<Vec<Entity>> {
-    golem_base_entities::Entity::find()
-        .order_by_asc(golem_base_entities::Column::Key)
-        .all(db)
-        .await
-        .context("Failed to list entities")?
-        .into_iter()
-        .map(|v| v.try_into())
-        .collect()
+pub async fn list_entities<T: ConnectionTrait>(
+    db: &T,
+    filter: ListEntitiesFilter,
+) -> Result<(Vec<Entity>, PaginationMetadata)> {
+    let q = filtered_entities(filter.entities_filter);
+    let paginator = q.paginate(db, filter.pagination.page_size);
+
+    paginate_try_from(paginator, filter.pagination).await
+}
+
+#[instrument(skip(db))]
+pub async fn count_entities<T: ConnectionTrait>(db: &T, filter: EntitiesFilter) -> Result<u64> {
+    let q = filtered_entities(filter);
+    q.count(db).await.context("Failed to count entities")
 }
 
 #[instrument(skip(db))]
@@ -329,9 +360,10 @@ pub async fn get_full_entity<T: ConnectionTrait>(
     };
 
     let secs_per_block = 2;
-    let expires_at_timestamp = current_block.timestamp.and_utc()
+    let current_block_number: i64 = current_block.number.try_into()?;
+    let expires_at_timestamp = current_block.timestamp
         + Duration::seconds(
-            (entity.expires_at_block_number - current_block.number) * secs_per_block,
+            (entity.expires_at_block_number - current_block_number) * secs_per_block,
         );
 
     Ok(Some(FullEntity {
@@ -343,11 +375,8 @@ pub async fn get_full_entity<T: ConnectionTrait>(
             .map(|v| v.as_slice().try_into())
             .transpose()?,
         created_at_operation_index: create_operation.as_ref().map(|v| v.metadata.index),
-        created_at_block_number: create_block
-            .as_ref()
-            .map(|v| v.number.try_into())
-            .transpose()?,
-        created_at_timestamp: create_block.as_ref().map(|v| v.timestamp.and_utc()),
+        created_at_block_number: create_block.as_ref().map(|v| v.number),
+        created_at_timestamp: create_block.as_ref().map(|v| v.timestamp),
         last_updated_at_tx_hash: entity.last_updated_at_tx_hash.as_slice().try_into()?,
         expires_at_block_number: entity.expires_at_block_number.try_into()?,
         expires_at_timestamp,
@@ -421,9 +450,9 @@ pub async fn get_entity_history<T: ConnectionTrait>(
         .order_by_asc(entity_history::Column::TransactionHash)
         .order_by_asc(entity_history::Column::TxIndex)
         .order_by_asc(entity_history::Column::OpIndex)
-        .paginate(db, filter.page_size);
+        .paginate(db, filter.pagination.page_size);
 
-    paginate_try_from(paginator, filter.page, filter.page_size).await
+    paginate_try_from(paginator, filter.pagination).await
 }
 
 #[instrument(skip(db))]

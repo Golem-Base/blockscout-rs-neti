@@ -1,4 +1,4 @@
-use crate::repository::sql::GET_TX_BY_HASH;
+use crate::{repository::sql::GET_TX_BY_HASH, types::Block};
 use anyhow::{Context, Result};
 use futures::{Stream, StreamExt};
 use golem_base_indexer_entity::golem_base_pending_transaction_cleanups;
@@ -7,29 +7,29 @@ use tracing::instrument;
 
 use super::sql;
 use crate::{
-    types::{BlockHash, Tx, TxHash},
+    types::{BlockHash, BlockNumber, Tx, TxHash},
     well_known,
 };
 
 #[derive(FromQueryResult)]
-pub struct DbTxHash {
+struct DbTxHash {
     pub hash: Vec<u8>,
 }
 
 #[derive(FromQueryResult)]
-pub struct DbBlock {
+struct DbBlock {
     pub hash: Vec<u8>,
     pub number: i64,
     pub timestamp: chrono::NaiveDateTime,
 }
 
 #[derive(FromQueryResult)]
-pub struct DbBlockNumber {
+struct DbBlockNumber {
     pub number: i64,
 }
 
 #[derive(FromQueryResult)]
-pub struct DbTx {
+struct DbTx {
     pub hash: Vec<u8>,
     pub from_address_hash: Vec<u8>,
     pub to_address_hash: Vec<u8>,
@@ -50,6 +50,29 @@ impl TryFrom<DbTx> for Tx {
             to_address_hash: tx.to_address_hash.as_slice().try_into()?,
             hash: tx.hash.as_slice().try_into()?,
             index: tx.index.map(|v| v.try_into()).transpose()?,
+        })
+    }
+}
+
+impl TryFrom<DbBlockNumber> for BlockNumber {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbBlockNumber) -> Result<Self> {
+        value
+            .number
+            .try_into()
+            .context("Failed to convert block number")
+    }
+}
+
+impl TryFrom<DbBlock> for Block {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbBlock) -> Result<Self> {
+        Ok(Self {
+            hash: value.hash.as_slice().try_into()?,
+            number: value.number.try_into()?,
+            timestamp: value.timestamp.and_utc(),
         })
     }
 }
@@ -116,21 +139,23 @@ pub async fn get_tx<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> Result<Optio
 }
 
 #[instrument(skip(db))]
-pub(super) async fn get_current_block<T: ConnectionTrait>(db: &T) -> Result<Option<DbBlock>> {
+pub(super) async fn get_current_block<T: ConnectionTrait>(db: &T) -> Result<Option<Block>> {
     DbBlock::find_by_statement(Statement::from_string(
         DbBackend::Postgres,
         "select hash, number, timestamp from blocks order by number desc limit 1",
     ))
     .one(db)
     .await
-    .context("Failed to get current block")
+    .context("Failed to get current block")?
+    .map(TryInto::try_into)
+    .transpose()
 }
 
 #[instrument(skip(db))]
 pub(super) async fn get_block<T: ConnectionTrait>(
     db: &T,
     hash: BlockHash,
-) -> Result<Option<DbBlock>> {
+) -> Result<Option<Block>> {
     let hash: Vec<u8> = hash.as_slice().into();
     DbBlock::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
@@ -139,5 +164,7 @@ pub(super) async fn get_block<T: ConnectionTrait>(
     ))
     .one(db)
     .await
-    .context("Failed to get block by hash")
+    .context("Failed to get block by hash")?
+    .map(TryInto::try_into)
+    .transpose()
 }

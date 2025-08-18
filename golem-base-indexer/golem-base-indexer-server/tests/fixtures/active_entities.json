@@ -1,22 +1,6 @@
 {
   "items": [
     {
-      "key": "0x4227ab83962832bd79b22d7dd0dd694a3f29ce4f2c53594f703980c31fba8c51",
-      "data": null,
-      "status": "DELETED",
-      "created_at_tx_hash": "0xfa8bf8be71819ab01a6fa57f280540398bac5c8b74429c6f35e2eeb3c751f884",
-      "last_updated_at_tx_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
-      "expires_at_block_number": "6"
-    },
-    {
-      "key": "0x4455e54a419991f302a495eea0be0fe37c121aae1f9c0048e7a1ec45900cd0cf",
-      "data": null,
-      "status": "EXPIRED",
-      "created_at_tx_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
-      "last_updated_at_tx_hash": "0x1b7b3d0ac4b9636a34c72e6ab55a115a2abaa74dfcbf492d5b0b58fe13a04a96",
-      "expires_at_block_number": "7"
-    },
-    {
       "key": "0x88982d94bd1778d7e5d11eca465e152938f093cdfc5e1467bb2a84088922f04e",
       "data": "0x64617461207769746820616e6e6f746174696f6e73",
       "status": "ACTIVE",
@@ -48,5 +32,11 @@
       "last_updated_at_tx_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
       "expires_at_block_number": "2006"
     }
-  ]
+  ],
+  "pagination": {
+    "page": "1",
+    "page_size": "100",
+    "total_items": "4",
+    "total_pages": "1"
+  }
 }

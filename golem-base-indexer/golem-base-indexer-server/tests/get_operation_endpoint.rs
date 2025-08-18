@@ -80,7 +80,7 @@ async fn test_get_operation_endpoint() {
 
     let op_index = 0;
     let response: serde_json::Value =
-        test_server::send_get_request(&base, &format!("/api/v1/operations/{tx_hash}/{op_index}"))
+        test_server::send_get_request(&base, &format!("/api/v1/operation/{tx_hash}/{op_index}"))
             .await;
 
     assert_fields(
@@ -101,7 +101,7 @@ async fn test_get_operation_endpoint() {
 
     let op_index = 1;
     let response: serde_json::Value =
-        test_server::send_get_request(&base, &format!("/api/v1/operations/{tx_hash}/{op_index}"))
+        test_server::send_get_request(&base, &format!("/api/v1/operation/{tx_hash}/{op_index}"))
             .await;
 
     assert_fields(
@@ -166,7 +166,7 @@ async fn test_get_operation_endpoint() {
 
     let op_index = 0;
     let response: serde_json::Value =
-        test_server::send_get_request(&base, &format!("/api/v1/operations/{tx_hash}/{op_index}"))
+        test_server::send_get_request(&base, &format!("/api/v1/operation/{tx_hash}/{op_index}"))
             .await;
 
     assert_fields(
@@ -187,7 +187,7 @@ async fn test_get_operation_endpoint() {
 
     let op_index = 0;
     let response: serde_json::Value =
-        test_server::send_get_request(&base, &format!("/api/v1/operations/{tx_hash_2}/{op_index}"))
+        test_server::send_get_request(&base, &format!("/api/v1/operation/{tx_hash_2}/{op_index}"))
             .await;
 
     assert_fields(

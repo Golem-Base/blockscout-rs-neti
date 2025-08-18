@@ -18,8 +18,20 @@ async fn test_single_logic_tick_works() {
         .unwrap();
 
     let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/entities").await;
+        test_server::send_get_request(&base, "/api/v1/entities?status=ACTIVE").await;
     let expected: serde_json::Value =
-        serde_json::from_str(include_str!("fixtures/entities.json")).unwrap();
+        serde_json::from_str(include_str!("fixtures/active_entities.json")).unwrap();
+    assert_eq!(response, expected);
+
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, "/api/v1/entities?status=EXPIRED").await;
+    let expected: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/expired_entities.json")).unwrap();
+    assert_eq!(response, expected);
+
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, "/api/v1/entities?status=DELETED").await;
+    let expected: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/deleted_entities.json")).unwrap();
     assert_eq!(response, expected);
 }

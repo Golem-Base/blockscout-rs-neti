@@ -19,10 +19,11 @@ async fn test_delete_extend_reorg_handling_works() {
     .await;
     indexer.tick().await.unwrap();
     let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/entities").await;
-    let expected: serde_json::Value = serde_json::json!({
-        "items": [
-            {
+        test_server::send_get_request(&base, "/api/v1/entities?status=DELETED").await;
+    let expected: serde_json::Value = serde_json::json!(
+    [
+
+    {
       "key": "0xfa9a092a3b2b2ac68357798634030f86e018cfacea23783429b3101caaebe95d",
       "data": null,
       "status": "DELETED",
@@ -31,8 +32,11 @@ async fn test_delete_extend_reorg_handling_works() {
       "expires_at_block_number": "3"
             }
         ]
-    });
-    assert_eq!(response, expected);
+    );
+    assert_eq!(
+        response.as_object().unwrap().get("items").unwrap(),
+        &expected
+    );
 
     helpers::load_data(
         &*client,
@@ -41,9 +45,8 @@ async fn test_delete_extend_reorg_handling_works() {
     .await;
     indexer.tick().await.unwrap();
     let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/entities").await;
-    let expected: serde_json::Value = serde_json::json!({
-        "items": [
+        test_server::send_get_request(&base, "/api/v1/entities?status=ACTIVE").await;
+    let expected: serde_json::Value = serde_json::json!([
             {
       "key": "0xfa9a092a3b2b2ac68357798634030f86e018cfacea23783429b3101caaebe95d",
       "data": "0x74657374",
@@ -53,6 +56,9 @@ async fn test_delete_extend_reorg_handling_works() {
       "expires_at_block_number": "225"
             }
         ]
-    });
-    assert_eq!(response, expected);
+    );
+    assert_eq!(
+        response.as_object().unwrap().get("items").unwrap(),
+        &expected
+    );
 }

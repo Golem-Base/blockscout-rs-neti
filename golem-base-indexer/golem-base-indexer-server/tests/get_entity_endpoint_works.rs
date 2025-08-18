@@ -19,7 +19,7 @@ async fn test_get_entity_endpoint_works() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/entities/0xc9e98b00f26835a3a6de7d268e5f64dba739e3730e52b84019f1bb4e73ed2296",
+        "/api/v1/entity/0xc9e98b00f26835a3a6de7d268e5f64dba739e3730e52b84019f1bb4e73ed2296",
     )
     .await;
     let expected: serde_json::Value = serde_json::json!({

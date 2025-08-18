@@ -22,9 +22,85 @@ paths:
           description: An unexpected error response.
           schema:
             $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: status
+          in: query
+          required: false
+          type: string
+          enum:
+            - ACTIVE
+            - DELETED
+            - EXPIRED
+          default: ACTIVE
+        - name: string_annotation_key
+          in: query
+          required: false
+          type: string
+        - name: string_annotation_value
+          in: query
+          required: false
+          type: string
+        - name: numeric_annotation_key
+          in: query
+          required: false
+          type: string
+        - name: numeric_annotation_value
+          in: query
+          required: false
+          type: string
       tags:
         - GolemBaseIndexerService
-  /api/v1/entities/{key}:
+  /api/v1/entities/count:
+    get:
+      operationId: GolemBaseIndexerService_CountEntities
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1CountEntitiesResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: status
+          in: query
+          required: false
+          type: string
+          enum:
+            - ACTIVE
+            - DELETED
+            - EXPIRED
+          default: ACTIVE
+        - name: string_annotation_key
+          in: query
+          required: false
+          type: string
+        - name: string_annotation_value
+          in: query
+          required: false
+          type: string
+        - name: numeric_annotation_key
+          in: query
+          required: false
+          type: string
+        - name: numeric_annotation_value
+          in: query
+          required: false
+          type: string
+      tags:
+        - GolemBaseIndexerService
+  /api/v1/entity/{key}:
     get:
       operationId: GolemBaseIndexerService_GetEntity
       responses:
@@ -43,7 +119,7 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
-  /api/v1/entities/{key}/history:
+  /api/v1/entity/{key}/history:
     get:
       operationId: GolemBaseIndexerService_GetEntityHistory
       responses:
@@ -68,6 +144,30 @@ paths:
         - name: page_size
           in: query
           required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
+  /api/v1/operation/{tx_hash}/{op_index}:
+    get:
+      operationId: GolemBaseIndexerService_GetOperation
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1EntityHistoryEntry'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: tx_hash
+          in: path
+          required: true
+          type: string
+        - name: op_index
+          in: path
+          required: true
           type: string
           format: uint64
       tags:
@@ -154,30 +254,6 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
-  /api/v1/operations/{tx_hash}/{op_index}:
-    get:
-      operationId: GolemBaseIndexerService_GetOperation
-      responses:
-        "200":
-          description: A successful response.
-          schema:
-            $ref: '#/definitions/v1EntityHistoryEntry'
-        default:
-          description: An unexpected error response.
-          schema:
-            $ref: '#/definitions/rpcStatus'
-      parameters:
-        - name: tx_hash
-          in: path
-          required: true
-          type: string
-        - name: op_index
-          in: path
-          required: true
-          type: string
-          format: uint64
-      tags:
-        - GolemBaseIndexerService
   /health:
     get:
       summary: |-
@@ -229,6 +305,12 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/protobufAny'
+  v1CountEntitiesResponse:
+    type: object
+    properties:
+      count:
+        type: string
+        format: uint64
   v1CountOperationsResponse:
     type: object
     properties:
@@ -372,7 +454,8 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1Entity'
-        title: FIXME add pagination metadata
+      pagination:
+        $ref: '#/definitions/v1Pagination'
   v1ListOperationsResponse:
     type: object
     properties:

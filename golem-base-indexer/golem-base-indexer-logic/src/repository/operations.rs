@@ -13,9 +13,9 @@ use tracing::instrument;
 use crate::{
     pagination::paginate_try_from,
     types::{
-        BlockNumber, BlockNumberOrHashFilter, EntityKey, Operation, OperationData,
-        OperationMetadata, OperationsCount, OperationsCounterFilter, OperationsFilter,
-        PaginationMetadata, TxHash,
+        BlockNumber, BlockNumberOrHashFilter, EntityKey, ListOperationsFilter, Operation,
+        OperationData, OperationMetadata, OperationsCount, OperationsFilter, PaginationMetadata,
+        PaginationParams, TxHash,
     },
 };
 
@@ -29,24 +29,20 @@ pub struct FullOperationIndex {
 }
 
 #[derive(Debug)]
-pub enum DbBlockNumberOrHash {
+enum DbBlockNumberOrHash {
     Number(i32),
     Hash(Vec<u8>),
 }
 
 #[derive(Debug)]
-pub struct DbOperationsFilter {
-    pub page: u64,
-    pub page_size: u64,
-    pub entity_key: Option<Vec<u8>>,
-    pub sender: Option<Vec<u8>>,
+struct DbListOperationsFilter {
+    pub pagination: PaginationParams,
     pub operation_type: Option<GolemBaseOperationType>,
-    pub block_number_or_hash: Option<DbBlockNumberOrHash>,
-    pub transaction_hash: Option<Vec<u8>>,
+    pub operations_filter: DbOperationsFilter,
 }
 
 #[derive(Debug)]
-pub struct DbOperationsCounterFilter {
+struct DbOperationsFilter {
     pub entity_key: Option<Vec<u8>>,
     pub sender: Option<Vec<u8>>,
     pub block_number_or_hash: Option<DbBlockNumberOrHash>,
@@ -86,31 +82,27 @@ impl From<Vec<OperationGroupCount>> for OperationsCount {
     }
 }
 
-impl TryFrom<OperationsFilter> for DbOperationsFilter {
+impl TryFrom<ListOperationsFilter> for DbListOperationsFilter {
     type Error = anyhow::Error;
 
-    fn try_from(v: OperationsFilter) -> Result<Self> {
+    fn try_from(v: ListOperationsFilter) -> Result<Self> {
         Ok(Self {
-            page: v.page,
-            page_size: v.page_size,
-            entity_key: v.entity_key.map(|key| key.as_slice().into()),
-            sender: v.sender.map(|s| s.as_slice().into()),
-            block_number_or_hash: v.block_number_or_hash.map(TryInto::try_into).transpose()?,
-            transaction_hash: v.transaction_hash.map(|hash| hash.as_slice().into()),
+            pagination: v.pagination,
             operation_type: v.operation_type.map(|op| match op {
                 OperationData::Create(_, _) => GolemBaseOperationType::Create,
                 OperationData::Update(_, _) => GolemBaseOperationType::Update,
                 OperationData::Delete => GolemBaseOperationType::Delete,
                 OperationData::Extend(_) => GolemBaseOperationType::Extend,
             }),
+            operations_filter: v.operations_filter.try_into()?,
         })
     }
 }
 
-impl TryFrom<OperationsCounterFilter> for DbOperationsCounterFilter {
+impl TryFrom<OperationsFilter> for DbOperationsFilter {
     type Error = anyhow::Error;
 
-    fn try_from(v: OperationsCounterFilter) -> Result<Self> {
+    fn try_from(v: OperationsFilter) -> Result<Self> {
         Ok(Self {
             entity_key: v.entity_key.map(|key| key.as_slice().into()),
             sender: v.sender.map(|s| s.as_slice().into()),
@@ -258,73 +250,63 @@ pub async fn get_operation<T: ConnectionTrait>(
         .transpose()
 }
 
-#[instrument(skip(db))]
-pub async fn list_operations<T: ConnectionTrait>(
-    db: &T,
-    filter: DbOperationsFilter,
-) -> Result<(Vec<Operation>, PaginationMetadata)> {
-    let mut query = golem_base_operations::Entity::find();
+fn filtered_operations(filter: DbOperationsFilter) -> Select<golem_base_operations::Entity> {
+    let mut q = golem_base_operations::Entity::find();
+
+    if let Some(key) = filter.entity_key {
+        q = q.filter(golem_base_operations::Column::EntityKey.eq(key));
+    }
 
     if let Some(sender) = filter.sender {
-        query = query.filter(golem_base_operations::Column::Sender.eq(sender));
+        q = q.filter(golem_base_operations::Column::Sender.eq(sender));
     }
-    if let Some(operation_type) = filter.operation_type {
-        query = query.filter(golem_base_operations::Column::Operation.eq(operation_type));
-    }
-    query = match filter.block_number_or_hash {
-        Some(DbBlockNumberOrHash::Number(number)) => query
+    q = match filter.block_number_or_hash {
+        Some(DbBlockNumberOrHash::Number(number)) => q
             .join(
                 sea_orm::JoinType::LeftJoin,
                 golem_base_operations::Relation::Blocks.def(),
             )
             .filter(blocks::Column::Number.eq(number)),
         Some(DbBlockNumberOrHash::Hash(hash)) => {
-            query.filter(golem_base_operations::Column::BlockHash.eq(hash))
+            q.filter(golem_base_operations::Column::BlockHash.eq(hash))
         }
-        _ => query,
+        _ => q,
     };
     if let Some(transaction_hash) = filter.transaction_hash {
-        query = query.filter(golem_base_operations::Column::TransactionHash.eq(transaction_hash));
+        q = q.filter(golem_base_operations::Column::TransactionHash.eq(transaction_hash));
+    }
+    q
+}
+
+#[instrument(skip(db))]
+pub async fn list_operations<T: ConnectionTrait>(
+    db: &T,
+    filter: ListOperationsFilter,
+) -> Result<(Vec<Operation>, PaginationMetadata)> {
+    let filter: DbListOperationsFilter = filter.try_into()?;
+    let mut query = filtered_operations(filter.operations_filter);
+
+    if let Some(operation_type) = filter.operation_type {
+        query = query.filter(golem_base_operations::Column::Operation.eq(operation_type));
     }
 
     let paginator = query
         .order_by_asc(golem_base_operations::Column::TransactionHash)
         .order_by_asc(golem_base_operations::Column::Index)
-        .paginate(db, filter.page_size);
+        .paginate(db, filter.pagination.page_size);
 
-    paginate_try_from(paginator, filter.page, filter.page_size).await
+    paginate_try_from(paginator, filter.pagination).await
 }
 
 #[instrument(skip(db))]
 pub async fn count_operations<T: ConnectionTrait>(
     db: &T,
-    filter: DbOperationsCounterFilter,
+    filter: OperationsFilter,
 ) -> Result<OperationsCount> {
-    let mut query = golem_base_operations::Entity::find().select_only();
-
-    if let Some(sender) = filter.sender {
-        query = query.filter(golem_base_operations::Column::Sender.eq(sender));
-    }
-    query = match filter.block_number_or_hash {
-        Some(DbBlockNumberOrHash::Number(number)) => query
-            .join(
-                sea_orm::JoinType::LeftJoin,
-                golem_base_operations::Relation::Blocks.def(),
-            )
-            .filter(blocks::Column::Number.eq(number)),
-        Some(DbBlockNumberOrHash::Hash(hash)) => {
-            query.filter(golem_base_operations::Column::BlockHash.eq(hash))
-        }
-        _ => query,
-    };
-    if let Some(transaction_hash) = filter.transaction_hash {
-        query = query.filter(golem_base_operations::Column::TransactionHash.eq(transaction_hash));
-    }
-    if let Some(entity_key) = filter.entity_key {
-        query = query.filter(golem_base_operations::Column::EntityKey.eq(entity_key));
-    }
+    let query = filtered_operations(filter.try_into()?);
 
     let rows: Vec<OperationGroupCount> = query
+        .select_only()
         .column(golem_base_operations::Column::Operation)
         .expr_as(Expr::cust("COUNT(*)"), "count")
         .group_by(golem_base_operations::Column::Operation)

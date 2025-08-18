@@ -6,9 +6,9 @@ use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::{
     repository::entities::EntityHistoryEntry,
     types::{
-        Entity, EntityHistoryFilter, EntityStatus, FullEntity, NumericAnnotation, Operation,
-        OperationData, OperationFilter, OperationsCount, OperationsCounterFilter, OperationsFilter,
-        PaginationMetadata, StringAnnotation,
+        EntitiesFilter, Entity, EntityHistoryFilter, EntityStatus, FullEntity, ListEntitiesFilter,
+        ListOperationsFilter, NumericAnnotation, Operation, OperationData, OperationFilter,
+        OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
     },
 };
 
@@ -77,6 +77,24 @@ impl From<NumericAnnotation> for v1::NumericAnnotation {
     }
 }
 
+impl From<v1::StringAnnotation> for StringAnnotation {
+    fn from(value: v1::StringAnnotation) -> Self {
+        Self {
+            key: value.key,
+            value: value.value,
+        }
+    }
+}
+
+impl From<v1::NumericAnnotation> for NumericAnnotation {
+    fn from(value: v1::NumericAnnotation) -> Self {
+        Self {
+            key: value.key,
+            value: value.value,
+        }
+    }
+}
+
 impl From<&OperationData> for v1::OperationType {
     fn from(value: &OperationData) -> Self {
         match value {
@@ -108,7 +126,7 @@ impl From<v1::OperationType> for OperationData {
     }
 }
 
-impl TryFrom<v1::ListOperationsRequest> for OperationsFilter {
+impl TryFrom<v1::ListOperationsRequest> for ListOperationsFilter {
     type Error = anyhow::Error;
 
     fn try_from(request: v1::ListOperationsRequest) -> Result<Self> {
@@ -117,32 +135,35 @@ impl TryFrom<v1::ListOperationsRequest> for OperationsFilter {
             .into();
 
         Ok(Self {
-            page: request.page.unwrap_or(1).max(1),
-            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
-
+            pagination: PaginationParams {
+                page: request.page.unwrap_or(1).max(1),
+                page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+            },
             operation_type: Some(operation_type),
-            block_number_or_hash: request
-                .block_number_or_hash
-                .map(|v| {
-                    v.parse()
-                        .map_err(|_| anyhow!("Invalid block_number_or_hash"))
-                })
-                .transpose()?,
-            transaction_hash: request
-                .transaction_hash
-                .map(|hash| {
-                    hash.parse()
-                        .map_err(|_| anyhow!("Invalid transaction_hash"))
-                })
-                .transpose()?,
-            sender: request
-                .sender
-                .map(|addr| addr.parse().map_err(|_| anyhow!("Invalid sender")))
-                .transpose()?,
-            entity_key: request
-                .entity_key
-                .map(|key| key.parse().map_err(|_| anyhow!("Invalid entity_key")))
-                .transpose()?,
+            operations_filter: OperationsFilter {
+                block_number_or_hash: request
+                    .block_number_or_hash
+                    .map(|v| {
+                        v.parse()
+                            .map_err(|_| anyhow!("Invalid block_number_or_hash"))
+                    })
+                    .transpose()?,
+                transaction_hash: request
+                    .transaction_hash
+                    .map(|hash| {
+                        hash.parse()
+                            .map_err(|_| anyhow!("Invalid transaction_hash"))
+                    })
+                    .transpose()?,
+                sender: request
+                    .sender
+                    .map(|addr| addr.parse().map_err(|_| anyhow!("Invalid sender")))
+                    .transpose()?,
+                entity_key: request
+                    .entity_key
+                    .map(|key| key.parse().map_err(|_| anyhow!("Invalid entity_key")))
+                    .transpose()?,
+            },
         })
     }
 }
@@ -150,15 +171,15 @@ impl TryFrom<v1::ListOperationsRequest> for OperationsFilter {
 impl From<PaginationMetadata> for v1::Pagination {
     fn from(value: PaginationMetadata) -> Self {
         Self {
-            page: value.page,
-            page_size: value.page_size,
+            page: value.pagination.page,
+            page_size: value.pagination.page_size,
             total_pages: value.total_pages,
             total_items: value.total_items,
         }
     }
 }
 
-impl TryFrom<v1::CountOperationsRequest> for OperationsCounterFilter {
+impl TryFrom<v1::CountOperationsRequest> for OperationsFilter {
     type Error = anyhow::Error;
 
     fn try_from(request: v1::CountOperationsRequest) -> Result<Self> {
@@ -231,6 +252,16 @@ impl From<EntityStatus> for v1::EntityStatus {
     }
 }
 
+impl From<v1::EntityStatus> for EntityStatus {
+    fn from(value: v1::EntityStatus) -> Self {
+        match value {
+            v1::EntityStatus::Active => Self::Active,
+            v1::EntityStatus::Deleted => Self::Deleted,
+            v1::EntityStatus::Expired => Self::Expired,
+        }
+    }
+}
+
 impl From<Entity> for v1::Entity {
     fn from(entity: Entity) -> Self {
         let status: v1::EntityStatus = entity.status.into();
@@ -251,8 +282,10 @@ impl TryFrom<v1::GetEntityHistoryRequest> for EntityHistoryFilter {
 
     fn try_from(request: v1::GetEntityHistoryRequest) -> Result<Self> {
         Ok(Self {
-            page: request.page.unwrap_or(1).max(1),
-            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+            pagination: PaginationParams {
+                page: request.page.unwrap_or(1).max(1),
+                page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+            },
             entity_key: request
                 .key
                 .parse()
@@ -306,6 +339,76 @@ impl TryFrom<v1::GetOperationRequest> for OperationFilter {
                 .parse()
                 .map_err(|_| anyhow!("Invalid tx_hash"))?,
             op_index: request.op_index,
+        })
+    }
+}
+
+impl TryFrom<v1::ListEntitiesRequest> for ListEntitiesFilter {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListEntitiesRequest) -> Result<Self> {
+        let status: v1::EntityStatus = request.status.try_into()?;
+        let string_annotation = match (
+            request.string_annotation_key,
+            request.string_annotation_value,
+        ) {
+            (Some(key), Some(value)) => Some(StringAnnotation { key, value }),
+            (None, None) => None,
+            _ => return Err(anyhow!("Invalid string_annotation filter")),
+        };
+        let numeric_annotation = match (
+            request.numeric_annotation_key,
+            request.numeric_annotation_value,
+        ) {
+            (Some(key), Some(value)) => Some(NumericAnnotation {
+                key,
+                value: value.parse()?,
+            }),
+            (None, None) => None,
+            _ => return Err(anyhow!("Invalid numeric_annotation filter")),
+        };
+        Ok(Self {
+            pagination: PaginationParams {
+                page: request.page.unwrap_or(1).max(1),
+                page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+            },
+            entities_filter: EntitiesFilter {
+                status: Some(status.into()),
+                string_annotation,
+                numeric_annotation,
+            },
+        })
+    }
+}
+
+impl TryFrom<v1::CountEntitiesRequest> for EntitiesFilter {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::CountEntitiesRequest) -> Result<Self> {
+        let status: v1::EntityStatus = request.status.try_into()?;
+        let string_annotation = match (
+            request.string_annotation_key,
+            request.string_annotation_value,
+        ) {
+            (Some(key), Some(value)) => Some(StringAnnotation { key, value }),
+            (None, None) => None,
+            _ => return Err(anyhow!("Invalid string_annotation filter")),
+        };
+        let numeric_annotation = match (
+            request.numeric_annotation_key,
+            request.numeric_annotation_value,
+        ) {
+            (Some(key), Some(value)) => Some(NumericAnnotation {
+                key,
+                value: value.parse()?,
+            }),
+            (None, None) => None,
+            _ => return Err(anyhow!("Invalid numeric_annotation filter")),
+        };
+        Ok(Self {
+            status: Some(status.into()),
+            string_annotation,
+            numeric_annotation,
         })
     }
 }
