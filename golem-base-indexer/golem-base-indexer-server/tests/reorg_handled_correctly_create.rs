@@ -15,9 +15,8 @@ async fn test_create_reorg_handling_works() {
     helpers::load_data(&*client, include_str!("fixtures/reorg_create_step1.sql")).await;
     indexer.tick().await.unwrap();
     let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/entities").await;
-    let expected: serde_json::Value = serde_json::json!({
-        "items": [
+        test_server::send_get_request(&base, "/api/v1/entities?status=ACTIVE").await;
+    let expected: serde_json::Value = serde_json::json!([
             {
       "key": "0x286fcdad6145b162147a7055adbc98976128c3577bc004cf8764d15415e8990f",
       "data": "0x746869732077696c6c2062652064726f7070656420696e2072656f7267",
@@ -27,15 +26,18 @@ async fn test_create_reorg_handling_works() {
       "expires_at_block_number": "102"
             }
         ]
-    });
-    assert_eq!(response, expected);
+    );
+    assert_eq!(
+        response.as_object().unwrap().get("items").unwrap(),
+        &expected
+    );
 
     helpers::load_data(&*client, include_str!("fixtures/reorg_create_step2.sql")).await;
     indexer.tick().await.unwrap();
     let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/entities").await;
-    let expected: serde_json::Value = serde_json::json!({
-        "items": [
+        test_server::send_get_request(&base, "/api/v1/entities?status=ACTIVE").await;
+    let expected: serde_json::Value = serde_json::json!(
+        [
             {
       "key": "0x2d8eeaf460fddbc21ab54560edfa5db27bf24914264fe9a61265d5d93e41ce5c",
       "data": "0x746869732077696c6c20737461792061667465722072656f7267",
@@ -45,6 +47,9 @@ async fn test_create_reorg_handling_works() {
       "expires_at_block_number": "102"
             }
         ]
-    });
-    assert_eq!(response, expected);
+    );
+    assert_eq!(
+        response.as_object().unwrap().get("items").unwrap(),
+        &expected
+    );
 }

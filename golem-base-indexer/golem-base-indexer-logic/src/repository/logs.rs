@@ -10,7 +10,7 @@ use tracing::instrument;
 
 #[derive(FromQueryResult)]
 #[allow(dead_code)]
-pub struct DbLog {
+struct DbLog {
     pub data: Vec<u8>,
     pub index: i32,
     pub first_topic: Option<Vec<u8>>,

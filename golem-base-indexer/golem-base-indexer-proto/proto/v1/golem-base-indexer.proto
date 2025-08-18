@@ -13,6 +13,7 @@ service GolemBaseIndexerService {
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse);
   rpc ListOperations(ListOperationsRequest) returns (ListOperationsResponse);
 
+  rpc CountEntities(CountEntitiesRequest) returns (CountEntitiesResponse);
   rpc CountOperations(CountOperationsRequest) returns (CountOperationsResponse);
 }
 
@@ -32,12 +33,18 @@ message GetOperationRequest {
 }
 
 message ListEntitiesRequest {
-  // FIXME add filtering & paging options
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
+  EntityStatus status = 3;
+  optional string string_annotation_key = 4;
+  optional string string_annotation_value = 5;
+  optional string numeric_annotation_key = 6;
+  optional string numeric_annotation_value = 7;
 }
 
 message ListEntitiesResponse {
   repeated Entity items = 1;
-  // FIXME add pagination metadata
+  Pagination pagination = 2;
 }
 
 message ListOperationsRequest {
@@ -74,6 +81,18 @@ message CountOperationsResponse {
   uint64 update_count = 2;
   uint64 delete_count = 3;
   uint64 extend_count = 4;
+}
+
+message CountEntitiesRequest {
+  EntityStatus status = 1;
+  optional string string_annotation_key = 2;
+  optional string string_annotation_value = 3;
+  optional string numeric_annotation_key = 4;
+  optional string numeric_annotation_value = 5;
+}
+
+message CountEntitiesResponse {
+  uint64 count = 1;
 }
 
 enum EntityStatus {

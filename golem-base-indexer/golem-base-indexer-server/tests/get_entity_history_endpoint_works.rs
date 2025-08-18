@@ -52,7 +52,7 @@ async fn test_get_entity_history_endpoint_works() {
     indexer.tick().await.unwrap();
 
     let response: serde_json::Value =
-        test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}")).await;
+        test_server::send_get_request(&base, &format!("/api/v1/entity/{entity_key}")).await;
 
     assert_fields(
         &response,
@@ -111,8 +111,7 @@ async fn test_get_entity_history_endpoint_works() {
     indexer.tick().await.unwrap();
 
     let response: serde_json::Value =
-        test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}/history"))
-            .await;
+        test_server::send_get_request(&base, &format!("/api/v1/entity/{entity_key}/history")).await;
 
     assert_fields(
         &response["pagination"],
@@ -196,7 +195,7 @@ async fn test_get_entity_history_endpoint_works() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        &format!("/api/v1/entities/{entity_key}/history?page=2&page_size=1"),
+        &format!("/api/v1/entity/{entity_key}/history?page=2&page_size=1"),
     )
     .await;
 
@@ -211,7 +210,7 @@ async fn test_get_entity_history_endpoint_works() {
     );
 
     let response: serde_json::Value =
-        test_server::send_get_request(&base, &format!("/api/v1/entities/{entity_key}")).await;
+        test_server::send_get_request(&base, &format!("/api/v1/entity/{entity_key}")).await;
 
     assert_fields(
         &response,
