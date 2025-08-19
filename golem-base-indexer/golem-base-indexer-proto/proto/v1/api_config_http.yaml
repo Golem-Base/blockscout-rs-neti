@@ -28,7 +28,7 @@ http:
       get: /api/v1/address/{address}/stats
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListBiggestSpenders
-      get: /api/v1/stats/biggest-spenders
+      get: /api/v1/transactions/stats/biggest-spenders
 
     #################### Health ####################
 

@@ -273,7 +273,7 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
-  /api/v1/stats/biggest-spenders:
+  /api/v1/transactions/stats/biggest-spenders:
     get:
       operationId: GolemBaseIndexerService_ListBiggestSpenders
       responses:
@@ -385,6 +385,12 @@ definitions:
         type: string
       total_fees:
         type: string
+  v1CountEntitiesResponse:
+    type: object
+    properties:
+      count:
+        type: string
+        format: uint64
   v1CountOperationsResponse:
     type: object
     properties:

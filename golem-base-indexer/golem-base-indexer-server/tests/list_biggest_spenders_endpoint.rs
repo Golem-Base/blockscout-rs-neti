@@ -2,8 +2,10 @@ mod helpers;
 
 use anyhow::Result;
 use blockscout_service_launcher::test_server;
-use golem_base_indexer_logic::types::{Address, BlockHash, CurrencyAmount, TxHash};
-use golem_base_indexer_logic::Indexer;
+use golem_base_indexer_logic::{
+    types::{Address, BlockHash, CurrencyAmount, TxHash},
+    Indexer,
+};
 use pretty_assertions::assert_eq;
 use sea_orm::{ConnectionTrait, Statement};
 
@@ -31,9 +33,11 @@ async fn test_list_biggest_spenders_endpoint() {
         .unwrap();
     indexer.tick().await.unwrap();
 
-    let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/stats/biggest-spenders?page=1&page_size=10")
-            .await;
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/transactions/stats/biggest-spenders?page=1&page_size=10",
+    )
+    .await;
 
     assert_has_keys(&response, &["items", "pagination"]);
     assert_eq!(response["pagination"]["total_items"], "1".to_string());
@@ -64,23 +68,29 @@ async fn test_list_biggest_spenders_endpoint() {
     }
     indexer.tick().await.unwrap();
 
-    let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/stats/biggest-spenders?page=1&page_size=10")
-            .await;
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/transactions/stats/biggest-spenders?page=1&page_size=10",
+    )
+    .await;
 
     assert_eq!(response["pagination"]["total_items"], "11".to_string());
     for items in response["items"].as_array().unwrap() {
         assert_eq!(items["total_fees"].as_str().unwrap(), expected_total_fees);
     }
 
-    let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/stats/biggest-spenders?page=2&page_size=10")
-            .await;
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/transactions/stats/biggest-spenders?page=2&page_size=10",
+    )
+    .await;
     assert_eq!(&response["items"][0]["total_fees"], "125");
 
-    let response: serde_json::Value =
-        test_server::send_get_request(&base, "/api/v1/stats/biggest-spenders?page=2&page_size=1")
-            .await;
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/transactions/stats/biggest-spenders?page=2&page_size=1",
+    )
+    .await;
 
     assert_fields(
         &response["pagination"],

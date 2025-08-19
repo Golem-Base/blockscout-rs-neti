@@ -6,10 +6,10 @@ use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::{
     repository::entities::EntityHistoryEntry,
     types::{
-        BiggestSpenders, BiggestSpendersFilter, EntitiesFilter, Entity, EntityHistoryFilter,
-        EntityStatus, FullEntity, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation,
-        Operation, OperationData, OperationFilter, OperationsCount, OperationsFilter,
-        PaginationMetadata, PaginationParams, StringAnnotation,
+        BiggestSpenders, EntitiesFilter, Entity, EntityHistoryFilter, EntityStatus, FullEntity,
+        ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, Operation, OperationData,
+        OperationFilter, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
+        StringAnnotation,
     },
 };
 
@@ -414,7 +414,7 @@ impl TryFrom<v1::CountEntitiesRequest> for EntitiesFilter {
     }
 }
 
-impl TryFrom<v1::ListBiggestSpendersRequest> for BiggestSpendersFilter {
+impl TryFrom<v1::ListBiggestSpendersRequest> for PaginationParams {
     type Error = anyhow::Error;
 
     fn try_from(request: v1::ListBiggestSpendersRequest) -> Result<Self> {
