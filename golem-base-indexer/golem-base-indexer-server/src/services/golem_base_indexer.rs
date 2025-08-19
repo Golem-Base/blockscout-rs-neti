@@ -240,4 +240,27 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             operations_counts: Some(operations_counts.into()),
         }))
     }
+
+    async fn list_biggest_spenders(
+        &self,
+        request: Request<ListBiggestSpendersRequest>,
+    ) -> Result<Response<ListBiggestSpendersResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid biggest spenders filter: {err}"))
+        })?;
+
+        let (spenders, pagination) =
+            repository::transactions::list_biggest_spenders(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query biggest spenders");
+                    Status::internal("failed to query biggest spenders")
+                })?;
+
+        Ok(Response::new(ListBiggestSpendersResponse {
+            items: spenders.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
 }
