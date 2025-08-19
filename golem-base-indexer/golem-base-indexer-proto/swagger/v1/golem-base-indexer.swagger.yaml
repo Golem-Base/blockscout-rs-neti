@@ -167,6 +167,31 @@ paths:
           format: uint64
       tags:
         - GolemBaseIndexerService
+  /api/v1/leaderboard/biggest-spenders:
+    get:
+      operationId: GolemBaseIndexerService_ListBiggestSpenders
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ListBiggestSpendersResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
   /api/v1/operation/{tx_hash}/{op_index}:
     get:
       operationId: GolemBaseIndexerService_GetOperation
@@ -273,31 +298,6 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
-  /api/v1/transactions/stats/biggest-spenders:
-    get:
-      operationId: GolemBaseIndexerService_ListBiggestSpenders
-      responses:
-        "200":
-          description: A successful response.
-          schema:
-            $ref: '#/definitions/v1ListBiggestSpendersResponse'
-        default:
-          description: An unexpected error response.
-          schema:
-            $ref: '#/definitions/rpcStatus'
-      parameters:
-        - name: page
-          in: query
-          required: false
-          type: string
-          format: uint64
-        - name: page_size
-          in: query
-          required: false
-          type: string
-          format: uint64
-      tags:
-        - GolemBaseIndexerService
   /health:
     get:
       summary: |-
@@ -369,12 +369,6 @@ definitions:
         format: uint64
       operations_counts:
         $ref: '#/definitions/v1CountOperationsResponse'
-  v1CountEntitiesResponse:
-    type: object
-    properties:
-      count:
-        type: string
-        format: uint64
   v1BiggestSpender:
     type: object
     properties:

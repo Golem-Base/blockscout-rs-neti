@@ -35,7 +35,7 @@ async fn test_list_biggest_spenders_endpoint() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/transactions/stats/biggest-spenders?page=1&page_size=10",
+        "/api/v1/leaderboard/biggest-spenders?page=1&page_size=10",
     )
     .await;
 
@@ -70,7 +70,7 @@ async fn test_list_biggest_spenders_endpoint() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/transactions/stats/biggest-spenders?page=1&page_size=10",
+        "/api/v1/leaderboard/biggest-spenders?page=1&page_size=10",
     )
     .await;
 
@@ -81,14 +81,14 @@ async fn test_list_biggest_spenders_endpoint() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/transactions/stats/biggest-spenders?page=2&page_size=10",
+        "/api/v1/leaderboard/biggest-spenders?page=2&page_size=10",
     )
     .await;
     assert_eq!(&response["items"][0]["total_fees"], "125");
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/transactions/stats/biggest-spenders?page=2&page_size=1",
+        "/api/v1/leaderboard/biggest-spenders?page=2&page_size=1",
     )
     .await;
 
