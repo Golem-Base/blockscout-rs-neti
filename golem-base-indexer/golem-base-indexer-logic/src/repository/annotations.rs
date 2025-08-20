@@ -154,6 +154,7 @@ pub async fn find_active_string_annotations<T: ConnectionTrait>(
     let entity_key: Vec<u8> = entity_key.as_slice().into();
     Ok(golem_base_string_annotations::Entity::find()
         .filter(golem_base_string_annotations::Column::EntityKey.eq(entity_key))
+        .filter(golem_base_string_annotations::Column::Active.eq(true))
         .all(db)
         .await
         .context("Finding active string annotations")?
@@ -170,6 +171,7 @@ pub async fn find_active_numeric_annotations<T: ConnectionTrait>(
     let entity_key: Vec<u8> = entity_key.as_slice().into();
     golem_base_numeric_annotations::Entity::find()
         .filter(golem_base_numeric_annotations::Column::EntityKey.eq(entity_key))
+        .filter(golem_base_numeric_annotations::Column::Active.eq(true))
         .all(db)
         .await
         .context("Finding active numeric annotations")?
