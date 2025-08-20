@@ -2955,6 +2955,7 @@ dependencies = [
  "blockscout-endpoint-swagger",
  "blockscout-service-launcher",
  "bytes",
+ "chrono",
  "config 0.15.13",
  "golem-base-indexer-logic",
  "golem-base-indexer-migration",

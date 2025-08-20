@@ -1,8 +1,17 @@
-use crate::types::{Bytes, EntityKey, TxHash};
+use crate::{
+    types::{Block, BlockNumber, Bytes, EntityKey, Timestamp, TxHash},
+    well_known::SECS_PER_BLOCK,
+};
 use alloy_primitives::U256;
 use alloy_sol_types::SolValue;
 use anyhow::Result;
+use chrono::Duration;
 use golem_base_sdk::keccak256;
+
+pub fn block_timestamp(number: BlockNumber, reference_block: &Block) -> Timestamp {
+    reference_block.timestamp
+        + Duration::seconds((number as i64 - reference_block.number as i64) * SECS_PER_BLOCK)
+}
 
 pub fn entity_key(tx_hash: TxHash, data: Bytes, create_op_idx: u64) -> EntityKey {
     let mut buf = Vec::<u8>::new();

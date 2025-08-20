@@ -265,3 +265,25 @@ pub struct BiggestSpenders {
     pub address: Address,
     pub total_fees: CurrencyAmount,
 }
+
+#[derive(Debug, Clone)]
+pub struct EntityHistoryEntry {
+    pub entity_key: EntityKey,
+    pub block_number: BlockNumber,
+    pub block_hash: BlockHash,
+    pub transaction_hash: TxHash,
+    pub tx_index: u64,
+    pub op_index: u64,
+    pub block_timestamp: Timestamp,
+    pub sender: Address,
+    pub data: Option<Bytes>,
+    pub prev_data: Option<Bytes>,
+    pub operation: OperationData,
+    pub status: EntityStatus,
+    pub prev_status: Option<EntityStatus>,
+    pub expires_at_block_number: BlockNumber,
+    pub prev_expires_at_block_number: Option<BlockNumber>,
+    pub expires_at_timestamp: Timestamp,
+    pub prev_expires_at_timestamp: Option<Timestamp>,
+    pub btl: Option<u64>,
+}

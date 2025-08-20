@@ -1,5 +1,7 @@
 use alloy_primitives::{address, b256, Address, B256};
 
+pub const SECS_PER_BLOCK: i64 = 2;
+
 /// housekeeping tx in every block is sent to this address
 pub const L1_BLOCK_CONTRACT_ADDRESS: Address =
     address!("0x4200000000000000000000000000000000000015");
