@@ -375,6 +375,13 @@ pub async fn get_full_entity<T: ConnectionTrait>(
             (entity.expires_at_block_number - current_block_number) * secs_per_block,
         );
 
+    let latest_operation = super::operations::find_latest_operation(db, key)
+        .await?
+        .ok_or(anyhow!("Entity with no operations"))?;
+    let latest_op_block = super::blockscout::get_block(db, latest_operation.metadata.block_hash)
+        .await?
+        .ok_or(anyhow!("Operation with invalid block"))?;
+
     Ok(Some(FullEntity {
         key: entity.key.as_slice().try_into()?,
         data: entity.data.map(|v| v.into()),
@@ -386,7 +393,10 @@ pub async fn get_full_entity<T: ConnectionTrait>(
         created_at_operation_index: create_operation.as_ref().map(|v| v.metadata.index),
         created_at_block_number: create_block.as_ref().map(|v| v.number),
         created_at_timestamp: create_block.as_ref().map(|v| v.timestamp),
-        last_updated_at_tx_hash: entity.last_updated_at_tx_hash.as_slice().try_into()?,
+        updated_at_tx_hash: latest_operation.metadata.tx_hash,
+        updated_at_operation_index: latest_operation.metadata.index,
+        updated_at_block_number: latest_op_block.number,
+        updated_at_timestamp: latest_op_block.timestamp,
         expires_at_block_number: entity.expires_at_block_number.try_into()?,
         expires_at_timestamp,
         owner: entity.owner.map(|v| v.as_slice().try_into()).transpose()?,
