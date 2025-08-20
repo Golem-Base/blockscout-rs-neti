@@ -53,7 +53,9 @@ async fn test_list_operations_endpoint_works() {
                 "btl": null,
                 "block_hash": "0xa53a0b7fd703287e99eeeed02b692cfd16ab8f313847e17c0580ca3aaab50076",
                 "transaction_hash": "0x1b7b3d0ac4b9636a34c72e6ab55a115a2abaa74dfcbf492d5b0b58fe13a04a96",
-                "index": "0"
+                "index": "0",
+                "gas_used": "0",
+                "fees_paid": "0",
             }
         ],
         "pagination": {
@@ -80,7 +82,9 @@ async fn test_list_operations_endpoint_works() {
                 "btl": "2001",
                 "block_hash": "0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
                 "transaction_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
-                "index": "5"
+                "index": "5",
+                "gas_used": "0",
+                "fees_paid": "0",
             },
         ],
         "pagination": {
@@ -107,7 +111,9 @@ async fn test_list_operations_endpoint_works() {
                 "btl": "2001",
                 "block_hash": "0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
                 "transaction_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
-                "index": "5"
+                "index": "5",
+                "gas_used": "0",
+                "fees_paid": "0",
             },
         ],
         "pagination": {
