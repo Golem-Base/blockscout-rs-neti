@@ -4,12 +4,17 @@ use futures::{StreamExt, TryStreamExt};
 use golem_base_sdk::entity::{
     Create, EncodableGolemBaseTransaction, Extend, GolemBaseDelete, Update,
 };
+use lazy_static::lazy_static;
+use prometheus::{opts, register_counter, register_gauge, Counter, Gauge};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use serde::Deserialize;
 use serde_with::serde_as;
-use std::{sync::Arc, time};
+use std::{
+    sync::Arc,
+    time::{self, Duration},
+};
 use tokio::time::sleep;
-use tracing::instrument;
+use tracing::{instrument, warn};
 
 use crate::{
     golem_base::{decode_extend_log_data, entity_key},
@@ -29,6 +34,34 @@ pub mod pagination;
 pub mod repository;
 pub mod types;
 mod well_known;
+
+lazy_static! {
+    static ref TX_COUNTER: Counter = register_counter!(opts!(
+        "processed_transaction_count",
+        "Number of transactions processed.",
+    ))
+    .unwrap();
+    static ref OP_COUNTER: Counter = register_counter!(opts!(
+        "processed_operation_count",
+        "Number of operations processed.",
+    ))
+    .unwrap();
+    static ref TX_REORG_COUNTER: Counter = register_counter!(opts!(
+        "processed_transaction_reorg_count",
+        "Number of transaction reorgs processed.",
+    ))
+    .unwrap();
+    static ref PENDING_TX_GAUGE: Gauge = register_gauge!(opts!(
+        "pending_transactions",
+        "Number of transactions to be processed.",
+    ))
+    .unwrap();
+    static ref PENDING_TX_REORG_GAUGE: Gauge = register_gauge!(opts!(
+        "pending_transaction_reorgs",
+        "Number of transaction reorgs to be processed.",
+    ))
+    .unwrap();
+}
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
@@ -78,6 +111,21 @@ impl Indexer {
         }
     }
 
+    pub async fn update_gauges(&self) -> ! {
+        loop {
+            match repository::blockscout::count_unprocessed_txs(&*self.db).await {
+                Ok(v) => PENDING_TX_GAUGE.set(v as f64),
+                Err(e) => warn!(?e, "Failed to update metrics"),
+            }
+
+            match repository::blockscout::count_txs_for_cleanup(&*self.db).await {
+                Ok(v) => PENDING_TX_REORG_GAUGE.set(v as f64),
+                Err(e) => warn!(?e, "Failed to update metrics"),
+            }
+            sleep(Duration::from_secs(5)).await;
+        }
+    }
+
     #[instrument(skip_all)]
     pub async fn tick(&self) -> Result<()> {
         repository::blockscout::stream_unprocessed_tx_hashes(&*self.db)
@@ -121,6 +169,7 @@ impl Indexer {
         repository::transactions::finish_tx_cleanup(&txn, tx_hash).await?;
 
         txn.commit().await?;
+        TX_REORG_COUNTER.inc();
         Ok(())
     }
 
@@ -240,6 +289,7 @@ impl Indexer {
             .with_context(|| format!("Getting tx {tx_hash}"))?;
         let tx = tx.ok_or(anyhow!("Somehow tx disappeared from the DB"))?;
 
+        let mut op_idx = 0;
         if tx.to_address_hash == well_known::GOLEM_BASE_STORAGE_PROCESSOR_ADDRESS {
             let storagetx = match EncodableGolemBaseTransaction::decode(&mut &*tx.input) {
                 Ok(storagetx) => storagetx,
@@ -251,30 +301,37 @@ impl Indexer {
 
             // following operations are a good candidate for optimization when needed
             // possible improvements include parallelization and batching
-            let mut idx = 0;
             for create in storagetx.creates {
-                self.handle_create(&txn, &tx, create, idx)
+                self.handle_create(&txn, &tx, create, op_idx)
                     .await
-                    .with_context(|| format!("Handling create op tx_hash={tx_hash} idx={idx}"))?;
-                idx += 1;
+                    .with_context(|| {
+                        format!("Handling create op tx_hash={tx_hash} op_idx={op_idx}")
+                    })?;
+                op_idx += 1;
             }
             for delete in storagetx.deletes {
-                self.handle_delete(&txn, &tx, delete, idx)
+                self.handle_delete(&txn, &tx, delete, op_idx)
                     .await
-                    .with_context(|| format!("Handling delete op tx_hash={tx_hash} idx={idx}"))?;
-                idx += 1;
+                    .with_context(|| {
+                        format!("Handling delete op tx_hash={tx_hash} op_idx={op_idx}")
+                    })?;
+                op_idx += 1;
             }
             for update in storagetx.updates {
-                self.handle_update(&txn, &tx, update, idx)
+                self.handle_update(&txn, &tx, update, op_idx)
                     .await
-                    .with_context(|| format!("Handling update op tx_hash={tx_hash} idx={idx}"))?;
-                idx += 1;
+                    .with_context(|| {
+                        format!("Handling update op tx_hash={tx_hash} op_idx={op_idx}")
+                    })?;
+                op_idx += 1;
             }
             for extend in storagetx.extensions {
-                self.handle_extend(&txn, &tx, extend, idx)
+                self.handle_extend(&txn, &tx, extend, op_idx)
                     .await
-                    .with_context(|| format!("Handling extend op tx_hash={tx_hash} idx={idx}"))?;
-                idx += 1;
+                    .with_context(|| {
+                        format!("Handling extend op tx_hash={tx_hash} op_idx={op_idx}")
+                    })?;
+                op_idx += 1;
             }
         }
 
@@ -307,6 +364,8 @@ impl Indexer {
         repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
         txn.commit().await?;
 
+        TX_COUNTER.inc();
+        OP_COUNTER.inc_by(op_idx as f64);
         Ok(())
     }
 

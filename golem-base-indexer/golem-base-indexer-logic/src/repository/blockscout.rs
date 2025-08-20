@@ -1,7 +1,9 @@
 use crate::{repository::sql::GET_TX_BY_HASH, types::Block};
 use anyhow::{Context, Result};
 use futures::{Stream, StreamExt};
-use golem_base_indexer_entity::golem_base_pending_transaction_cleanups;
+use golem_base_indexer_entity::{
+    golem_base_pending_transaction_cleanups, golem_base_pending_transaction_operations,
+};
 use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement, StreamTrait};
 use tracing::instrument;
 
@@ -167,4 +169,20 @@ pub(super) async fn get_block<T: ConnectionTrait>(
     .context("Failed to get block by hash")?
     .map(TryInto::try_into)
     .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn count_unprocessed_txs<T: StreamTrait + ConnectionTrait>(db: &T) -> Result<u64> {
+    golem_base_pending_transaction_operations::Entity::find()
+        .count(db)
+        .await
+        .context("Failed to count pending txs")
+}
+
+#[instrument(skip(db))]
+pub async fn count_txs_for_cleanup<T: StreamTrait + ConnectionTrait>(db: &T) -> Result<u64> {
+    golem_base_pending_transaction_cleanups::Entity::find()
+        .count(db)
+        .await
+        .context("Failed to count pending tx cleanups")
 }
