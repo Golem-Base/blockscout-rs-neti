@@ -478,7 +478,7 @@ pub async fn get_entity_history<T: ConnectionTrait>(
 pub async fn get_entity_operation<T: ConnectionTrait>(
     db: &T,
     filter: OperationFilter,
-) -> Result<EntityHistoryEntry> {
+) -> Result<Option<EntityHistoryEntry>> {
     let tx_hash: Vec<u8> = filter.tx_hash.as_slice().into();
 
     entity_history::Entity::find()
@@ -487,6 +487,6 @@ pub async fn get_entity_operation<T: ConnectionTrait>(
         .one(db)
         .await
         .with_context(|| format!("Failed to get entity operation: {filter:?}"))?
-        .ok_or_else(|| anyhow!("Entity operation not found"))
-        .and_then(|v| v.try_into())
+        .map(|v| v.try_into())
+        .transpose()
 }
