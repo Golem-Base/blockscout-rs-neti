@@ -244,6 +244,8 @@ impl From<Operation> for v1::Operation {
             block_hash: op.metadata.block_hash.to_string(),
             transaction_hash: op.metadata.tx_hash.to_string(),
             index: op.metadata.index,
+            gas_used: "0".into(),  // FIXME
+            fees_paid: "0".into(), // FIXME
         }
     }
 }
@@ -331,6 +333,8 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             btl: v.btl.map(|v| v.to_string()),
             expires_at_block_number: v.expires_at_block_number,
             prev_expires_at_block_number: v.prev_expires_at_block_number,
+            gas_used: "0".into(),  // FIXME
+            fees_paid: "0".into(), // FIXME
         }
     }
 }

@@ -180,6 +180,8 @@ message Operation {
   string block_hash = 6;
   string transaction_hash = 7;
   uint64 index = 8;
+  string gas_used = 9;
+  string fees_paid = 10;
 }
 
 message GetEntityHistoryResponse {
@@ -204,6 +206,8 @@ message EntityHistoryEntry {
   optional string prev_status = 14;
   uint64 expires_at_block_number = 15;
   optional uint64 prev_expires_at_block_number = 16;
+  string gas_used = 17;
+  string fees_paid = 18;
 }
 
 message ListBiggestSpendersRequest {
