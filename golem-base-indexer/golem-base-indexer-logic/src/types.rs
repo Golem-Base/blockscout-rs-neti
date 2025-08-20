@@ -141,7 +141,11 @@ pub struct FullEntity {
     pub created_at_block_number: Option<BlockNumber>,
     pub created_at_timestamp: Option<Timestamp>,
 
-    pub last_updated_at_tx_hash: TxHash,
+    pub updated_at_tx_hash: TxHash,
+    pub updated_at_operation_index: u64,
+    pub updated_at_block_number: BlockNumber,
+    pub updated_at_timestamp: Timestamp,
+
     pub expires_at_block_number: BlockNumber,
     pub expires_at_timestamp: Timestamp,
 

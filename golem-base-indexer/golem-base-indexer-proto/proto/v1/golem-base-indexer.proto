@@ -157,6 +157,11 @@ message FullEntity {
   optional string owner = 13;
   string gas_used = 14;
   string fees_paid = 15;
+
+  string updated_at_tx_hash = 16;
+  string updated_at_operation_index = 17;
+  uint64 updated_at_block_number = 18;
+  string updated_at_timestamp = 19;
 }
 
 enum OperationType {

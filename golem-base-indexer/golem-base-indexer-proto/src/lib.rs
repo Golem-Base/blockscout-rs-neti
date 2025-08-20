@@ -49,6 +49,11 @@ impl v1::FullEntity {
             created_at_block_number: entity.created_at_block_number,
             created_at_timestamp: entity.created_at_timestamp.map(|v| v.to_rfc3339()),
 
+            updated_at_tx_hash: entity.updated_at_tx_hash.encode_hex_with_prefix(),
+            updated_at_operation_index: entity.updated_at_operation_index.to_string(),
+            updated_at_block_number: entity.updated_at_block_number,
+            updated_at_timestamp: entity.updated_at_timestamp.to_rfc3339(),
+
             expires_at_timestamp: entity.expires_at_timestamp.to_rfc3339(),
             expires_at_block_number: entity.expires_at_block_number,
             fees_paid: entity.fees_paid.to_string(),
