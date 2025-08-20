@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Context, Result};
-use chrono::Duration;
 use golem_base_indexer_entity::{
     golem_base_entities, golem_base_numeric_annotations, golem_base_string_annotations,
     sea_orm_active_enums::GolemBaseEntityStatusType,
@@ -14,13 +13,14 @@ use sea_orm::{
 use tracing::instrument;
 
 use crate::{
+    golem_base::block_timestamp,
     model::entity_history,
-    pagination::paginate_try_from,
+    pagination::{paginate, paginate_try_from},
     repository::sql,
     types::{
-        Address, BlockHash, BlockNumber, Bytes, EntitiesFilter, Entity, EntityHistoryFilter,
-        EntityKey, EntityStatus, FullEntity, ListEntitiesFilter, OperationData, OperationFilter,
-        PaginationMetadata, Timestamp, TxHash,
+        Address, Block, BlockNumber, Bytes, EntitiesFilter, Entity, EntityHistoryEntry,
+        EntityHistoryFilter, EntityKey, EntityStatus, FullEntity, ListEntitiesFilter,
+        OperationFilter, PaginationMetadata, TxHash,
     },
 };
 
@@ -98,30 +98,21 @@ impl TryFrom<golem_base_entities::Model> for Entity {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct EntityHistoryEntry {
-    pub entity_key: EntityKey,
-    pub block_number: BlockNumber,
-    pub block_hash: BlockHash,
-    pub transaction_hash: TxHash,
-    pub tx_index: u64,
-    pub op_index: u64,
-    pub block_timestamp: Timestamp,
-    pub sender: Address,
-    pub data: Option<Bytes>,
-    pub prev_data: Option<Bytes>,
-    pub operation: OperationData,
-    pub status: EntityStatus,
-    pub prev_status: Option<EntityStatus>,
-    pub expires_at_block_number: BlockNumber,
-    pub prev_expires_at_block_number: Option<BlockNumber>,
-    pub btl: Option<u64>,
-}
+impl EntityHistoryEntry {
+    fn try_new(value: entity_history::Model, reference_block: &Block) -> Result<Self> {
+        let expires_at_block_number: BlockNumber = value.expires_at_block_number.try_into()?;
+        let prev_expires_at_block_number: Option<BlockNumber> = value
+            .prev_expires_at_block_number
+            .map(|v| v.try_into())
+            .transpose()?;
 
-impl TryFrom<entity_history::Model> for EntityHistoryEntry {
-    type Error = anyhow::Error;
+        let expires_at_timestamp = block_timestamp(expires_at_block_number, reference_block);
 
-    fn try_from(value: entity_history::Model) -> Result<Self> {
+        let prev_expires_at_timestamp =
+            prev_expires_at_block_number.map(|expires_at_block_number| {
+                block_timestamp(expires_at_block_number, reference_block)
+            });
+
         Ok(Self {
             entity_key: value.entity_key.as_slice().try_into()?,
             block_number: value.block_number.try_into()?,
@@ -136,11 +127,10 @@ impl TryFrom<entity_history::Model> for EntityHistoryEntry {
             prev_data: value.prev_data.map(|v| v.into()),
             status: value.status.into(),
             prev_status: value.prev_status.map(|v| v.into()),
-            expires_at_block_number: value.expires_at_block_number.try_into()?,
-            prev_expires_at_block_number: value
-                .prev_expires_at_block_number
-                .map(|v| v.try_into())
-                .transpose()?,
+            expires_at_block_number,
+            prev_expires_at_block_number,
+            expires_at_timestamp,
+            prev_expires_at_timestamp,
             btl: value.btl.map(|v| v.try_into()).transpose()?,
         })
     }
@@ -368,12 +358,8 @@ pub async fn get_full_entity<T: ConnectionTrait>(
         None => None,
     };
 
-    let secs_per_block = 2;
-    let current_block_number: i64 = current_block.number.try_into()?;
-    let expires_at_timestamp = current_block.timestamp
-        + Duration::seconds(
-            (entity.expires_at_block_number - current_block_number) * secs_per_block,
-        );
+    let expires_at_timestamp =
+        block_timestamp(entity.expires_at_block_number as u64, &current_block);
 
     let latest_operation = super::operations::find_latest_operation(db, key)
         .await?
@@ -471,7 +457,18 @@ pub async fn get_entity_history<T: ConnectionTrait>(
         .order_by_asc(entity_history::Column::OpIndex)
         .paginate(db, filter.pagination.page_size);
 
-    paginate_try_from(paginator, filter.pagination).await
+    let (items, pagination_metadata) = paginate(paginator, filter.pagination).await?;
+
+    let reference_block = super::blockscout::get_current_block(db)
+        .await?
+        .ok_or(anyhow!("No blocks indexed yet"))?;
+    Ok((
+        items
+            .into_iter()
+            .map(|v| EntityHistoryEntry::try_new(v, &reference_block))
+            .collect::<Result<Vec<_>>>()?,
+        pagination_metadata,
+    ))
 }
 
 #[instrument(skip(db))]
@@ -481,12 +478,16 @@ pub async fn get_entity_operation<T: ConnectionTrait>(
 ) -> Result<Option<EntityHistoryEntry>> {
     let tx_hash: Vec<u8> = filter.tx_hash.as_slice().into();
 
+    let reference_block = super::blockscout::get_current_block(db)
+        .await?
+        .ok_or(anyhow!("No blocks indexed yet"))?;
+
     entity_history::Entity::find()
         .filter(entity_history::Column::TransactionHash.eq(tx_hash))
         .filter(entity_history::Column::OpIndex.eq(filter.op_index as i64))
         .one(db)
         .await
         .with_context(|| format!("Failed to get entity operation: {filter:?}"))?
-        .map(|v| v.try_into())
+        .map(|v| EntityHistoryEntry::try_new(v, &reference_block))
         .transpose()
 }

@@ -25,6 +25,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 utoipa.workspace = true
 utoipa-swagger-ui.workspace = true
+chrono.workspace = true
 
 
 [dev-dependencies]

@@ -208,6 +208,8 @@ message EntityHistoryEntry {
   optional uint64 prev_expires_at_block_number = 16;
   string gas_used = 17;
   string fees_paid = 18;
+  string expires_at_timestamp = 19;
+  optional string prev_expires_at_timestamp = 20;
 }
 
 message ListBiggestSpendersRequest {

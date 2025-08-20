@@ -3,14 +3,11 @@
 use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
-use golem_base_indexer_logic::{
-    repository::entities::EntityHistoryEntry,
-    types::{
-        BiggestSpenders, EntitiesFilter, Entity, EntityHistoryFilter, EntityStatus, FullEntity,
-        ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, Operation, OperationData,
-        OperationFilter, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
-        StringAnnotation,
-    },
+use golem_base_indexer_logic::types::{
+    BiggestSpenders, EntitiesFilter, Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
+    FullEntity, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, Operation,
+    OperationData, OperationFilter, OperationsCount, OperationsFilter, PaginationMetadata,
+    PaginationParams, StringAnnotation,
 };
 
 pub mod blockscout {
@@ -333,6 +330,8 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             btl: v.btl.map(|v| v.to_string()),
             expires_at_block_number: v.expires_at_block_number,
             prev_expires_at_block_number: v.prev_expires_at_block_number,
+            expires_at_timestamp: v.expires_at_timestamp.to_rfc3339(),
+            prev_expires_at_timestamp: v.prev_expires_at_timestamp.map(|v| v.to_rfc3339()),
             gas_used: "0".into(),  // FIXME
             fees_paid: "0".into(), // FIXME
         }
