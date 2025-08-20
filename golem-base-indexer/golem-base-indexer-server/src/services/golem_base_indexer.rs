@@ -76,7 +76,8 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             .map_err(|err| {
                 tracing::error!(?err, "failed to query entity operation");
                 Status::internal("failed to query entity operation")
-            })?;
+            })?
+            .ok_or(Status::not_found("operation not found"))?;
 
         Ok(Response::new(operation.into()))
     }
