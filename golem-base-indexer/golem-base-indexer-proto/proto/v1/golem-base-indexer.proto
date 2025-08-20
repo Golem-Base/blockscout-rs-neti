@@ -17,6 +17,7 @@ service GolemBaseIndexerService {
   rpc CountOperations(CountOperationsRequest) returns (CountOperationsResponse);
 
   rpc AddressStats(AddressStatsRequest) returns (AddressStatsResponse);
+  rpc ListBiggestSpenders(ListBiggestSpendersRequest) returns (ListBiggestSpendersResponse);
 }
 
 message AddressStatsRequest {
@@ -198,4 +199,20 @@ message EntityHistoryEntry {
   optional string prev_status = 14;
   uint64 expires_at_block_number = 15;
   optional uint64 prev_expires_at_block_number = 16;
+}
+
+message ListBiggestSpendersRequest {
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
+}
+
+message ListBiggestSpendersResponse {
+  repeated BiggestSpender items = 1;
+  Pagination pagination = 2;
+}
+
+message BiggestSpender {
+  uint64 rank = 1;
+  string address = 2;
+  string total_fees = 3;
 }

@@ -144,3 +144,16 @@ where
     from_address_hash = $1
     and block_consensus = 't'
 "#;
+
+pub const FIND_TX_FEE_BIGGEST_SPENDERS: &str = r#"
+SELECT 
+    ROW_NUMBER() OVER(ORDER BY SUM(cumulative_gas_used * gas_price) DESC) as rank,
+    from_address_hash as address, 
+    CAST(SUM(cumulative_gas_used * gas_price) AS TEXT) as total_fees
+FROM 
+    transactions
+GROUP BY 
+    from_address_hash
+ORDER BY 
+    SUM(cumulative_gas_used * gas_price) DESC
+"#;

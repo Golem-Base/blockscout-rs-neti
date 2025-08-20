@@ -167,6 +167,31 @@ paths:
           format: uint64
       tags:
         - GolemBaseIndexerService
+  /api/v1/leaderboard/biggest-spenders:
+    get:
+      operationId: GolemBaseIndexerService_ListBiggestSpenders
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ListBiggestSpendersResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
   /api/v1/operation/{tx_hash}/{op_index}:
     get:
       operationId: GolemBaseIndexerService_GetOperation
@@ -344,6 +369,16 @@ definitions:
         format: uint64
       operations_counts:
         $ref: '#/definitions/v1CountOperationsResponse'
+  v1BiggestSpender:
+    type: object
+    properties:
+      rank:
+        type: string
+        format: uint64
+      address:
+        type: string
+      total_fees:
+        type: string
   v1CountEntitiesResponse:
     type: object
     properties:
@@ -485,6 +520,16 @@ definitions:
     properties:
       status:
         $ref: '#/definitions/HealthCheckResponseServingStatus'
+  v1ListBiggestSpendersResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1BiggestSpender'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
   v1ListEntitiesResponse:
     type: object
     properties:

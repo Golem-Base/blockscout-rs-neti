@@ -12,12 +12,18 @@ pub struct Model {
     )]
     pub hash: Vec<u8>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
+    pub from_address_hash: Option<Vec<u8>>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub to_address_hash: Option<Vec<u8>>,
     pub status: Option<i32>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub block_hash: Option<Vec<u8>>,
     pub block_number: Option<i32>,
     pub index: Option<i32>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
+    pub cumulative_gas_used: Option<Decimal>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
+    pub gas_price: Option<Decimal>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

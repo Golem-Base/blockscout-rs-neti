@@ -254,3 +254,10 @@ pub struct AddressTxsCount {
     pub total_transactions: u64,
     pub failed_transactions: u64,
 }
+
+#[derive(Debug, Clone)]
+pub struct BiggestSpenders {
+    pub rank: u64,
+    pub address: Address,
+    pub total_fees: CurrencyAmount,
+}
