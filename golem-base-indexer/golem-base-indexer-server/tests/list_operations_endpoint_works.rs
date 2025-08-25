@@ -52,6 +52,7 @@ async fn test_list_operations_endpoint_works() {
                 "data": null,
                 "btl": null,
                 "block_hash": "0xa53a0b7fd703287e99eeeed02b692cfd16ab8f313847e17c0580ca3aaab50076",
+                "block_number": "7",
                 "transaction_hash": "0x1b7b3d0ac4b9636a34c72e6ab55a115a2abaa74dfcbf492d5b0b58fe13a04a96",
                 "index": "0",
                 "gas_used": "0",
@@ -69,23 +70,24 @@ async fn test_list_operations_endpoint_works() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/operations?operation=EXTEND&block_hash=0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
+        "/api/v1/operations?operation=EXTEND&block_number_or_hash=0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
     )
     .await;
     let expected: serde_json::Value = serde_json::json!({
-        "items": [
-             {
-                "entity_key": "0x901799b2f558af736716b4dc4427424e1d07d420cbb8bc53ba15489c5727e84b",
-                "sender": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
-                "operation": "EXTEND",
-                "data": null,
-                "btl": "2001",
-                "block_hash": "0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
-                "transaction_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
-                "index": "5",
-                "gas_used": "0",
-                "fees_paid": "0",
-            },
+    "items": [
+        {
+            "entity_key": "0x901799b2f558af736716b4dc4427424e1d07d420cbb8bc53ba15489c5727e84b",
+            "sender": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
+            "operation": "EXTEND",
+            "data": null,
+            "btl": "2001",
+            "block_hash": "0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
+            "block_number": "6",
+            "transaction_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
+            "index": "5",
+            "gas_used": "0",
+            "fees_paid": "0",
+        },
         ],
         "pagination": {
             "page": "1",
@@ -95,6 +97,20 @@ async fn test_list_operations_endpoint_works() {
         }
     });
     assert_eq!(response, expected);
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/operations?operation=EXTEND&block_number_or_hash=6",
+    )
+    .await;
+    assert_eq!(response, expected);
+
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/operations?operation=EXTEND&block_number_or_hash=7",
+    )
+    .await;
+    assert_eq!(response["items"], serde_json::json!([]));
+    assert_eq!(response["pagination"]["total_items"], "0");
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
@@ -110,6 +126,7 @@ async fn test_list_operations_endpoint_works() {
                 "data": null,
                 "btl": "2001",
                 "block_hash": "0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
+                "block_number": "6",
                 "transaction_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
                 "index": "5",
                 "gas_used": "0",
