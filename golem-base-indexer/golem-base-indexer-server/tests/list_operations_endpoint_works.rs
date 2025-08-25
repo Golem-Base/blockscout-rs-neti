@@ -114,6 +114,13 @@ async fn test_list_operations_endpoint_works() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
+        "/api/v1/operations?operation=CREATE&block_number_or_hash=6",
+    )
+    .await;
+    assert_eq!(response["items"].as_array().unwrap().len(), 2);
+
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
         "/api/v1/operations?operation=EXTEND&entity_key=0x901799b2f558af736716b4dc4427424e1d07d420cbb8bc53ba15489c5727e84b",
     )
     .await;
