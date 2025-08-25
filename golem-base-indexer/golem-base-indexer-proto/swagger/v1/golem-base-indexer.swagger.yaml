@@ -600,6 +600,9 @@ definitions:
         type: string
       fees_paid:
         type: string
+      block_number:
+        type: string
+        format: uint64
   v1OperationType:
     type: string
     enum:

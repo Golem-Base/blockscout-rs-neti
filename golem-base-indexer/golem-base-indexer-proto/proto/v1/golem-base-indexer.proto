@@ -182,6 +182,7 @@ message Operation {
   uint64 index = 8;
   string gas_used = 9;
   string fees_paid = 10;
+  uint64 block_number = 11;
 }
 
 message GetEntityHistoryResponse {

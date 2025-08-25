@@ -14,8 +14,8 @@ use crate::{
     pagination::paginate_try_from,
     types::{
         BlockNumber, BlockNumberOrHashFilter, EntityKey, ListOperationsFilter, Operation,
-        OperationData, OperationMetadata, OperationsCount, OperationsFilter, PaginationMetadata,
-        PaginationParams, TxHash,
+        OperationData, OperationMetadata, OperationView, OperationsCount, OperationsFilter,
+        PaginationMetadata, PaginationParams, TxHash,
     },
 };
 
@@ -154,6 +154,22 @@ impl TryFrom<golem_base_operations::Model> for Operation {
     }
 }
 
+impl TryFrom<(golem_base_operations::Model, Option<blocks::Model>)> for OperationView {
+    type Error = anyhow::Error;
+
+    fn try_from(v: (golem_base_operations::Model, Option<blocks::Model>)) -> Result<Self> {
+        let (op, block) = v;
+
+        Ok(Self {
+            op: Operation::try_from(op.clone())?,
+            block_number: block
+                .ok_or(anyhow!("missing block number"))?
+                .number
+                .try_into()?,
+        })
+    }
+}
+
 impl From<&OperationData> for GolemBaseOperationType {
     fn from(value: &OperationData) -> Self {
         match value {
@@ -250,7 +266,10 @@ pub async fn get_operation<T: ConnectionTrait>(
         .transpose()
 }
 
-fn filtered_operations(filter: DbOperationsFilter) -> Select<golem_base_operations::Entity> {
+fn filtered_operations(
+    filter: DbOperationsFilter,
+    cond_join_blocks: bool,
+) -> Select<golem_base_operations::Entity> {
     let mut q = golem_base_operations::Entity::find();
 
     if let Some(key) = filter.entity_key {
@@ -260,13 +279,15 @@ fn filtered_operations(filter: DbOperationsFilter) -> Select<golem_base_operatio
     if let Some(sender) = filter.sender {
         q = q.filter(golem_base_operations::Column::Sender.eq(sender));
     }
+
     q = match filter.block_number_or_hash {
-        Some(DbBlockNumberOrHash::Number(number)) => q
+        Some(DbBlockNumberOrHash::Number(number)) if cond_join_blocks => q
             .join(
                 sea_orm::JoinType::LeftJoin,
                 golem_base_operations::Relation::Blocks.def(),
             )
             .filter(blocks::Column::Number.eq(number)),
+        Some(DbBlockNumberOrHash::Number(number)) => q.filter(blocks::Column::Number.eq(number)),
         Some(DbBlockNumberOrHash::Hash(hash)) => {
             q.filter(golem_base_operations::Column::BlockHash.eq(hash))
         }
@@ -282,15 +303,21 @@ fn filtered_operations(filter: DbOperationsFilter) -> Select<golem_base_operatio
 pub async fn list_operations<T: ConnectionTrait>(
     db: &T,
     filter: ListOperationsFilter,
-) -> Result<(Vec<Operation>, PaginationMetadata)> {
+) -> Result<(Vec<OperationView>, PaginationMetadata)> {
     let filter: DbListOperationsFilter = filter.try_into()?;
-    let mut query = filtered_operations(filter.operations_filter);
+    let mut query = filtered_operations(filter.operations_filter, false);
 
     if let Some(operation_type) = filter.operation_type {
         query = query.filter(golem_base_operations::Column::Operation.eq(operation_type));
     }
+    let query_with_blocks = query
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            golem_base_operations::Relation::Blocks.def(),
+        )
+        .select_also(blocks::Entity);
 
-    let paginator = query
+    let paginator = query_with_blocks
         .order_by_asc(golem_base_operations::Column::TransactionHash)
         .order_by_asc(golem_base_operations::Column::Index)
         .paginate(db, filter.pagination.page_size);
@@ -303,7 +330,7 @@ pub async fn count_operations<T: ConnectionTrait>(
     db: &T,
     filter: OperationsFilter,
 ) -> Result<OperationsCount> {
-    let query = filtered_operations(filter.try_into()?);
+    let query = filtered_operations(filter.clone().try_into()?, true);
 
     let rows: Vec<OperationGroupCount> = query
         .select_only()

@@ -63,6 +63,12 @@ pub struct OperationMetadata {
 }
 
 #[derive(Clone, Debug)]
+pub struct OperationView {
+    pub op: Operation,
+    pub block_number: BlockNumber,
+}
+
+#[derive(Clone, Debug)]
 pub enum OperationData {
     Create(Bytes, BlockNumber),
     Update(Bytes, BlockNumber),
