@@ -319,7 +319,7 @@ pub async fn count_operations<T: ConnectionTrait>(
     db: &T,
     filter: OperationsFilter,
 ) -> Result<OperationsCount> {
-    let query = filtered_operations(filter.clone().try_into()?);
+    let query = filtered_operations(filter.try_into()?);
 
     let rows: Vec<OperationGroupCount> = query
         .select_only()
