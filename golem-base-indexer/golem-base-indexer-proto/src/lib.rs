@@ -5,8 +5,8 @@ use const_hex::traits::ToHexExt;
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
     BiggestSpenders, EntitiesFilter, Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
-    FullEntity, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, Operation,
-    OperationData, OperationFilter, OperationsCount, OperationsFilter, PaginationMetadata,
+    FullEntity, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, OperationData,
+    OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata,
     PaginationParams, StringAnnotation,
 };
 
@@ -224,23 +224,25 @@ impl From<OperationsCount> for v1::CountOperationsResponse {
     }
 }
 
-impl From<Operation> for v1::Operation {
-    fn from(op: Operation) -> Self {
-        let operation_type: v1::OperationType = (&op.operation).into();
+impl From<OperationView> for v1::Operation {
+    fn from(v: OperationView) -> Self {
+        let operation_type: v1::OperationType = (&v.op.operation).into();
 
         Self {
-            entity_key: op.metadata.entity_key.to_string(),
-            sender: op.metadata.sender.to_checksum(None),
+            entity_key: v.op.metadata.entity_key.to_string(),
+            sender: v.op.metadata.sender.to_checksum(None),
             operation: operation_type.into(),
-            data: op
+            data: v
+                .op
                 .operation
                 .clone()
                 .data()
                 .map(ToHexExt::encode_hex_with_prefix),
-            btl: op.operation.btl(),
-            block_hash: op.metadata.block_hash.to_string(),
-            transaction_hash: op.metadata.tx_hash.to_string(),
-            index: op.metadata.index,
+            btl: v.op.operation.btl(),
+            block_hash: v.op.metadata.block_hash.to_string(),
+            block_number: v.block_number,
+            transaction_hash: v.op.metadata.tx_hash.to_string(),
+            index: v.op.metadata.index,
             gas_used: "0".into(),  // FIXME
             fees_paid: "0".into(), // FIXME
         }
