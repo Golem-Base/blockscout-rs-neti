@@ -1,5 +1,6 @@
 pub mod address;
 pub mod annotations;
+pub mod block;
 pub mod blockscout;
 pub mod entities;
 pub mod logs;
