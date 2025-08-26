@@ -29,6 +29,25 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
+  /api/v1/block/{block}/stats:
+    get:
+      operationId: GolemBaseIndexerService_BlockStats
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1BlockStatsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: block
+          in: path
+          required: true
+          type: string
+      tags:
+        - GolemBaseIndexerService
   /api/v1/entities:
     get:
       operationId: GolemBaseIndexerService_ListEntities
@@ -379,6 +398,24 @@ definitions:
         type: string
       total_fees:
         type: string
+  v1BlockStatsResponse:
+    type: object
+    properties:
+      create_count:
+        type: string
+        format: uint64
+      update_count:
+        type: string
+        format: uint64
+      expire_count:
+        type: string
+        format: uint64
+      delete_count:
+        type: string
+        format: uint64
+      extend_count:
+        type: string
+        format: uint64
   v1CountEntitiesResponse:
     type: object
     properties:

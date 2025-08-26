@@ -264,4 +264,11 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn block_stats(
+        &self,
+        _request: Request<BlockStatsRequest>,
+    ) -> Result<Response<BlockStatsResponse>, Status> {
+        Err(Status::internal("TODO"))
+    }
 }

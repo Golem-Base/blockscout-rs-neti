@@ -18,6 +18,7 @@ service GolemBaseIndexerService {
 
   rpc AddressStats(AddressStatsRequest) returns (AddressStatsResponse);
   rpc ListBiggestSpenders(ListBiggestSpendersRequest) returns (ListBiggestSpendersResponse);
+  rpc BlockStats(BlockStatsRequest) returns (BlockStatsResponse);
 }
 
 message AddressStatsRequest {
@@ -226,4 +227,16 @@ message BiggestSpender {
   uint64 rank = 1;
   string address = 2;
   string total_fees = 3;
+}
+
+message BlockStatsRequest {
+  string block = 1;
+}
+
+message BlockStatsResponse {
+  uint64 create_count = 1;
+  uint64 update_count = 2;
+  uint64 expire_count = 3;
+  uint64 delete_count = 4;
+  uint64 extend_count = 5;
 }
