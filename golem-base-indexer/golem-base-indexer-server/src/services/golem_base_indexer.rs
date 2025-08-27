@@ -282,12 +282,6 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
                 Status::internal("failed to query block stats")
             })?;
 
-        Ok(Response::new(BlockStatsResponse {
-            create_count: counts.create_count,
-            update_count: counts.update_count,
-            expire_count: counts.expire_count,
-            delete_count: counts.delete_count,
-            extend_count: counts.extend_count,
-        }))
+        Ok(Response::new(counts.into()))
     }
 }
