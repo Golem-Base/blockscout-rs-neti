@@ -152,6 +152,11 @@ SELECT
     CAST(SUM(cumulative_gas_used * gas_price) AS TEXT) as total_fees
 FROM 
     transactions
+WHERE
+    cumulative_gas_used IS NOT NULL
+    AND cumulative_gas_used > 0
+    AND gas_price IS NOT NULL
+    AND gas_price > 0
 GROUP BY 
     from_address_hash
 ORDER BY 
