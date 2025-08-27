@@ -29,7 +29,7 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
-  /api/v1/block/{block}/stats:
+  /api/v1/block/{block_number}/stats:
     get:
       operationId: GolemBaseIndexerService_BlockStats
       responses:
@@ -42,7 +42,7 @@ paths:
           schema:
             $ref: '#/definitions/rpcStatus'
       parameters:
-        - name: block
+        - name: block_number
           in: path
           required: true
           type: string

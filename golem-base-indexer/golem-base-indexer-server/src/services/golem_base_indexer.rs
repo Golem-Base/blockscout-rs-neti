@@ -269,13 +269,13 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         &self,
         request: Request<BlockStatsRequest>,
     ) -> Result<Response<BlockStatsResponse>, Status> {
-        let BlockStatsRequest { block } = request.into_inner();
-        let block = block.parse().map_err(|err| {
+        let BlockStatsRequest { block_number } = request.into_inner();
+        let block_number = block_number.parse().map_err(|err| {
             tracing::error!(?err, "invalid block number");
             Status::invalid_argument("invalid block number")
         })?;
 
-        let counts = repository::block::count_entities(&*self.db, block)
+        let counts = repository::block::count_entities(&*self.db, block_number)
             .await
             .map_err(|err| {
                 tracing::error!(?err, "failed to query block stats");

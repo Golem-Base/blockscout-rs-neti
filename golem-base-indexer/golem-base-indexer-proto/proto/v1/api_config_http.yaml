@@ -31,7 +31,7 @@ http:
       get: /api/v1/leaderboard/biggest-spenders
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.BlockStats
-      get: /api/v1/block/{block}/stats
+      get: /api/v1/block/{block_number}/stats
 
     #################### Health ####################
 

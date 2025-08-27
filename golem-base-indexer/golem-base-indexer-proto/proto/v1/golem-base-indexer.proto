@@ -231,7 +231,7 @@ message BiggestSpender {
 }
 
 message BlockStatsRequest {
-  string block = 1;
+  string block_number = 1;
 }
 
 message BlockStatsResponse {
