@@ -157,3 +157,14 @@ GROUP BY
 ORDER BY 
     SUM(cumulative_gas_used * gas_price) DESC
 "#;
+
+pub const COUNT_ENTITIES_BY_BLOCK: &str = r#"
+SELECT
+    COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
+    COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
+    COUNT(*) FILTER (WHERE operation = 'delete' AND status = 'expired') AS expire_count,
+    COUNT(*) FILTER (WHERE operation = 'delete' AND status = 'deleted') AS delete_count,
+    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count
+FROM golem_base_entity_history
+WHERE block_number = $1
+"#;

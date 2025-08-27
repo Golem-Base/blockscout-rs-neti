@@ -30,6 +30,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListBiggestSpenders
       get: /api/v1/leaderboard/biggest-spenders
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.BlockStats
+      get: /api/v1/block/{block}/stats
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check

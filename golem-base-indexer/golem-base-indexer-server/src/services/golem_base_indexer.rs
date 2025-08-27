@@ -264,4 +264,24 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn block_stats(
+        &self,
+        request: Request<BlockStatsRequest>,
+    ) -> Result<Response<BlockStatsResponse>, Status> {
+        let BlockStatsRequest { block } = request.into_inner();
+        let block = block.parse().map_err(|err| {
+            tracing::error!(?err, "invalid block number");
+            Status::invalid_argument("invalid block number")
+        })?;
+
+        let counts = repository::block::count_entities(&*self.db, block)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query block stats");
+                Status::internal("failed to query block stats")
+            })?;
+
+        Ok(Response::new(counts.into()))
+    }
 }

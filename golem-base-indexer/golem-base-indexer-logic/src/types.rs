@@ -293,3 +293,12 @@ pub struct EntityHistoryEntry {
     pub prev_expires_at_timestamp: Option<Timestamp>,
     pub btl: Option<u64>,
 }
+
+#[derive(Debug, Clone)]
+pub struct BlockEntitiesCount {
+    pub create_count: u64,
+    pub update_count: u64,
+    pub expire_count: u64,
+    pub delete_count: u64,
+    pub extend_count: u64,
+}

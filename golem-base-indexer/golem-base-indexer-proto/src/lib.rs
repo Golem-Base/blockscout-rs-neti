@@ -4,10 +4,10 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    BiggestSpenders, EntitiesFilter, Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
-    FullEntity, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, OperationData,
-    OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata,
-    PaginationParams, StringAnnotation,
+    BiggestSpenders, BlockEntitiesCount, EntitiesFilter, Entity, EntityHistoryEntry,
+    EntityHistoryFilter, EntityStatus, FullEntity, ListEntitiesFilter, ListOperationsFilter,
+    NumericAnnotation, OperationData, OperationFilter, OperationView, OperationsCount,
+    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
 };
 
 pub mod blockscout {
@@ -441,6 +441,18 @@ impl From<BiggestSpenders> for v1::BiggestSpender {
             rank: value.rank,
             address: value.address.to_checksum(None),
             total_fees: value.total_fees.to_string(),
+        }
+    }
+}
+
+impl From<BlockEntitiesCount> for v1::BlockStatsResponse {
+    fn from(value: BlockEntitiesCount) -> Self {
+        Self {
+            create_count: value.create_count,
+            update_count: value.update_count,
+            expire_count: value.expire_count,
+            delete_count: value.delete_count,
+            extend_count: value.extend_count,
         }
     }
 }
