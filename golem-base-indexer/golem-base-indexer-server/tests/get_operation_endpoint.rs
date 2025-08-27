@@ -218,7 +218,7 @@ async fn test_get_operation_endpoint() {
             "transaction_hash": tx_hash_2.to_string(),
             "data": null,
             "prev_data": update_data_hex,
-            "status": "EXPIRED",
+            "status": "DELETED",
             "operation": "DELETE",
             "expires_at_block_number": "4",
             "prev_expires_at_block_number": "103",
