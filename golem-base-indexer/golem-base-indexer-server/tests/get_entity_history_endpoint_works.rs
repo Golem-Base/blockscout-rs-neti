@@ -187,7 +187,7 @@ async fn test_get_entity_history_endpoint_works() {
             serde_json::json!({
                 "entity_key": entity_key.to_string(),
                 "operation": "DELETE",
-                "status": "EXPIRED",
+                "status": "DELETED",
                 "prev_status": "ACTIVE",
                 "data": null,
                 "prev_data": data_hex,

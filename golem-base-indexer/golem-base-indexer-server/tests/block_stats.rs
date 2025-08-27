@@ -78,8 +78,8 @@ async fn block_stats_should_work() {
     let expected: Value = json!({
         "create_count": "2",
         "update_count": "2",
-        "expire_count": "1",
-        "delete_count": "0",
+        "expire_count": "0",
+        "delete_count": "1",
         "extend_count": "1",
     });
     assert_eq!(response, expected);
@@ -89,8 +89,8 @@ async fn block_stats_should_work() {
     let expected: Value = json!({
         "create_count": "0",
         "update_count": "0",
-        "expire_count": "0",
-        "delete_count": "1",
+        "expire_count": "1",
+        "delete_count": "0",
         "extend_count": "0",
     });
     assert_eq!(response, expected);
