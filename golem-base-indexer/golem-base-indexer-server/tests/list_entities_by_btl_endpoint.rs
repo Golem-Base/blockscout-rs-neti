@@ -1,10 +1,19 @@
 mod helpers;
 
+use alloy_primitives::{BlockHash, TxHash};
 use blockscout_service_launcher::test_server;
-use golem_base_indexer_logic::Indexer;
+use bytes::Bytes;
+use golem_base_indexer_logic::{types::EntityKey, Indexer};
+use golem_base_sdk::{
+    entity::{EncodableGolemBaseTransaction, Update},
+    Address,
+};
 use pretty_assertions::assert_eq;
 
-use crate::helpers::assert_json::assert_fields_array;
+use crate::helpers::{
+    assert_json::assert_fields_array,
+    sample::{Block, Transaction},
+};
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
@@ -12,9 +21,80 @@ async fn test_list_entities_by_btl_endpoint() {
     let db = helpers::init_db("test", "list_entities_by_btl_endpoint").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
-    helpers::load_data(&*client, include_str!("fixtures/sample_data.sql")).await;
 
     let indexer = Indexer::new(client.clone(), Default::default());
+    indexer.tick().await.unwrap();
+
+    let deleted_entity_key = EntityKey::random();
+    let data: Bytes = b"data".as_slice().into();
+
+    helpers::sample::insert_data(
+        &*client,
+        Block {
+            hash: Some(BlockHash::random()),
+            number: 1,
+            transactions: vec![Transaction {
+                hash: Some(TxHash::random()),
+                sender: Address::random(),
+                operations: EncodableGolemBaseTransaction {
+                    updates: vec![
+                        Update {
+                            entity_key: EntityKey::random(),
+                            btl: 100,
+                            data: data.clone(),
+                            ..Default::default()
+                        },
+                        Update {
+                            entity_key: EntityKey::random(),
+                            btl: 200,
+                            data: data.clone(),
+                            ..Default::default()
+                        },
+                        Update {
+                            entity_key: EntityKey::random(),
+                            btl: 300,
+                            data: data.clone(),
+                            ..Default::default()
+                        },
+                        Update {
+                            entity_key: EntityKey::random(),
+                            btl: 300,
+                            data: data.clone(),
+                            ..Default::default()
+                        },
+                        Update {
+                            entity_key: deleted_entity_key,
+                            btl: 10_000,
+                            data: data.clone(),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                },
+            }],
+        },
+    )
+    .await
+    .unwrap();
+    indexer.tick().await.unwrap();
+
+    helpers::sample::insert_data(
+        &*client,
+        Block {
+            hash: Some(BlockHash::random()),
+            number: 2,
+            transactions: vec![Transaction {
+                hash: Some(TxHash::random()),
+                sender: Address::random(),
+                operations: EncodableGolemBaseTransaction {
+                    deletes: vec![deleted_entity_key],
+                    ..Default::default()
+                },
+            }],
+        },
+    )
+    .await
+    .unwrap();
     indexer.tick().await.unwrap();
 
     let response: serde_json::Value = test_server::send_get_request(
@@ -30,16 +110,16 @@ async fn test_list_entities_by_btl_endpoint() {
         &response["items"],
         vec![
             serde_json::json!({
-                "expires_at_block_number": "3006",
+                "expires_at_block_number": "301",
             }),
             serde_json::json!({
-                "expires_at_block_number": "2006",
+                "expires_at_block_number": "301",
             }),
             serde_json::json!({
-                "expires_at_block_number": "2006",
+                "expires_at_block_number": "201",
             }),
             serde_json::json!({
-                "expires_at_block_number": "1006",
+                "expires_at_block_number": "101",
             }),
         ],
     );
