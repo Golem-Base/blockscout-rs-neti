@@ -20,7 +20,7 @@ use crate::{
     types::{
         Address, Block, BlockNumber, Bytes, EntitiesFilter, Entity, EntityHistoryEntry,
         EntityHistoryFilter, EntityKey, EntityStatus, FullEntity, ListEntitiesFilter,
-        OperationFilter, PaginationMetadata, TxHash,
+        OperationFilter, PaginationMetadata, PaginationParams, TxHash,
     },
 };
 
@@ -490,4 +490,17 @@ pub async fn get_entity_operation<T: ConnectionTrait>(
         .with_context(|| format!("Failed to get entity operation: {filter:?}"))?
         .map(|v| EntityHistoryEntry::try_new(v, &reference_block))
         .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn list_entities_by_btl<T: ConnectionTrait>(
+    db: &T,
+    filter: PaginationParams,
+) -> Result<(Vec<Entity>, PaginationMetadata)> {
+    let paginator = golem_base_entities::Entity::find()
+        .filter(golem_base_entities::Column::Status.eq(GolemBaseEntityStatusType::Active))
+        .order_by_desc(golem_base_entities::Column::ExpiresAtBlockNumber)
+        .paginate(db, filter.page_size);
+
+    paginate_try_from(paginator, filter).await
 }

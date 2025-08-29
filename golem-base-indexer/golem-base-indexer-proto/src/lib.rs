@@ -456,3 +456,14 @@ impl From<BlockEntitiesCount> for v1::BlockStatsResponse {
         }
     }
 }
+
+impl TryFrom<v1::ListEntitiesByBtlRequest> for PaginationParams {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListEntitiesByBtlRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+        })
+    }
+}
