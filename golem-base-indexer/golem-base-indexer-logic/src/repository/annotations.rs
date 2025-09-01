@@ -3,12 +3,58 @@ use golem_base_indexer_entity::{golem_base_numeric_annotations, golem_base_strin
 use sea_orm::{
     prelude::*,
     ActiveValue::{NotSet, Set},
+    DbBackend, FromQueryResult, Statement,
 };
 use tracing::instrument;
 
-use crate::types::{
-    EntityKey, FullNumericAnnotation, FullStringAnnotation, NumericAnnotation, StringAnnotation,
+use crate::{
+    repository::sql,
+    types::{
+        EntityKey, FullNumericAnnotation, FullStringAnnotation, NumericAnnotation,
+        NumericAnnotationWithRelations, StringAnnotation, StringAnnotationWithRelations,
+    },
 };
+
+#[derive(FromQueryResult)]
+struct DbStringAnnotationWithRelations {
+    pub key: String,
+    pub value: String,
+    pub related_entities: i64,
+}
+
+#[derive(FromQueryResult)]
+struct DbNumericAnnotationWithRelations {
+    pub key: String,
+    pub value: Decimal,
+    pub related_entities: i64,
+}
+
+impl TryFrom<DbStringAnnotationWithRelations> for StringAnnotationWithRelations {
+    type Error = anyhow::Error;
+    fn try_from(value: DbStringAnnotationWithRelations) -> Result<Self> {
+        Ok(Self {
+            annotation: StringAnnotation {
+                key: value.key,
+                value: value.value,
+            },
+            related_entities: value.related_entities.try_into()?,
+        })
+    }
+}
+
+impl TryFrom<DbNumericAnnotationWithRelations> for NumericAnnotationWithRelations {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbNumericAnnotationWithRelations) -> Result<Self> {
+        Ok(Self {
+            annotation: NumericAnnotation {
+                key: value.key,
+                value: value.value.try_into()?,
+            },
+            related_entities: value.related_entities.try_into()?,
+        })
+    }
+}
 
 impl From<golem_base_string_annotations::Model> for StringAnnotation {
     fn from(value: golem_base_string_annotations::Model) -> Self {
@@ -150,32 +196,36 @@ pub async fn deactivate_annotations<T: ConnectionTrait>(
 pub async fn find_active_string_annotations<T: ConnectionTrait>(
     db: &T,
     entity_key: EntityKey,
-) -> Result<Vec<StringAnnotation>> {
+) -> Result<Vec<StringAnnotationWithRelations>> {
     let entity_key: Vec<u8> = entity_key.as_slice().into();
-    Ok(golem_base_string_annotations::Entity::find()
-        .filter(golem_base_string_annotations::Column::EntityKey.eq(entity_key))
-        .filter(golem_base_string_annotations::Column::Active.eq(true))
-        .all(db)
-        .await
-        .context("Finding active string annotations")?
-        .into_iter()
-        .map(Into::into)
-        .collect())
+    DbStringAnnotationWithRelations::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::GET_STRING_ANNOTATIONS_WITH_RELATIONS,
+        [entity_key.into()],
+    ))
+    .all(db)
+    .await
+    .context("Finding active string annotations")?
+    .into_iter()
+    .map(TryInto::<StringAnnotationWithRelations>::try_into)
+    .collect::<Result<Vec<_>>>()
 }
 
 #[instrument(skip(db))]
 pub async fn find_active_numeric_annotations<T: ConnectionTrait>(
     db: &T,
     entity_key: EntityKey,
-) -> Result<Vec<NumericAnnotation>> {
+) -> Result<Vec<NumericAnnotationWithRelations>> {
     let entity_key: Vec<u8> = entity_key.as_slice().into();
-    golem_base_numeric_annotations::Entity::find()
-        .filter(golem_base_numeric_annotations::Column::EntityKey.eq(entity_key))
-        .filter(golem_base_numeric_annotations::Column::Active.eq(true))
-        .all(db)
-        .await
-        .context("Finding active numeric annotations")?
-        .into_iter()
-        .map(TryInto::try_into)
-        .collect()
+    DbNumericAnnotationWithRelations::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::GET_NUMERIC_ANNOTATIONS_WITH_RELATIONS,
+        [entity_key.into()],
+    ))
+    .all(db)
+    .await
+    .context("Finding active numeric annotations")?
+    .into_iter()
+    .map(TryInto::<NumericAnnotationWithRelations>::try_into)
+    .collect::<Result<Vec<_>>>()
 }

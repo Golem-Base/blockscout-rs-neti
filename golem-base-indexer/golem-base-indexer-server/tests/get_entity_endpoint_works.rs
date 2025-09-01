@@ -28,16 +28,18 @@ async fn test_get_entity_endpoint_works() {
       "data_size": "29",
       "status": "ACTIVE",
       "string_annotations": [
-      {
-          "key": "key",
-          "value": "updated"
-      }
+        {
+            "key": "key",
+            "value": "updated",
+            "related_entities": "1",
+        }
       ],
       "numeric_annotations": [
-      {
-          "key": "updated",
-          "value": "1"
-      }
+        {
+            "key": "updated",
+            "value": "1",
+            "related_entities": "1",
+        }
       ],
       "created_at_tx_hash": "0x385ae37be55f8e28678afeaccb594ad0a25e013746c5250df31df5d1a1df5806",
       "created_at_operation_index": "0",
