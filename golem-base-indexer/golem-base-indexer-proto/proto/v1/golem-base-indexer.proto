@@ -20,6 +20,7 @@ service GolemBaseIndexerService {
   rpc ListBiggestSpenders(ListBiggestSpendersRequest) returns (ListBiggestSpendersResponse);
   rpc BlockStats(BlockStatsRequest) returns (BlockStatsResponse);
   rpc ListEntitiesByBtl(ListEntitiesByBtlRequest) returns (ListEntitiesByBtlResponse);
+  rpc ListAddressByEntitiesOwned(ListAddressByEntitiesOwnedRequest) returns (ListAddressByEntitiesOwnedResponse);
 }
 
 message AddressStatsRequest {
@@ -273,4 +274,19 @@ message ListEntitiesByBtlRequest {
 message ListEntitiesByBtlResponse {
   repeated Entity items = 1;
   Pagination pagination = 2;
+}
+
+message ListAddressByEntitiesOwnedRequest {
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
+}
+
+message ListAddressByEntitiesOwnedResponse {
+  repeated AddressByEntitiesOwned items = 1;
+  Pagination pagination = 2;
+}
+
+message AddressByEntitiesOwned {
+  string address = 1;
+  uint64 entities_count = 2;
 }

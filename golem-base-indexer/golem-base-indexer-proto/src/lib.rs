@@ -4,8 +4,8 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter, Entity,
-    EntityHistoryEntry, EntityHistoryFilter, EntityStatus, FullEntity, ListEntitiesFilter,
+    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter,
+    Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus, FullEntity, ListEntitiesFilter,
     ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations, OperationData,
     OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata,
     PaginationParams, StringAnnotation, StringAnnotationWithRelations,
@@ -495,5 +495,25 @@ impl TryFrom<v1::ListEntitiesByBtlRequest> for PaginationParams {
             page: request.page.unwrap_or(1).max(1),
             page_size: request.page_size.unwrap_or(100).clamp(1, 100),
         })
+    }
+}
+
+impl TryFrom<v1::ListAddressByEntitiesOwnedRequest> for PaginationParams {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListAddressByEntitiesOwnedRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+        })
+    }
+}
+
+impl From<AddressByEntitiesOwned> for v1::AddressByEntitiesOwned {
+    fn from(v: AddressByEntitiesOwned) -> Self {
+        Self {
+            address: v.address.to_checksum(None),
+            entities_count: v.entities_count as u64,
+        }
     }
 }
