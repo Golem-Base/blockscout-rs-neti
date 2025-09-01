@@ -275,14 +275,26 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             Status::invalid_argument("invalid block number")
         })?;
 
+        // Get entity counts
         let counts = repository::block::count_entities(&*self.db, block_number)
             .await
             .map_err(|err| {
-                tracing::error!(?err, "failed to query block stats");
-                Status::internal("failed to query block stats")
+                tracing::error!(?err, "failed to query block stats counts");
+                Status::internal("failed to query block stats counts")
             })?;
 
-        Ok(Response::new(counts.into()))
+        // Get storage usage
+        let storage = repository::block::storage_usage(&*self.db, block_number)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query block storage usage");
+                Status::internal("failed to query block storage usage")
+            })?;
+
+        Ok(Response::new(BlockStatsResponse {
+            counts: Some(counts.into()),
+            storage: Some(storage.into()),
+        }))
     }
 
     async fn list_entities_by_btl(

@@ -4,8 +4,8 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, EntitiesFilter, Entity,
-    EntityHistoryEntry, EntityHistoryFilter, EntityStatus, FullEntity, ListEntitiesFilter,
+    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter,
+    Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus, FullEntity, ListEntitiesFilter,
     ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations, OperationData,
     OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata,
     PaginationParams, StringAnnotation, StringAnnotationWithRelations,
@@ -466,7 +466,7 @@ impl From<BiggestSpenders> for v1::BiggestSpender {
     }
 }
 
-impl From<BlockEntitiesCount> for v1::BlockStatsResponse {
+impl From<BlockEntitiesCount> for v1::BlockStatsCounts {
     fn from(value: BlockEntitiesCount) -> Self {
         Self {
             create_count: value.create_count,
@@ -474,6 +474,15 @@ impl From<BlockEntitiesCount> for v1::BlockStatsResponse {
             expire_count: value.expire_count,
             delete_count: value.delete_count,
             extend_count: value.extend_count,
+        }
+    }
+}
+
+impl From<BlockStorageUsage> for v1::BlockStatsStorage {
+    fn from(value: BlockStorageUsage) -> Self {
+        Self {
+            block_bytes: value.block_bytes,
+            total_bytes: value.total_bytes,
         }
     }
 }

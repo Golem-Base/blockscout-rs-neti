@@ -216,3 +216,32 @@ GROUP BY
 ORDER BY 
     entities_count DESC
 "#;
+
+pub const STORAGE_USAGE_BY_BLOCK: &str = r#"
+WITH latest_entities_per_block AS (
+  SELECT
+    block_number,
+    data,
+    status,
+    entity_key,
+    ROW_NUMBER() OVER (PARTITION BY entity_key ORDER BY block_number DESC) as rn
+  FROM golem_base_entity_history
+  WHERE block_number <= $1
+),
+current_state AS (
+  SELECT
+    block_number,
+    data,
+    status,
+    entity_key
+  FROM latest_entities_per_block
+  WHERE rn = 1 AND status = 'active'
+)
+SELECT
+  $1 as block_number,
+  -- Storage added in this specific block
+  COALESCE(SUM(CASE WHEN block_number = $1 THEN LENGTH(data) END), 0) as block_bytes,
+  -- Total storage up to and including this block
+  COALESCE(SUM(LENGTH(data)), 0) as total_bytes
+FROM current_state
+"#;

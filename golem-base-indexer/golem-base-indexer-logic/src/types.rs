@@ -313,6 +313,12 @@ pub struct BlockEntitiesCount {
 }
 
 #[derive(Debug, Clone)]
+pub struct BlockStorageUsage {
+    pub block_bytes: u64,
+    pub total_bytes: u64,
+}
+
+#[derive(Debug, Clone)]
 pub struct AddressByEntitiesOwned {
     pub address: Address,
     pub entities_count: i64,
