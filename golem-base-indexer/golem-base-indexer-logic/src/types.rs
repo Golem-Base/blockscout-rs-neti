@@ -18,6 +18,12 @@ pub struct FullAnnotation<T: std::fmt::Debug> {
 }
 
 #[derive(Clone, Debug)]
+pub struct AnnotationWithRelations<T: std::fmt::Debug> {
+    pub annotation: Annotation<T>,
+    pub related_entities: u64,
+}
+
+#[derive(Clone, Debug)]
 pub struct Annotation<T: std::fmt::Debug> {
     pub key: String,
     pub value: T,
@@ -34,6 +40,9 @@ pub type NumericAnnotation = Annotation<u64>;
 
 pub type FullStringAnnotation = FullAnnotation<String>;
 pub type FullNumericAnnotation = FullAnnotation<u64>;
+
+pub type StringAnnotationWithRelations = AnnotationWithRelations<String>;
+pub type NumericAnnotationWithRelations = AnnotationWithRelations<u64>;
 
 #[derive(Clone, Debug)]
 pub struct Log {

@@ -549,12 +549,12 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1StringAnnotation'
+          $ref: '#/definitions/v1StringAnnotationWithRelations'
       numeric_annotations:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1NumericAnnotation'
+          $ref: '#/definitions/v1NumericAnnotationWithRelations'
       created_at_tx_hash:
         type: string
       created_at_operation_index:
@@ -639,12 +639,15 @@ definitions:
           $ref: '#/definitions/v1Operation'
       pagination:
         $ref: '#/definitions/v1Pagination'
-  v1NumericAnnotation:
+  v1NumericAnnotationWithRelations:
     type: object
     properties:
       key:
         type: string
       value:
+        type: string
+        format: uint64
+      related_entities:
         type: string
         format: uint64
   v1Operation:
@@ -698,10 +701,13 @@ definitions:
       total_items:
         type: string
         format: uint64
-  v1StringAnnotation:
+  v1StringAnnotationWithRelations:
     type: object
     properties:
       key:
         type: string
       value:
         type: string
+      related_entities:
+        type: string
+        format: uint64
