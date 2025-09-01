@@ -201,3 +201,18 @@ where
     and a.entity_key = $1
 group by key, value
 "#;
+
+pub const LIST_ADDRESS_BY_ENTITIES_OWNED: &str = r#"
+SELECT
+    owner as address,
+    COUNT(*) AS entities_count
+FROM 
+    golem_base_entities
+WHERE 
+    owner IS NOT NULL
+    AND status = 'active'
+GROUP BY 
+    owner
+ORDER BY 
+    entities_count DESC
+"#;

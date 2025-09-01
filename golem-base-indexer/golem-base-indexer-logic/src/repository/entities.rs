@@ -8,7 +8,7 @@ use sea_orm::{
     sea_query::OnConflict,
     sqlx::types::chrono::Utc,
     ActiveValue::{NotSet, Set},
-    FromQueryResult, Iterable, QueryOrder, Statement,
+    DbBackend, FromQueryResult, Iterable, QueryOrder, Statement,
 };
 use tracing::instrument;
 
@@ -18,9 +18,9 @@ use crate::{
     pagination::{paginate, paginate_try_from},
     repository::sql,
     types::{
-        Address, Block, BlockNumber, Bytes, EntitiesFilter, Entity, EntityHistoryEntry,
-        EntityHistoryFilter, EntityKey, EntityStatus, FullEntity, ListEntitiesFilter,
-        OperationFilter, PaginationMetadata, PaginationParams, TxHash,
+        Address, AddressByEntitiesOwned, Block, BlockNumber, Bytes, EntitiesFilter, Entity,
+        EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus, FullEntity,
+        ListEntitiesFilter, OperationFilter, PaginationMetadata, PaginationParams, TxHash,
     },
 };
 
@@ -59,6 +59,12 @@ pub struct GolemBaseEntityExtend {
     pub expires_at: BlockNumber,
 }
 
+#[derive(Debug, FromQueryResult)]
+struct DbAddressByEntitiesOwned {
+    pub address: Vec<u8>,
+    pub entities_count: i64,
+}
+
 impl From<EntityStatus> for GolemBaseEntityStatusType {
     fn from(value: EntityStatus) -> Self {
         match value {
@@ -76,6 +82,17 @@ impl From<GolemBaseEntityStatusType> for EntityStatus {
             GolemBaseEntityStatusType::Deleted => EntityStatus::Deleted,
             GolemBaseEntityStatusType::Expired => EntityStatus::Expired,
         }
+    }
+}
+
+impl TryFrom<DbAddressByEntitiesOwned> for AddressByEntitiesOwned {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbAddressByEntitiesOwned) -> Result<Self> {
+        Ok(Self {
+            address: value.address.as_slice().try_into()?,
+            entities_count: value.entities_count,
+        })
     }
 }
 
@@ -501,6 +518,21 @@ pub async fn list_entities_by_btl<T: ConnectionTrait>(
         .filter(golem_base_entities::Column::Status.eq(GolemBaseEntityStatusType::Active))
         .order_by_desc(golem_base_entities::Column::ExpiresAtBlockNumber)
         .paginate(db, filter.page_size);
+
+    paginate_try_from(paginator, filter).await
+}
+
+#[instrument(skip(db))]
+pub async fn list_addresses_by_entities_owned<T: ConnectionTrait>(
+    db: &T,
+    filter: PaginationParams,
+) -> Result<(Vec<AddressByEntitiesOwned>, PaginationMetadata)> {
+    let paginator = DbAddressByEntitiesOwned::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::LIST_ADDRESS_BY_ENTITIES_OWNED,
+        [],
+    ))
+    .paginate(db, filter.page_size);
 
     paginate_try_from(paginator, filter).await
 }
