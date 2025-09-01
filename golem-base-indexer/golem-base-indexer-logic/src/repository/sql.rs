@@ -236,19 +236,12 @@ current_state AS (
     entity_key
   FROM latest_entities_per_block
   WHERE rn = 1 AND status = 'active'
-),
-block_metrics AS (
-  SELECT
-    $1 as block_number,
-    -- Storage added in this specific block
-    COALESCE(SUM(CASE WHEN block_number = $1 THEN LENGTH(data) END), 0) as block_bytes,
-    -- Total storage up to and including this block
-    COALESCE(SUM(LENGTH(data)), 0) as total_bytes
-  FROM current_state
 )
 SELECT
-  block_number,
-  block_bytes,
-  total_bytes
-FROM block_metrics;
+  $1 as block_number,
+  -- Storage added in this specific block
+  COALESCE(SUM(CASE WHEN block_number = $1 THEN LENGTH(data) END), 0) as block_bytes,
+  -- Total storage up to and including this block
+  COALESCE(SUM(LENGTH(data)), 0) as total_bytes
+FROM current_state
 "#;
