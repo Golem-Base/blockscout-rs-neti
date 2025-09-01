@@ -174,6 +174,34 @@ FROM golem_base_entity_history
 WHERE block_number = $1
 "#;
 
+pub const GET_STRING_ANNOTATIONS_WITH_RELATIONS: &str = r#"
+select
+    a.key,
+    a.value,
+    count(*) as related_entities
+from golem_base_string_annotations as a
+join golem_base_string_annotations as related using (key, value)
+where
+    a.active = 't'
+    and related.active = 't'
+    and a.entity_key = $1
+group by key, value
+"#;
+
+pub const GET_NUMERIC_ANNOTATIONS_WITH_RELATIONS: &str = r#"
+select
+    a.key,
+    a.value,
+    count(*) as related_entities
+from golem_base_numeric_annotations as a
+join golem_base_numeric_annotations as related using (key, value)
+where
+    a.active = 't'
+    and related.active = 't'
+    and a.entity_key = $1
+group by key, value
+"#;
+
 pub const STORAGE_USAGE_BY_BLOCK: &str = r#"
 WITH latest_entities_per_block AS (
   SELECT

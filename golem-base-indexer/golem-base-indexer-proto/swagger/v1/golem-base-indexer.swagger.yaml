@@ -211,6 +211,31 @@ paths:
           format: uint64
       tags:
         - GolemBaseIndexerService
+  /api/v1/leaderboard/entities-by-btl:
+    get:
+      operationId: GolemBaseIndexerService_ListEntitiesByBtl
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ListEntitiesByBtlResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
   /api/v1/operation/{tx_hash}/{op_index}:
     get:
       operationId: GolemBaseIndexerService_GetOperation
@@ -540,12 +565,12 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1StringAnnotation'
+          $ref: '#/definitions/v1StringAnnotationWithRelations'
       numeric_annotations:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1NumericAnnotation'
+          $ref: '#/definitions/v1NumericAnnotationWithRelations'
       created_at_tx_hash:
         type: string
       created_at_operation_index:
@@ -600,6 +625,16 @@ definitions:
           $ref: '#/definitions/v1BiggestSpender'
       pagination:
         $ref: '#/definitions/v1Pagination'
+  v1ListEntitiesByBtlResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1Entity'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
   v1ListEntitiesResponse:
     type: object
     properties:
@@ -620,12 +655,15 @@ definitions:
           $ref: '#/definitions/v1Operation'
       pagination:
         $ref: '#/definitions/v1Pagination'
-  v1NumericAnnotation:
+  v1NumericAnnotationWithRelations:
     type: object
     properties:
       key:
         type: string
       value:
+        type: string
+        format: uint64
+      related_entities:
         type: string
         format: uint64
   v1Operation:
@@ -679,10 +717,13 @@ definitions:
       total_items:
         type: string
         format: uint64
-  v1StringAnnotation:
+  v1StringAnnotationWithRelations:
     type: object
     properties:
       key:
         type: string
       value:
         type: string
+      related_entities:
+        type: string
+        format: uint64

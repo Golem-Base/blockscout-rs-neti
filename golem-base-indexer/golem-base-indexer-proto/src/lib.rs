@@ -6,8 +6,9 @@ use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
     BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter, Entity,
     EntityHistoryEntry, EntityHistoryFilter, EntityStatus, FullEntity, ListEntitiesFilter,
-    ListOperationsFilter, NumericAnnotation, OperationData, OperationFilter, OperationView,
-    OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
+    ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations, OperationData,
+    OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata,
+    PaginationParams, StringAnnotation, StringAnnotationWithRelations,
 };
 
 pub mod blockscout {
@@ -26,8 +27,8 @@ use blockscout::golem_base_indexer::v1;
 impl v1::FullEntity {
     pub fn new(
         entity: FullEntity,
-        string_annotations: Vec<StringAnnotation>,
-        numeric_annotations: Vec<NumericAnnotation>,
+        string_annotations: Vec<StringAnnotationWithRelations>,
+        numeric_annotations: Vec<NumericAnnotationWithRelations>,
     ) -> Self {
         let status: v1::EntityStatus = entity.status.into();
         let data_size = entity.data.as_ref().map(|v| v.len() as u64);
@@ -58,6 +59,26 @@ impl v1::FullEntity {
 
             string_annotations: string_annotations.into_iter().map(Into::into).collect(),
             numeric_annotations: numeric_annotations.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<StringAnnotationWithRelations> for v1::StringAnnotationWithRelations {
+    fn from(value: StringAnnotationWithRelations) -> Self {
+        Self {
+            key: value.annotation.key,
+            value: value.annotation.value,
+            related_entities: value.related_entities,
+        }
+    }
+}
+
+impl From<NumericAnnotationWithRelations> for v1::NumericAnnotationWithRelations {
+    fn from(value: NumericAnnotationWithRelations) -> Self {
+        Self {
+            key: value.annotation.key,
+            value: value.annotation.value,
+            related_entities: value.related_entities,
         }
     }
 }
@@ -463,5 +484,16 @@ impl From<BlockStorageUsage> for v1::BlockStatsStorage {
             block_bytes: value.block_bytes,
             total_bytes: value.total_bytes,
         }
+    }
+}
+
+impl TryFrom<v1::ListEntitiesByBtlRequest> for PaginationParams {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListEntitiesByBtlRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+        })
     }
 }

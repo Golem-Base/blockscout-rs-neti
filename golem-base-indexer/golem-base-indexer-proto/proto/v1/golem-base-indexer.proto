@@ -19,6 +19,7 @@ service GolemBaseIndexerService {
   rpc AddressStats(AddressStatsRequest) returns (AddressStatsResponse);
   rpc ListBiggestSpenders(ListBiggestSpendersRequest) returns (ListBiggestSpendersResponse);
   rpc BlockStats(BlockStatsRequest) returns (BlockStatsResponse);
+  rpc ListEntitiesByBtl(ListEntitiesByBtlRequest) returns (ListEntitiesByBtlResponse);
 }
 
 message AddressStatsRequest {
@@ -138,14 +139,26 @@ message NumericAnnotation {
   uint64 value = 2;
 }
 
+message StringAnnotationWithRelations {
+  string key = 1;
+  string value = 2;
+  uint64 related_entities = 3;
+}
+
+message NumericAnnotationWithRelations {
+  string key = 1;
+  uint64 value = 2;
+  uint64 related_entities = 3;
+}
+
 message FullEntity {
   string key = 1;
   optional string data = 2;
   optional uint64 data_size = 3;
   EntityStatus status = 4;
 
-  repeated StringAnnotation string_annotations = 5;
-  repeated NumericAnnotation numeric_annotations = 6;
+  repeated StringAnnotationWithRelations string_annotations = 5;
+  repeated NumericAnnotationWithRelations numeric_annotations = 6;
 
   optional string created_at_tx_hash = 7;
   optional string created_at_operation_index = 8;
@@ -250,4 +263,14 @@ message BlockStatsCounts {
 message BlockStatsStorage {
   uint64 block_bytes = 1;
   uint64 total_bytes = 2;
+}
+
+message ListEntitiesByBtlRequest {
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
+}
+
+message ListEntitiesByBtlResponse {
+  repeated Entity items = 1;
+  Pagination pagination = 2;
 }
