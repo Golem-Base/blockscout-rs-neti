@@ -284,4 +284,26 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
 
         Ok(Response::new(counts.into()))
     }
+
+    async fn list_entities_by_btl(
+        &self,
+        request: Request<ListEntitiesByBtlRequest>,
+    ) -> Result<Response<ListEntitiesByBtlResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entities by btl filter: {err}"))
+        })?;
+
+        let (entities, pagination) = repository::entities::list_entities_by_btl(&*self.db, filter)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query entities by btl");
+                Status::internal("failed to query entities by btl")
+            })?;
+
+        Ok(Response::new(ListEntitiesByBtlResponse {
+            items: entities.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
 }

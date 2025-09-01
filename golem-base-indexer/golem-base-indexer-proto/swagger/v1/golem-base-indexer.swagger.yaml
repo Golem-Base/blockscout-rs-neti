@@ -211,6 +211,31 @@ paths:
           format: uint64
       tags:
         - GolemBaseIndexerService
+  /api/v1/leaderboard/entities-by-btl:
+    get:
+      operationId: GolemBaseIndexerService_ListEntitiesByBtl
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ListEntitiesByBtlResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
   /api/v1/operation/{tx_hash}/{op_index}:
     get:
       operationId: GolemBaseIndexerService_GetOperation
@@ -582,6 +607,16 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1BiggestSpender'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
+  v1ListEntitiesByBtlResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1Entity'
       pagination:
         $ref: '#/definitions/v1Pagination'
   v1ListEntitiesResponse:
