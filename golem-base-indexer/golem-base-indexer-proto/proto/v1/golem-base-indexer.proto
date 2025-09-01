@@ -235,9 +235,19 @@ message BlockStatsRequest {
 }
 
 message BlockStatsResponse {
+  BlockStatsCounts counts = 1;
+  BlockStatsStorage storage = 2;
+}
+
+message BlockStatsCounts {
   uint64 create_count = 1;
   uint64 update_count = 2;
   uint64 expire_count = 3;
   uint64 delete_count = 4;
   uint64 extend_count = 5;
+}
+
+message BlockStatsStorage {
+  uint64 block_bytes = 1;
+  uint64 total_bytes = 2;
 }

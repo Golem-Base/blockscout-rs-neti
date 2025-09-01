@@ -398,7 +398,7 @@ definitions:
         type: string
       total_fees:
         type: string
-  v1BlockStatsResponse:
+  v1BlockStatsCounts:
     type: object
     properties:
       create_count:
@@ -414,6 +414,22 @@ definitions:
         type: string
         format: uint64
       extend_count:
+        type: string
+        format: uint64
+  v1BlockStatsResponse:
+    type: object
+    properties:
+      counts:
+        $ref: '#/definitions/v1BlockStatsCounts'
+      storage:
+        $ref: '#/definitions/v1BlockStatsStorage'
+  v1BlockStatsStorage:
+    type: object
+    properties:
+      block_bytes:
+        type: string
+        format: uint64
+      total_bytes:
         type: string
         format: uint64
   v1CountEntitiesResponse:

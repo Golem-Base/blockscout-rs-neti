@@ -302,3 +302,9 @@ pub struct BlockEntitiesCount {
     pub delete_count: u64,
     pub extend_count: u64,
 }
+
+#[derive(Debug, Clone)]
+pub struct BlockStorageUsage {
+    pub block_bytes: u64,
+    pub total_bytes: u64,
+}
