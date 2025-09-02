@@ -341,4 +341,27 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn list_largest_entities(
+        &self,
+        request: Request<ListLargestEntitiesRequest>,
+    ) -> Result<Response<ListLargestEntitiesResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid largest entities filter: {err}"))
+        })?;
+
+        let (largest_entities, pagination) =
+            repository::entities::list_largest_entities(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query largest entities");
+                    Status::internal("failed to query largest entities")
+                })?;
+
+        Ok(Response::new(ListLargestEntitiesResponse {
+            items: largest_entities.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
 }

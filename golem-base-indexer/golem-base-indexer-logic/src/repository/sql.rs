@@ -245,3 +245,16 @@ SELECT
   COALESCE(SUM(LENGTH(data)), 0) as total_bytes
 FROM current_state
 "#;
+
+pub const LIST_ENTITIES_BY_LARGEST_DATA_SIZE: &str = r#"
+SELECT
+    key as entity_key,
+    octet_length(data) AS data_size
+FROM
+    golem_base_entities
+WHERE 
+    data IS NOT NULL
+    AND status = 'active'
+ORDER BY
+    data_size DESC
+"#;

@@ -323,3 +323,9 @@ pub struct AddressByEntitiesOwned {
     pub address: Address,
     pub entities_count: i64,
 }
+
+#[derive(Debug, Clone)]
+pub struct EntityDataSize {
+    pub entity_key: EntityKey,
+    pub data_size: u64,
+}
