@@ -39,6 +39,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListAddressByEntitiesOwned
       get: /api/v1/leaderboard/entities-owned
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListLargestEntities
+      get: /api/v1/leaderboard/largest-entities
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check

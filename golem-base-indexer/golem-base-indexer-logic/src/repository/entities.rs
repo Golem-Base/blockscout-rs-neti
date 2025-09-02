@@ -19,8 +19,9 @@ use crate::{
     repository::sql,
     types::{
         Address, AddressByEntitiesOwned, Block, BlockNumber, Bytes, EntitiesFilter, Entity,
-        EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus, FullEntity,
-        ListEntitiesFilter, OperationFilter, PaginationMetadata, PaginationParams, TxHash,
+        EntityDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus,
+        FullEntity, ListEntitiesFilter, OperationFilter, PaginationMetadata, PaginationParams,
+        TxHash,
     },
 };
 
@@ -65,6 +66,12 @@ struct DbAddressByEntitiesOwned {
     pub entities_count: i64,
 }
 
+#[derive(Debug, FromQueryResult)]
+struct DbEntityDataSize {
+    pub entity_key: Vec<u8>,
+    pub data_size: i32,
+}
+
 impl From<EntityStatus> for GolemBaseEntityStatusType {
     fn from(value: EntityStatus) -> Self {
         match value {
@@ -92,6 +99,17 @@ impl TryFrom<DbAddressByEntitiesOwned> for AddressByEntitiesOwned {
         Ok(Self {
             address: value.address.as_slice().try_into()?,
             entities_count: value.entities_count,
+        })
+    }
+}
+
+impl TryFrom<DbEntityDataSize> for EntityDataSize {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbEntityDataSize) -> Result<Self> {
+        Ok(Self {
+            entity_key: value.entity_key.as_slice().try_into()?,
+            data_size: value.data_size as u64,
         })
     }
 }
@@ -530,6 +548,21 @@ pub async fn list_addresses_by_entities_owned<T: ConnectionTrait>(
     let paginator = DbAddressByEntitiesOwned::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
         sql::LIST_ADDRESS_BY_ENTITIES_OWNED,
+        [],
+    ))
+    .paginate(db, filter.page_size);
+
+    paginate_try_from(paginator, filter).await
+}
+
+#[instrument(skip(db))]
+pub async fn list_largest_entities<T: ConnectionTrait>(
+    db: &T,
+    filter: PaginationParams,
+) -> Result<(Vec<EntityDataSize>, PaginationMetadata)> {
+    let paginator = DbEntityDataSize::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::LIST_ENTITIES_BY_LARGEST_DATA_SIZE,
         [],
     ))
     .paginate(db, filter.page_size);
