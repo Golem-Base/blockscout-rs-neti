@@ -533,7 +533,7 @@ impl From<EntityDataSize> for v1::EntityDataSize {
     fn from(v: EntityDataSize) -> Self {
         Self {
             entity_key: v.entity_key.to_string(),
-            data_size: v.data_size as u64,
+            data_size: v.data_size,
         }
     }
 }
