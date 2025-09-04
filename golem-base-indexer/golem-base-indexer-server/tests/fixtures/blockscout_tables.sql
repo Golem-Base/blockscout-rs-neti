@@ -127,3 +127,14 @@ CREATE INDEX transactions_updated_at_index ON transactions USING btree (updated_
 ALTER TABLE ONLY logs
     ADD CONSTRAINT logs_transaction_hash_fkey FOREIGN KEY (transaction_hash) REFERENCES transactions(hash) ON DELETE CASCADE;
 
+CREATE TABLE IF NOT EXISTS smart_contracts (
+    name VARCHAR(255) NOT NULL,
+    abi JSONB,
+    address_hash BYTEA NOT NULL,
+    inserted_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+    compiler_version VARCHAR(255) NOT NULL,
+    optimization BOOLEAN NOT NULL,
+    contract_source_code TEXT NOT NULL,
+    contract_code_md5 VARCHAR(255) NOT NULL
+);
