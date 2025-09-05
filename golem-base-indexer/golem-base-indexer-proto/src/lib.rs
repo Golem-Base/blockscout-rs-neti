@@ -4,7 +4,7 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter,
+    AddressByEntitiesCreated, AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter,
     Entity, EntityDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
     EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter,
     NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter,
@@ -551,6 +551,26 @@ impl From<EntityDataSize> for v1::EntityDataSize {
         Self {
             entity_key: v.entity_key.to_string(),
             data_size: v.data_size,
+        }
+    }
+}
+
+impl TryFrom<v1::ListAddressByEntitiesCreatedRequest> for PaginationParams {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListAddressByEntitiesCreatedRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+        })
+    }
+}
+
+impl From<AddressByEntitiesCreated> for v1::AddressByEntitiesCreated {
+    fn from(v: AddressByEntitiesCreated) -> Self {
+        Self {
+            address: v.address.to_checksum(None),
+            entities_created_count: v.entities_created_count,
         }
     }
 }
