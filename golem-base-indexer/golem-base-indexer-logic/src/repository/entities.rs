@@ -20,8 +20,8 @@ use crate::{
     types::{
         Address, AddressByEntitiesOwned, Block, BlockNumber, Bytes, EntitiesFilter, Entity,
         EntityDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus,
-        FullEntity, ListEntitiesFilter, OperationFilter, PaginationMetadata, PaginationParams,
-        TxHash,
+        EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, OperationFilter,
+        PaginationMetadata, PaginationParams, TxHash,
     },
 };
 
@@ -129,6 +129,25 @@ impl TryFrom<golem_base_entities::Model> for Entity {
                 .transpose()?,
             last_updated_at_tx_hash: value.last_updated_at_tx_hash.as_slice().try_into()?,
             expires_at_block_number: value.expires_at_block_number.try_into()?,
+        })
+    }
+}
+
+impl EntityWithExpTimestamp {
+    fn try_new(value: golem_base_entities::Model, reference_block: &Block) -> Result<Self> {
+        let entity_base: Entity = value.try_into()?;
+        let expires_at_timestamp =
+            block_timestamp(entity_base.expires_at_block_number, reference_block);
+
+        Ok(Self {
+            key: entity_base.key,
+            data: entity_base.data,
+            owner: entity_base.owner,
+            status: entity_base.status,
+            created_at_tx_hash: entity_base.created_at_tx_hash,
+            last_updated_at_tx_hash: entity_base.last_updated_at_tx_hash,
+            expires_at_block_number: entity_base.expires_at_block_number,
+            expires_at_timestamp,
         })
     }
 }
@@ -531,13 +550,25 @@ pub async fn get_entity_operation<T: ConnectionTrait>(
 pub async fn list_entities_by_btl<T: ConnectionTrait>(
     db: &T,
     filter: PaginationParams,
-) -> Result<(Vec<Entity>, PaginationMetadata)> {
+) -> Result<(Vec<EntityWithExpTimestamp>, PaginationMetadata)> {
     let paginator = golem_base_entities::Entity::find()
         .filter(golem_base_entities::Column::Status.eq(GolemBaseEntityStatusType::Active))
         .order_by_desc(golem_base_entities::Column::ExpiresAtBlockNumber)
         .paginate(db, filter.page_size);
 
-    paginate_try_from(paginator, filter).await
+    let reference_block = super::blockscout::get_current_block(db)
+        .await?
+        .ok_or(anyhow!("No blocks indexed yet"))?;
+
+    let (entities, pagination_metadata) = paginate(paginator, filter).await?;
+
+    Ok((
+        entities
+            .into_iter()
+            .map(|v| EntityWithExpTimestamp::try_new(v, &reference_block))
+            .collect::<Result<Vec<_>>>()?,
+        pagination_metadata,
+    ))
 }
 
 #[instrument(skip(db))]

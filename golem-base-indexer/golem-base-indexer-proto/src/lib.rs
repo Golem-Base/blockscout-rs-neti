@@ -4,11 +4,7 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter,
-    Entity, EntityDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus, FullEntity,
-    ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
-    OperationData, OperationFilter, OperationView, OperationsCount, OperationsFilter,
-    PaginationMetadata, PaginationParams, StringAnnotation, StringAnnotationWithRelations,
+    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter, Entity, EntityDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation, StringAnnotationWithRelations
 };
 
 pub mod blockscout {
@@ -301,6 +297,22 @@ impl From<Entity> for v1::Entity {
             created_at_tx_hash: entity.created_at_tx_hash.map(|v| v.to_string()),
             last_updated_at_tx_hash: entity.last_updated_at_tx_hash.to_string(),
             expires_at_block_number: entity.expires_at_block_number,
+        }
+    }
+}
+
+impl From<EntityWithExpTimestamp> for v1::EntityWithExpTimestamp {
+    fn from(entity: EntityWithExpTimestamp) -> Self {
+        let status: v1::EntityStatus = entity.status.into();
+
+        Self {
+            key: entity.key.to_string(),
+            data: entity.data.as_ref().map(ToHexExt::encode_hex_with_prefix),
+            status: status.into(),
+            created_at_tx_hash: entity.created_at_tx_hash.map(|v| v.to_string()),
+            last_updated_at_tx_hash: entity.last_updated_at_tx_hash.to_string(),
+            expires_at_block_number: entity.expires_at_block_number,
+            expires_at_timestamp: entity.expires_at_timestamp.to_rfc3339(),
         }
     }
 }

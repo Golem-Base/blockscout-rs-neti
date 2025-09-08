@@ -146,6 +146,18 @@ pub struct Entity {
 }
 
 #[derive(Debug, Clone)]
+pub struct EntityWithExpTimestamp {
+    pub key: EntityKey,
+    pub data: Option<Bytes>,
+    pub owner: Option<Address>,
+    pub status: EntityStatus,
+    pub created_at_tx_hash: Option<TxHash>,
+    pub last_updated_at_tx_hash: TxHash,
+    pub expires_at_block_number: BlockNumber,
+    pub expires_at_timestamp: Timestamp,
+}
+
+#[derive(Debug, Clone)]
 pub struct FullEntity {
     pub key: EntityKey,
     pub data: Option<Bytes>,
