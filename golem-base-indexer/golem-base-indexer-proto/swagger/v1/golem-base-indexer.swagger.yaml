@@ -471,6 +471,9 @@ definitions:
   v1AddressByEntitiesCreated:
     type: object
     properties:
+      rank:
+        type: string
+        format: uint64
       address:
         type: string
       entities_created_count:

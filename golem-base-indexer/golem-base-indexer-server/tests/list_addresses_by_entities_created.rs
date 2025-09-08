@@ -2,9 +2,9 @@ mod helpers;
 
 use alloy_primitives::TxHash;
 use blockscout_service_launcher::test_server;
-use golem_base_indexer_logic::Indexer;
+use golem_base_indexer_logic::{types::EntityKey, Indexer};
 use golem_base_sdk::{
-    entity::{Create, EncodableGolemBaseTransaction},
+    entity::{Create, EncodableGolemBaseTransaction, Extend, Update},
     Address,
 };
 use pretty_assertions::assert_eq;
@@ -21,10 +21,16 @@ async fn test_list_addresses_by_entities_created() {
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
 
+    let indexer = Indexer::new(client.clone(), Default::default());
+    indexer.tick().await.unwrap();
+
     let owner1 = Address::random();
     let owner2 = Address::random();
     let owner3 = Address::random();
     let owner4 = Address::random();
+
+    let entity_key = EntityKey::random();
+    let tx_hash = TxHash::random();
 
     helpers::sample::insert_data(
         &*client,
@@ -33,10 +39,16 @@ async fn test_list_addresses_by_entities_created() {
             transactions: vec![
                 Transaction {
                     sender: owner1,
-                    hash: Some(TxHash::random()),
+                    hash: Some(tx_hash),
                     operations: EncodableGolemBaseTransaction {
                         creates: vec![Create {
                             btl: 10,
+                            ..Default::default()
+                        }],
+                        updates: vec![Update {
+                            entity_key,
+                            btl: 100,
+                            data: b"data".as_slice().into(),
                             ..Default::default()
                         }],
                         ..Default::default()
@@ -56,6 +68,10 @@ async fn test_list_addresses_by_entities_created() {
                                 ..Default::default()
                             },
                         ],
+                        extensions: vec![Extend {
+                            entity_key,
+                            number_of_blocks: 1_000,
+                        }],
                         ..Default::default()
                     },
                 },
@@ -86,16 +102,39 @@ async fn test_list_addresses_by_entities_created() {
     )
     .await
     .unwrap();
+    indexer.tick().await.unwrap();
+
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, &format!("/api/v1/operation/{tx_hash}/0")).await;
+    let entity_key = response["entity_key"]
+        .as_str()
+        .unwrap()
+        .parse::<EntityKey>()
+        .unwrap();
+
     helpers::sample::insert_data(
         &*client,
         Block {
             number: 2,
-            transactions: vec![],
+            transactions: vec![Transaction {
+                sender: owner1,
+                hash: Some(TxHash::random()),
+                operations: EncodableGolemBaseTransaction {
+                    updates: vec![Update {
+                        entity_key,
+                        btl: 200,
+                        data: b"data".as_slice().into(),
+                        ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+            }],
             ..Default::default()
         },
     )
     .await
     .unwrap();
+
     helpers::sample::insert_data(
         &*client,
         Block {
@@ -116,29 +155,29 @@ async fn test_list_addresses_by_entities_created() {
     )
     .await
     .unwrap();
-
-    Indexer::new(client, Default::default())
-        .tick()
-        .await
-        .unwrap();
+    indexer.tick().await.unwrap();
 
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/leaderboard/entities-created").await;
 
     let expected = vec![
         serde_json::json!({
+            "rank": "1",
             "address": owner3.to_string(),
             "entities_created_count": "3",
         }),
         serde_json::json!({
+            "rank": "2",
             "address": owner2.to_string(),
             "entities_created_count": "2",
         }),
         serde_json::json!({
+            "rank": "3",
             "address": owner1.to_string(),
             "entities_created_count": "1",
         }),
         serde_json::json!({
+            "rank": "4",
             "address": owner4.to_string(),
             "entities_created_count": "1",
         }),
@@ -153,6 +192,7 @@ async fn test_list_addresses_by_entities_created() {
     )
     .await;
     let expected = serde_json::json!({
+        "rank": "3",
         "address": owner1.to_string(),
         "entities_created_count": "1",
     });

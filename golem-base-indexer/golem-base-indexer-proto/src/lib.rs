@@ -569,6 +569,7 @@ impl TryFrom<v1::ListAddressByEntitiesCreatedRequest> for PaginationParams {
 impl From<AddressByEntitiesCreated> for v1::AddressByEntitiesCreated {
     fn from(v: AddressByEntitiesCreated) -> Self {
         Self {
+            rank: v.rank,
             address: v.address.to_checksum(None),
             entities_created_count: v.entities_created_count,
         }

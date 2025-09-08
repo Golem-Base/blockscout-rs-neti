@@ -261,6 +261,7 @@ ORDER BY
 
 pub const LIST_ADDRESSES_BY_CREATE_OPERATIONS: &str = r#"
 SELECT
+    ROW_NUMBER() OVER(ORDER BY COUNT(*) DESC, MIN(inserted_at) ASC) as rank,
     sender as address,
     COUNT(*) AS entities_created_count,
     MIN(inserted_at) AS first_created_at

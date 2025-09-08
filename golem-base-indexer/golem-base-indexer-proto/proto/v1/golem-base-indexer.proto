@@ -329,6 +329,7 @@ message ListAddressByEntitiesCreatedResponse {
 }
 
 message AddressByEntitiesCreated {
-  string address = 1;
-  uint64 entities_created_count = 2;
+  uint64 rank = 1;
+  string address = 2;
+  uint64 entities_created_count = 3;
 }

@@ -344,6 +344,7 @@ pub struct EntityDataSize {
 
 #[derive(Debug, Clone)]
 pub struct AddressByEntitiesCreated {
+    pub rank: u64,
     pub address: Address,
     pub entities_created_count: u64,
 }

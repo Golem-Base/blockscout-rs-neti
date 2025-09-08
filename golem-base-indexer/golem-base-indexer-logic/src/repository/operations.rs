@@ -57,6 +57,7 @@ struct OperationGroupCount {
 
 #[derive(Debug, FromQueryResult)]
 struct DbAddressByEntitiesCreated {
+    pub rank: i64,
     pub address: Vec<u8>,
     pub entities_created_count: i64,
 }
@@ -222,6 +223,7 @@ impl TryFrom<DbAddressByEntitiesCreated> for AddressByEntitiesCreated {
 
     fn try_from(v: DbAddressByEntitiesCreated) -> Result<Self> {
         Ok(Self {
+            rank: v.rank.try_into()?,
             address: v.address.as_slice().try_into()?,
             entities_created_count: v.entities_created_count.try_into()?,
         })
