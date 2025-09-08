@@ -4,7 +4,12 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter, Entity, EntityDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation, StringAnnotationWithRelations
+    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter,
+    Entity, EntityDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
+    EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter,
+    NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter,
+    OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
+    StringAnnotation, StringAnnotationWithRelations,
 };
 
 pub mod blockscout {
