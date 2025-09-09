@@ -615,6 +615,24 @@ definitions:
       - DELETED
       - EXPIRED
     default: ACTIVE
+  v1EntityWithExpTimestamp:
+    type: object
+    properties:
+      key:
+        type: string
+      data:
+        type: string
+      status:
+        $ref: '#/definitions/v1EntityStatus'
+      created_at_tx_hash:
+        type: string
+      last_updated_at_tx_hash:
+        type: string
+      expires_at_block_number:
+        type: string
+        format: uint64
+      expires_at_timestamp:
+        type: string
   v1FullEntity:
     type: object
     properties:
@@ -708,7 +726,7 @@ definitions:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1Entity'
+          $ref: '#/definitions/v1EntityWithExpTimestamp'
       pagination:
         $ref: '#/definitions/v1Pagination'
   v1ListEntitiesResponse:

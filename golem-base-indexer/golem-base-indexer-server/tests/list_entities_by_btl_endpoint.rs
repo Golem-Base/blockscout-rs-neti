@@ -11,7 +11,7 @@ use golem_base_sdk::{
 use pretty_assertions::assert_eq;
 
 use crate::helpers::{
-    assert_json::assert_fields_array,
+    assert_json::{assert_fields, assert_fields_array},
     sample::{Block, Transaction},
 };
 
@@ -122,6 +122,13 @@ async fn test_list_entities_by_btl_endpoint() {
                 "expires_at_block_number": "101",
             }),
         ],
+    );
+
+    assert_fields(
+        &response["items"][0],
+        serde_json::json!({
+            "expires_at_timestamp": "2018-10-13T12:40:02+00:00"
+        }),
     );
 
     let response: serde_json::Value = test_server::send_get_request(

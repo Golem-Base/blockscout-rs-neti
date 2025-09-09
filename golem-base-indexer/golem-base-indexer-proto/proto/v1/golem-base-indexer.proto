@@ -131,6 +131,16 @@ message Entity {
   uint64 expires_at_block_number = 6;
 }
 
+message EntityWithExpTimestamp {
+  string key = 1;
+  optional string data = 2;
+  EntityStatus status = 3;
+  optional string created_at_tx_hash = 4;
+  string last_updated_at_tx_hash = 5;
+  uint64 expires_at_block_number = 6;
+  string expires_at_timestamp = 7;
+}
+
 message StringAnnotation {
   string key = 1;
   string value = 2;
@@ -273,7 +283,7 @@ message ListEntitiesByBtlRequest {
 }
 
 message ListEntitiesByBtlResponse {
-  repeated Entity items = 1;
+  repeated EntityWithExpTimestamp items = 1;
   Pagination pagination = 2;
 }
 
