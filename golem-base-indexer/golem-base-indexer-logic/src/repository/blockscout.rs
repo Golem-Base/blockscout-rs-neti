@@ -141,7 +141,7 @@ pub async fn get_tx<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> Result<Optio
 }
 
 #[instrument(skip(db))]
-pub(super) async fn get_current_block<T: ConnectionTrait>(db: &T) -> Result<Option<Block>> {
+pub async fn get_current_block<T: ConnectionTrait>(db: &T) -> Result<Option<Block>> {
     DbBlock::find_by_statement(Statement::from_string(
         DbBackend::Postgres,
         "select hash, number, timestamp from blocks order by number desc limit 1",
