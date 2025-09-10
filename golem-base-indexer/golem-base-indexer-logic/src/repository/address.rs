@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement};
 use tracing::instrument;
 
-use crate::types::{Address, AddressEntitiesCount, AddressTxsCount};
+use crate::types::{Address, AddressActivity, AddressEntitiesCount, AddressTxsCount};
 
 use super::sql;
 
@@ -24,6 +24,21 @@ struct DbAddressEntitiesCount {
 struct DbAddressTxsCount {
     pub total_transactions: i64,
     pub failed_transactions: i64,
+}
+
+#[derive(Debug, FromQueryResult)]
+struct DbAddressActivity {
+    pub first_seen: Option<chrono::NaiveDateTime>,
+    pub last_seen: Option<chrono::NaiveDateTime>,
+}
+
+impl From<DbAddressActivity> for AddressActivity {
+    fn from(v: DbAddressActivity) -> Self {
+        Self {
+            first_seen: v.first_seen.map(|v| v.and_utc()),
+            last_seen: v.last_seen.map(|v| v.and_utc()),
+        }
+    }
 }
 
 impl TryFrom<DbAddressEntitiesCount> for AddressEntitiesCount {
@@ -82,4 +97,22 @@ pub async fn count_txs<T: ConnectionTrait>(db: &T, owner: Address) -> Result<Add
     .try_into()?;
 
     Ok(res)
+}
+
+#[instrument(skip(db))]
+pub async fn get_address_activity<T: ConnectionTrait>(
+    db: &T,
+    owner: Address,
+) -> Result<AddressActivity> {
+    let address_activity = DbAddressActivity::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::GET_ADDRESS_ACTIVITY,
+        [owner.as_slice().into()],
+    ))
+    .one(db)
+    .await
+    .context("Failed to get address activity")?
+    .expect("Address activity will always return a row");
+
+    Ok(address_activity.into())
 }
