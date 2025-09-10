@@ -565,6 +565,12 @@ definitions:
         format: uint64
       operations_counts:
         $ref: '#/definitions/v1CountOperationsResponse'
+      first_seen:
+        type: string
+      last_seen:
+        type: string
+      account_age:
+        type: string
   v1BiggestSpender:
     type: object
     properties:

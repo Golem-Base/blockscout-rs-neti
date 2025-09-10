@@ -361,3 +361,9 @@ pub struct AddressByEntitiesCreated {
     pub address: Address,
     pub entities_created_count: u64,
 }
+
+#[derive(Debug, Clone)]
+pub struct AddressActivity {
+    pub first_seen: Option<DateTime<Utc>>,
+    pub last_seen: Option<DateTime<Utc>>,
+}

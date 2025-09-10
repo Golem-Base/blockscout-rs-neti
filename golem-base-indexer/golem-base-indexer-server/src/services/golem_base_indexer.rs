@@ -2,6 +2,7 @@ use crate::proto::{
     golem_base_indexer_service_server::GolemBaseIndexerService as GolemBaseIndexer, *,
 };
 use golem_base_indexer_logic::{
+    golem_base::format_duration,
     repository::{self},
     types::{ListOperationsFilter, OperationsFilter},
 };
@@ -232,6 +233,26 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
                 Status::internal("failed to count operations")
             })?;
 
+        let reference_block = repository::blockscout::get_current_block(&*self.db)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to get current block");
+                Status::internal("failed to get current block")
+            })?
+            .ok_or(Status::internal("no blocks indexed yet"))?;
+
+        let address_activity = repository::address::get_address_activity(&*self.db, address)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to get address activity");
+                Status::internal("failed to get address activity")
+            })?;
+
+        let account_age = address_activity.first_seen.map(|first_seen| {
+            let duration = reference_block.timestamp.signed_duration_since(first_seen);
+            format_duration(duration)
+        });
+
         Ok(Response::new(AddressStatsResponse {
             created_entities: entities_counts.total_entities,
             active_entities: entities_counts.active_entities,
@@ -239,6 +260,9 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             total_transactions: tx_counts.total_transactions,
             failed_transactions: tx_counts.failed_transactions,
             operations_counts: Some(operations_counts.into()),
+            first_seen: address_activity.first_seen.map(|v| v.to_rfc3339()),
+            last_seen: address_activity.last_seen.map(|v| v.to_rfc3339()),
+            account_age,
         }))
     }
 
