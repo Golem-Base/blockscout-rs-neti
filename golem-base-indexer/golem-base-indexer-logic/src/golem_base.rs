@@ -8,9 +8,12 @@ use anyhow::Result;
 use chrono::Duration;
 use golem_base_sdk::keccak256;
 
-pub fn block_timestamp(number: BlockNumber, reference_block: &Block) -> Timestamp {
-    reference_block.timestamp
-        + Duration::seconds((number as i64 - reference_block.number as i64) * SECS_PER_BLOCK)
+pub fn block_timestamp(number: BlockNumber, reference_block: &Block) -> Option<Timestamp> {
+    let diff = (number as i64).checked_sub(reference_block.number as i64)?;
+    let secs = diff.checked_mul(SECS_PER_BLOCK)?;
+    let duration = Duration::try_seconds(secs)?;
+
+    reference_block.timestamp.checked_add_signed(duration)
 }
 
 pub fn entity_key(tx_hash: TxHash, data: Bytes, create_op_idx: u64) -> EntityKey {
