@@ -364,4 +364,27 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn list_address_by_entities_created(
+        &self,
+        request: Request<ListAddressByEntitiesCreatedRequest>,
+    ) -> Result<Response<ListAddressByEntitiesCreatedResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entities created filter: {err}"))
+        })?;
+
+        let (entities_created, pagination) =
+            repository::operations::list_addresses_by_create_operations(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query addresses by entities created");
+                    Status::internal("failed to query addresses by entities created")
+                })?;
+
+        Ok(Response::new(ListAddressByEntitiesCreatedResponse {
+            items: entities_created.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
 }

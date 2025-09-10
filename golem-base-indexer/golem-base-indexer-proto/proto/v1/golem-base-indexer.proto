@@ -22,6 +22,7 @@ service GolemBaseIndexerService {
   rpc ListEntitiesByBtl(ListEntitiesByBtlRequest) returns (ListEntitiesByBtlResponse);
   rpc ListAddressByEntitiesOwned(ListAddressByEntitiesOwnedRequest) returns (ListAddressByEntitiesOwnedResponse);
   rpc ListLargestEntities(ListLargestEntitiesRequest) returns (ListLargestEntitiesResponse);
+  rpc ListAddressByEntitiesCreated(ListAddressByEntitiesCreatedRequest) returns (ListAddressByEntitiesCreatedResponse);
 }
 
 message AddressStatsRequest {
@@ -315,4 +316,20 @@ message ListLargestEntitiesResponse {
 message EntityDataSize {
   string entity_key = 1;
   uint64 data_size = 2;
+}
+
+message ListAddressByEntitiesCreatedRequest {
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
+}
+
+message ListAddressByEntitiesCreatedResponse {
+  repeated AddressByEntitiesCreated items = 1;
+  Pagination pagination = 2;
+}
+
+message AddressByEntitiesCreated {
+  uint64 rank = 1;
+  string address = 2;
+  uint64 entities_created_count = 3;
 }
