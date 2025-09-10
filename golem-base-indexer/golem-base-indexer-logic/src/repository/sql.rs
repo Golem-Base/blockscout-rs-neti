@@ -313,3 +313,17 @@ ORDER BY
     entities_created_count DESC,
     first_created_at ASC
 "#;
+
+pub const GET_ADDRESS_ACTIVITY: &str = r#"
+SELECT
+    MIN(transactions.block_timestamp) AS first_seen,
+    MAX(transactions.block_timestamp) AS last_seen
+FROM
+    transactions
+WHERE
+    transactions.block_timestamp IS NOT NULL
+    AND (
+        transactions.from_address_hash = $1
+        OR transactions.to_address_hash = $1
+    )
+"#;
