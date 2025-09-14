@@ -22,6 +22,7 @@ sea-orm = { workspace = true, features = [
   "macros",
   "postgres-array",
 ] }
+sea-query.workspace = true
 serde.workspace = true
 serde_with.workspace = true
 tokio.workspace = true

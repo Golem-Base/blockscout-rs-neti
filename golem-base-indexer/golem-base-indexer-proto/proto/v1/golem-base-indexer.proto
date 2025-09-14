@@ -22,6 +22,8 @@ service GolemBaseIndexerService {
   rpc ListEntitiesByBtl(ListEntitiesByBtlRequest) returns (ListEntitiesByBtlResponse);
   rpc ListAddressByEntitiesOwned(ListAddressByEntitiesOwnedRequest) returns (ListAddressByEntitiesOwnedResponse);
   rpc ListLargestEntities(ListLargestEntitiesRequest) returns (ListLargestEntitiesResponse);
+  
+  rpc ChartDataUsage(ChartDataUsageRequest) returns (ChartDataUsageResponse);
 }
 
 message AddressStatsRequest {
@@ -315,4 +317,32 @@ message ListLargestEntitiesResponse {
 message EntityDataSize {
   string entity_key = 1;
   uint64 data_size = 2;
+}
+
+enum ChartResolution {
+  DAY = 0;
+  HOUR = 1;
+}
+
+message ChartInfo {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+}
+
+message ChartPoint {
+  string date = 1;
+  string date_to = 2;
+  string value = 3;
+}
+
+message ChartDataUsageRequest {
+  optional string from = 1;
+  optional string to = 2;
+  ChartResolution resolution = 3;
+}
+
+message ChartDataUsageResponse {
+  repeated ChartPoint chart = 1;
+  ChartInfo info = 2;
 }
