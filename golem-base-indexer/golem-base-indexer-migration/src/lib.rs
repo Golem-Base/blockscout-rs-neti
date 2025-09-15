@@ -10,6 +10,7 @@ mod m20250812_100925_create_entity_state_history_view;
 mod m20250818_181205_nullable_entity_owner;
 mod m20250827_115015_fix_tracking_expirations_in_view;
 mod m20250904_082310_add_golem_base_events_abi;
+mod m20250915_140948_optimize_history_view;
 
 pub struct Migrator;
 
@@ -26,6 +27,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250818_181205_nullable_entity_owner::Migration),
             Box::new(m20250827_115015_fix_tracking_expirations_in_view::Migration),
             Box::new(m20250904_082310_add_golem_base_events_abi::Migration),
+            Box::new(m20250915_140948_optimize_history_view::Migration),
         ]
     }
 
