@@ -293,7 +293,7 @@ fn generate_daily_points(
     let mut current_date = start_date;
     let mut last_known_value = initial_value;
 
-    while current_date <= end_date {
+    while current_date < end_date {
         let next_date = current_date + Duration::days(1);
 
         let value = match data_map.get(&current_date) {
@@ -393,7 +393,7 @@ fn generate_hourly_points(
     let mut current_time = start_time;
     let mut last_known_value = initial_value;
 
-    while current_time <= end_time {
+    while current_time < end_time {
         let next_hour = current_time + Duration::hours(1);
 
         let value = match data_map.get(&current_time) {
