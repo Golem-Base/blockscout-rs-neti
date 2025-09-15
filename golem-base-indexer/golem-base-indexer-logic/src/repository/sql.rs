@@ -218,6 +218,21 @@ ORDER BY
     entities_count DESC
 "#;
 
+pub const LIST_ADDRESS_BY_DATA_OWNED: &str = r#"
+SELECT
+    owner as address,
+    SUM(LENGTH(data)) AS data_size
+FROM 
+    golem_base_entities
+WHERE 
+    owner IS NOT NULL
+    AND status = 'active'
+GROUP BY 
+    owner
+ORDER BY 
+    data_size DESC
+"#;
+
 pub const STORAGE_USAGE_BY_BLOCK: &str = r#"
 WITH latest_entities_per_block AS (
   SELECT
