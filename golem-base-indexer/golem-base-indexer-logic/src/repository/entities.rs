@@ -18,10 +18,10 @@ use crate::{
     pagination::{paginate, paginate_try_from},
     repository::sql,
     types::{
-        Address, AddressByEntitiesOwned, Block, BlockNumber, Bytes, EntitiesFilter, Entity,
-        EntityDataSize, EntityEffectiveDataSize, EntityHistoryEntry, EntityHistoryFilter,
-        EntityKey, EntityStatus, EntityWithExpTimestamp, FullEntity, ListEntitiesFilter,
-        OperationFilter, PaginationMetadata, PaginationParams, TxHash,
+        Address, AddressByDataOwned, AddressByEntitiesOwned, Block, BlockNumber, Bytes,
+        EntitiesFilter, Entity, EntityDataSize, EntityEffectiveDataSize, EntityHistoryEntry,
+        EntityHistoryFilter, EntityKey, EntityStatus, EntityWithExpTimestamp, FullEntity,
+        ListEntitiesFilter, OperationFilter, PaginationMetadata, PaginationParams, TxHash,
     },
 };
 
@@ -67,6 +67,12 @@ struct DbAddressByEntitiesOwned {
 }
 
 #[derive(Debug, FromQueryResult)]
+struct DbAddressByDataOwned {
+    pub address: Vec<u8>,
+    pub data_size: i64,
+}
+
+#[derive(Debug, FromQueryResult)]
 struct DbEntityDataSize {
     pub entity_key: Vec<u8>,
     pub data_size: i32,
@@ -105,7 +111,18 @@ impl TryFrom<DbAddressByEntitiesOwned> for AddressByEntitiesOwned {
     fn try_from(value: DbAddressByEntitiesOwned) -> Result<Self> {
         Ok(Self {
             address: value.address.as_slice().try_into()?,
-            entities_count: value.entities_count,
+            entities_count: value.entities_count.try_into()?,
+        })
+    }
+}
+
+impl TryFrom<DbAddressByDataOwned> for AddressByDataOwned {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbAddressByDataOwned) -> Result<Self> {
+        Ok(Self {
+            address: value.address.as_slice().try_into()?,
+            data_size: value.data_size.try_into()?,
         })
     }
 }
@@ -598,6 +615,21 @@ pub async fn list_addresses_by_entities_owned<T: ConnectionTrait>(
     let paginator = DbAddressByEntitiesOwned::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
         sql::LIST_ADDRESS_BY_ENTITIES_OWNED,
+        [],
+    ))
+    .paginate(db, filter.page_size);
+
+    paginate_try_from(paginator, filter).await
+}
+
+#[instrument(skip(db))]
+pub async fn list_addresses_by_data_owned<T: ConnectionTrait>(
+    db: &T,
+    filter: PaginationParams,
+) -> Result<(Vec<AddressByDataOwned>, PaginationMetadata)> {
+    let paginator = DbAddressByDataOwned::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::LIST_ADDRESS_BY_DATA_OWNED,
         [],
     ))
     .paginate(db, filter.page_size);

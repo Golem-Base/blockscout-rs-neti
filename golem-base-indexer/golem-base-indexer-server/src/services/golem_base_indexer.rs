@@ -342,6 +342,29 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
+    async fn list_address_by_data_owned(
+        &self,
+        request: Request<ListAddressByDataOwnedRequest>,
+    ) -> Result<Response<ListAddressByDataOwnedResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entities owned filter: {err}"))
+        })?;
+
+        let (data_owned, pagination) =
+            repository::entities::list_addresses_by_data_owned(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query addresses by data owned");
+                    Status::internal("failed to query addresses by data owned")
+                })?;
+
+        Ok(Response::new(ListAddressByDataOwnedResponse {
+            items: data_owned.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
     async fn list_largest_entities(
         &self,
         request: Request<ListLargestEntitiesRequest>,
