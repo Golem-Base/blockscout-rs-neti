@@ -13,9 +13,9 @@ use tracing::instrument;
 use crate::{
     pagination::paginate_try_from,
     types::{
-        BlockNumber, BlockNumberOrHashFilter, EntityKey, ListOperationsFilter, Operation,
-        OperationData, OperationMetadata, OperationView, OperationsCount, OperationsFilter,
-        PaginationMetadata, PaginationParams, TxHash,
+        AddressByEntitiesCreated, BlockNumber, BlockNumberOrHashFilter, EntityKey,
+        ListOperationsFilter, Operation, OperationData, OperationMetadata, OperationView,
+        OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams, TxHash,
     },
 };
 
@@ -53,6 +53,13 @@ struct DbOperationsFilter {
 struct OperationGroupCount {
     operation: GolemBaseOperationType,
     count: i64,
+}
+
+#[derive(Debug, FromQueryResult)]
+struct DbAddressByEntitiesCreated {
+    pub rank: i64,
+    pub address: Vec<u8>,
+    pub entities_created_count: i64,
 }
 
 impl TryFrom<BlockNumberOrHashFilter> for DbBlockNumberOrHash {
@@ -207,6 +214,18 @@ impl TryFrom<Operation> for golem_base_operations::ActiveModel {
             block_hash: Set(md.block_hash.as_slice().into()),
             index: Set(md.index.try_into()?),
             inserted_at: NotSet,
+        })
+    }
+}
+
+impl TryFrom<DbAddressByEntitiesCreated> for AddressByEntitiesCreated {
+    type Error = anyhow::Error;
+
+    fn try_from(v: DbAddressByEntitiesCreated) -> Result<Self> {
+        Ok(Self {
+            rank: v.rank.try_into()?,
+            address: v.address.as_slice().try_into()?,
+            entities_created_count: v.entities_created_count.try_into()?,
         })
     }
 }
@@ -418,4 +437,19 @@ pub async fn find_latest_operation<T: ConnectionTrait>(
     .context("Failed to find latest operation")?
     .map(Operation::try_from)
     .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn list_addresses_by_create_operations<T: ConnectionTrait>(
+    db: &T,
+    filter: PaginationParams,
+) -> Result<(Vec<AddressByEntitiesCreated>, PaginationMetadata)> {
+    let paginator = DbAddressByEntitiesCreated::find_by_statement(Statement::from_sql_and_values(
+        db.get_database_backend(),
+        sql::LIST_ADDRESSES_BY_CREATE_OPERATIONS,
+        [],
+    ))
+    .paginate(db, filter.page_size);
+
+    paginate_try_from(paginator, filter).await
 }

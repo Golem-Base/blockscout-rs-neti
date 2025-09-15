@@ -4,12 +4,12 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, ChartInfo,
-    ChartPoint, EntitiesFilter, Entity, EntityDataSize, EntityHistoryEntry, EntityHistoryFilter,
-    EntityStatus, EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter,
-    NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter,
-    OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
-    StringAnnotation, StringAnnotationWithRelations,
+    AddressByEntitiesCreated, AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount,
+    BlockStorageUsage, ChartInfo, ChartPoint, EntitiesFilter, Entity, EntityDataSize,
+    EntityHistoryEntry, EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
+    ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
+    OperationData, OperationFilter, OperationView, OperationsCount, OperationsFilter,
+    PaginationMetadata, PaginationParams, StringAnnotation, StringAnnotationWithRelations,
 };
 
 pub mod blockscout {
@@ -53,7 +53,7 @@ impl v1::FullEntity {
             updated_at_block_number: entity.updated_at_block_number,
             updated_at_timestamp: entity.updated_at_timestamp.to_rfc3339(),
 
-            expires_at_timestamp: entity.expires_at_timestamp.to_rfc3339(),
+            expires_at_timestamp: entity.expires_at_timestamp.map(|v| v.to_rfc3339()),
             expires_at_block_number: entity.expires_at_block_number,
             fees_paid: entity.fees_paid.to_string(),
             gas_used: entity.gas_used.to_string(),
@@ -317,7 +317,7 @@ impl From<EntityWithExpTimestamp> for v1::EntityWithExpTimestamp {
             created_at_tx_hash: entity.created_at_tx_hash.map(|v| v.to_string()),
             last_updated_at_tx_hash: entity.last_updated_at_tx_hash.to_string(),
             expires_at_block_number: entity.expires_at_block_number,
-            expires_at_timestamp: entity.expires_at_timestamp.to_rfc3339(),
+            expires_at_timestamp: entity.expires_at_timestamp.map(|v| v.to_rfc3339()),
         }
     }
 }
@@ -370,7 +370,7 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             btl: v.btl.map(|v| v.to_string()),
             expires_at_block_number: v.expires_at_block_number,
             prev_expires_at_block_number: v.prev_expires_at_block_number,
-            expires_at_timestamp: v.expires_at_timestamp.to_rfc3339(),
+            expires_at_timestamp: v.expires_at_timestamp.map(|v| v.to_rfc3339()),
             prev_expires_at_timestamp: v.prev_expires_at_timestamp.map(|v| v.to_rfc3339()),
             gas_used: "0".into(),  // FIXME
             fees_paid: "0".into(), // FIXME
@@ -551,6 +551,27 @@ impl From<EntityDataSize> for v1::EntityDataSize {
         Self {
             entity_key: v.entity_key.to_string(),
             data_size: v.data_size,
+        }
+    }
+}
+
+impl TryFrom<v1::ListAddressByEntitiesCreatedRequest> for PaginationParams {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListAddressByEntitiesCreatedRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+        })
+    }
+}
+
+impl From<AddressByEntitiesCreated> for v1::AddressByEntitiesCreated {
+    fn from(v: AddressByEntitiesCreated) -> Self {
+        Self {
+            rank: v.rank,
+            address: v.address.to_checksum(None),
+            entities_created_count: v.entities_created_count,
         }
     }
 }

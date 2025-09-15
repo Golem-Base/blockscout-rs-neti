@@ -154,7 +154,7 @@ pub struct EntityWithExpTimestamp {
     pub created_at_tx_hash: Option<TxHash>,
     pub last_updated_at_tx_hash: TxHash,
     pub expires_at_block_number: BlockNumber,
-    pub expires_at_timestamp: Timestamp,
+    pub expires_at_timestamp: Option<Timestamp>,
 }
 
 #[derive(Debug, Clone)]
@@ -174,7 +174,7 @@ pub struct FullEntity {
     pub updated_at_timestamp: Timestamp,
 
     pub expires_at_block_number: BlockNumber,
-    pub expires_at_timestamp: Timestamp,
+    pub expires_at_timestamp: Option<Timestamp>,
 
     pub owner: Option<Address>,
     pub gas_used: CurrencyAmount,
@@ -310,7 +310,7 @@ pub struct EntityHistoryEntry {
     pub prev_status: Option<EntityStatus>,
     pub expires_at_block_number: BlockNumber,
     pub prev_expires_at_block_number: Option<BlockNumber>,
-    pub expires_at_timestamp: Timestamp,
+    pub expires_at_timestamp: Option<Timestamp>,
     pub prev_expires_at_timestamp: Option<Timestamp>,
     pub btl: Option<u64>,
 }
@@ -340,6 +340,13 @@ pub struct AddressByEntitiesOwned {
 pub struct EntityDataSize {
     pub entity_key: EntityKey,
     pub data_size: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct AddressByEntitiesCreated {
+    pub rank: u64,
+    pub address: Address,
+    pub entities_created_count: u64,
 }
 
 #[derive(Debug, Clone)]

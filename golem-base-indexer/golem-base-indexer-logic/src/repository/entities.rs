@@ -163,7 +163,7 @@ impl EntityHistoryEntry {
         let expires_at_timestamp = block_timestamp(expires_at_block_number, reference_block);
 
         let prev_expires_at_timestamp =
-            prev_expires_at_block_number.map(|expires_at_block_number| {
+            prev_expires_at_block_number.and_then(|expires_at_block_number| {
                 block_timestamp(expires_at_block_number, reference_block)
             });
 
