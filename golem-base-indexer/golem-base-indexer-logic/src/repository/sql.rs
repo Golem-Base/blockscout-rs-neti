@@ -259,6 +259,27 @@ ORDER BY
     data_size DESC
 "#;
 
+pub const LIST_ENTITIES_BY_EFFECTIVELY_LARGEST_DATA_SIZE: &str = r#"
+select
+    entity_key,
+    data_size,
+    lifespan
+from (
+    SELECT
+        key as entity_key,
+        octet_length(data) AS data_size,
+        coalesce(expires_at_block_number - createtx.block_number, 0)  AS lifespan
+    FROM
+        golem_base_entities
+    INNER JOIN
+        transactions as createtx on golem_base_entities.created_at_tx_hash = createtx.hash
+    WHERE 
+        golem_base_entities.status = 'active'
+) raw
+order by
+    (data_size * lifespan) desc
+"#;
+
 pub const LIST_ADDRESSES_BY_CREATE_OPERATIONS: &str = r#"
 SELECT
     ROW_NUMBER() OVER(ORDER BY COUNT(*) DESC, MIN(inserted_at) ASC) as rank,

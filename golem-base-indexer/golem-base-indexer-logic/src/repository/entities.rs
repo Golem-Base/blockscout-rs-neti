@@ -19,9 +19,9 @@ use crate::{
     repository::sql,
     types::{
         Address, AddressByEntitiesOwned, Block, BlockNumber, Bytes, EntitiesFilter, Entity,
-        EntityDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus,
-        EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, OperationFilter,
-        PaginationMetadata, PaginationParams, TxHash,
+        EntityDataSize, EntityEffectiveDataSize, EntityHistoryEntry, EntityHistoryFilter,
+        EntityKey, EntityStatus, EntityWithExpTimestamp, FullEntity, ListEntitiesFilter,
+        OperationFilter, PaginationMetadata, PaginationParams, TxHash,
     },
 };
 
@@ -72,6 +72,13 @@ struct DbEntityDataSize {
     pub data_size: i32,
 }
 
+#[derive(Debug, FromQueryResult)]
+struct DbEntityEffectiveDataSize {
+    pub entity_key: Vec<u8>,
+    pub data_size: i32,
+    pub lifespan: i64,
+}
+
 impl From<EntityStatus> for GolemBaseEntityStatusType {
     fn from(value: EntityStatus) -> Self {
         match value {
@@ -110,6 +117,18 @@ impl TryFrom<DbEntityDataSize> for EntityDataSize {
         Ok(Self {
             entity_key: value.entity_key.as_slice().try_into()?,
             data_size: value.data_size as u64,
+        })
+    }
+}
+
+impl TryFrom<DbEntityEffectiveDataSize> for EntityEffectiveDataSize {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbEntityEffectiveDataSize) -> Result<Self> {
+        Ok(Self {
+            entity_key: value.entity_key.as_slice().try_into()?,
+            data_size: value.data_size.try_into()?,
+            lifespan: value.lifespan.try_into()?,
         })
     }
 }
@@ -594,6 +613,21 @@ pub async fn list_largest_entities<T: ConnectionTrait>(
     let paginator = DbEntityDataSize::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
         sql::LIST_ENTITIES_BY_LARGEST_DATA_SIZE,
+        [],
+    ))
+    .paginate(db, filter.page_size);
+
+    paginate_try_from(paginator, filter).await
+}
+
+#[instrument(skip(db))]
+pub async fn list_effectively_largest_entities<T: ConnectionTrait>(
+    db: &T,
+    filter: PaginationParams,
+) -> Result<(Vec<EntityEffectiveDataSize>, PaginationMetadata)> {
+    let paginator = DbEntityEffectiveDataSize::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::LIST_ENTITIES_BY_EFFECTIVELY_LARGEST_DATA_SIZE,
         [],
     ))
     .paginate(db, filter.page_size);

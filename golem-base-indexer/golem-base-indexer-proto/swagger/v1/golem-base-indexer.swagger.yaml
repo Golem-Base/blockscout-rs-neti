@@ -211,6 +211,31 @@ paths:
           format: uint64
       tags:
         - GolemBaseIndexerService
+  /api/v1/leaderboard/effectively-largest-entities:
+    get:
+      operationId: GolemBaseIndexerService_ListEffectivelyLargestEntities
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ListEffectivelyLargestEntitiesResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
   /api/v1/leaderboard/entities-by-btl:
     get:
       operationId: GolemBaseIndexerService_ListEntitiesByBtl
@@ -596,6 +621,18 @@ definitions:
       data_size:
         type: string
         format: uint64
+  v1EntityEffectiveDataSize:
+    type: object
+    properties:
+      entity_key:
+        type: string
+      data_size:
+        type: string
+        format: uint64
+      lifespan:
+        type: string
+        format: uint64
+        title: lifespan in blocks
   v1EntityHistoryEntry:
     type: object
     properties:
@@ -763,6 +800,16 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1BiggestSpender'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
+  v1ListEffectivelyLargestEntitiesResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1EntityEffectiveDataSize'
       pagination:
         $ref: '#/definitions/v1Pagination'
   v1ListEntitiesByBtlResponse:
