@@ -365,6 +365,31 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
+    async fn list_effectively_largest_entities(
+        &self,
+        request: Request<ListEffectivelyLargestEntitiesRequest>,
+    ) -> Result<Response<ListEffectivelyLargestEntitiesResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!(
+                "Invalid effectively largest entities filter: {err}"
+            ))
+        })?;
+
+        let (largest_entities, pagination) =
+            repository::entities::list_effectively_largest_entities(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query effectively largest entities");
+                    Status::internal("failed to query effectively largest entities")
+                })?;
+
+        Ok(Response::new(ListEffectivelyLargestEntitiesResponse {
+            items: largest_entities.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
     async fn list_address_by_entities_created(
         &self,
         request: Request<ListAddressByEntitiesCreatedRequest>,

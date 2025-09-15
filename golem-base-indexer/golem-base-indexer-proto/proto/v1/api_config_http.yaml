@@ -42,6 +42,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListLargestEntities
       get: /api/v1/leaderboard/largest-entities
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListEffectivelyLargestEntities
+      get: /api/v1/leaderboard/effectively-largest-entities
+
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListAddressByEntitiesCreated
       get: /api/v1/leaderboard/entities-created
 
