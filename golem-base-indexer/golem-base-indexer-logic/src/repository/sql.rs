@@ -167,11 +167,12 @@ pub const COUNT_ENTITIES_BY_BLOCK: &str = r#"
 SELECT
     COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
     COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
-    COUNT(*) FILTER (WHERE operation = 'delete' AND status = 'expired') AS expire_count,
-    COUNT(*) FILTER (WHERE operation = 'delete' AND status = 'deleted') AS delete_count,
+    COUNT(*) FILTER (WHERE operation = 'delete' AND recipient = '\x4200000000000000000000000000000000000015') AS expire_count,
+    COUNT(*) FILTER (WHERE operation = 'delete' AND recipient != '\x4200000000000000000000000000000000000015') AS delete_count,
     COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count
-FROM golem_base_entity_history
-WHERE block_number = $1
+FROM golem_base_operations
+INNER JOIN blocks on blocks.hash = golem_base_operations.block_hash
+WHERE blocks.number = $1 and blocks.consensus
 "#;
 
 pub const GET_STRING_ANNOTATIONS_WITH_RELATIONS: &str = r#"
