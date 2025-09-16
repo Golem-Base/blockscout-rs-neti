@@ -14,11 +14,11 @@ WITH hourly_changes AS (
         SUM(
             CASE 
                 WHEN operation = 'create' THEN 
-                    COALESCE(octet_length(data), 0)
+                    COALESCE(length(data), 0)
                 WHEN operation = 'update' THEN 
-                    COALESCE(octet_length(data), 0) - COALESCE(octet_length(prev_data), 0)
+                    COALESCE(length(data), 0) - COALESCE(length(prev_data), 0)
                 WHEN operation = 'delete' THEN 
-                    -COALESCE(octet_length(data), 0)
+                    -COALESCE(length(data), 0)
                 ELSE 0  -- Ignores 'extend' and any other operations
             END
         ) as hourly_data_change
