@@ -316,14 +316,18 @@ ORDER BY
 
 pub const GET_ADDRESS_ACTIVITY: &str = r#"
 SELECT
-    MIN(transactions.block_timestamp) AS first_seen,
-    MAX(transactions.block_timestamp) AS last_seen
+    MIN(t.block_timestamp) AS first_seen,
+    MAX(t.block_timestamp) AS last_seen
 FROM
-    transactions
+    transactions t
+LEFT JOIN
+    internal_transactions it ON it.transaction_hash = t.hash
 WHERE
-    transactions.block_timestamp IS NOT NULL
+    t.block_timestamp IS NOT NULL
     AND (
-        transactions.from_address_hash = $1
-        OR transactions.to_address_hash = $1
+        t.from_address_hash = $1
+        OR t.to_address_hash = $1
+        OR it.from_address_hash = $1
+        OR it.to_address_hash = $1
     )
 "#;

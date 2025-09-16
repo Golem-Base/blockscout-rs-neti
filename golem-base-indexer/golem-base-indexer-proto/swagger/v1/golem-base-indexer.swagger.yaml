@@ -569,8 +569,6 @@ definitions:
         type: string
       last_seen:
         type: string
-      account_age:
-        type: string
   v1BiggestSpender:
     type: object
     properties:

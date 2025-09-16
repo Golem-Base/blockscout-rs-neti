@@ -38,7 +38,29 @@ async fn test_get_address_stats_endpoint_works() {
         "total_transactions": "6",
         "first_seen": "2025-07-22T11:31:28+00:00",
         "last_seen": "2025-07-22T11:31:35+00:00",
-        "account_age": "2h 46m 23s",
+    });
+    assert_eq!(response, expected);
+
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        "/api/v1/address/0xee65114387Fe5D2C08F7a8E555aC83C931E3e1f9/stats",
+    )
+    .await;
+
+    let expected: serde_json::Value = serde_json::json!({
+        "active_entities": "0",
+        "created_entities": "0",
+        "failed_transactions": "0",
+        "operations_counts": {
+            "create_count": "0",
+            "delete_count": "0",
+            "extend_count": "0",
+            "update_count": "0",
+        },
+        "size_of_active_entities": "0",
+        "total_transactions": "0",
+        "first_seen": "2025-07-22T11:31:28+00:00",
+        "last_seen": "2025-07-22T11:31:28+00:00",
     });
     assert_eq!(response, expected);
 
@@ -60,7 +82,6 @@ async fn test_get_address_stats_endpoint_works() {
         "total_transactions": "0",
         "first_seen": null,
         "last_seen": null,
-        "account_age": null,
     });
     assert_eq!(response, expected);
 }

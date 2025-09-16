@@ -34,28 +34,9 @@ pub fn decode_extend_log_data(data: &Bytes) -> Result<u64> {
     Ok(expires_at_block_number.try_into()?)
 }
 
-pub fn format_duration(d: chrono::Duration) -> String {
-    let mut secs = d.num_seconds().abs();
-    let units = [(86_400, "d"), (3_600, "h"), (60, "m"), (1, "s")];
-
-    let mut parts = vec![];
-    for (unit_secs, label) in units {
-        let val = secs / unit_secs;
-        if val > 0 {
-            parts.push(format!("{val}{label}"));
-            secs %= unit_secs;
-        }
-    }
-
-    if parts.is_empty() {
-        return "0s".to_string();
-    }
-    parts.join(" ")
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::golem_base::{entity_key, format_duration};
+    use crate::golem_base::entity_key;
     use alloy_primitives::{b256, bytes};
 
     #[test]
@@ -78,25 +59,6 @@ mod tests {
         assert_eq!(
             expected_key,
             entity_key(tx_hash, data.into(), create_op_idx)
-        );
-    }
-
-    #[test]
-    fn format_duration_is_correct() {
-        assert_eq!(format_duration(chrono::Duration::seconds(0)), "0s");
-        assert_eq!(format_duration(chrono::Duration::milliseconds(900)), "0s");
-        assert_eq!(format_duration(chrono::Duration::seconds(1)), "1s");
-        assert_eq!(format_duration(chrono::Duration::seconds(60)), "1m");
-        assert_eq!(format_duration(chrono::Duration::seconds(60 + 1)), "1m 1s");
-        assert_eq!(format_duration(chrono::Duration::seconds(3_600)), "1h");
-        assert_eq!(
-            format_duration(chrono::Duration::seconds(3_600 + 60 + 1)),
-            "1h 1m 1s"
-        );
-        assert_eq!(format_duration(chrono::Duration::seconds(86_400)), "1d");
-        assert_eq!(
-            format_duration(chrono::Duration::seconds(86_400 + 3_600 + 60 + 1)),
-            "1d 1h 1m 1s"
         );
     }
 }

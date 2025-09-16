@@ -40,7 +40,6 @@ message AddressStatsResponse {
   CountOperationsResponse operations_counts = 6;
   optional string first_seen = 7;
   optional string last_seen = 8;
-  optional string account_age = 9;
 }
 
 message GetEntityRequest {
