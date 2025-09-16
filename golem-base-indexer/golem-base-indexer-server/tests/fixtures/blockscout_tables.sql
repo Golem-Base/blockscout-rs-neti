@@ -138,3 +138,31 @@ CREATE TABLE IF NOT EXISTS smart_contracts (
     contract_source_code TEXT NOT NULL,
     contract_code_md5 VARCHAR(255) NOT NULL
 );
+
+CREATE TABLE internal_transactions (
+    call_type character varying(255),
+    created_contract_code bytea,
+    error character varying(255),
+    gas numeric(100,0),
+    gas_used numeric(100,0),
+    index integer NOT NULL,
+    init bytea,
+    input bytea,
+    output bytea,
+    trace_address integer[] NOT NULL,
+    type character varying(255) NOT NULL,
+    value numeric(100,0) NOT NULL,
+    inserted_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL,
+    created_contract_address_hash bytea,
+    from_address_hash bytea,
+    to_address_hash bytea,
+    transaction_hash bytea NOT NULL,
+    block_number integer,
+    transaction_index integer,
+    block_hash bytea NOT NULL,
+    block_index integer NOT NULL,
+    CONSTRAINT internal_transactions_pkey PRIMARY KEY (block_hash, block_index),
+    CONSTRAINT internal_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES blocks(hash),
+    CONSTRAINT internal_transactions_transaction_hash_fkey FOREIGN KEY (transaction_hash) REFERENCES transactions(hash) ON DELETE CASCADE
+);
