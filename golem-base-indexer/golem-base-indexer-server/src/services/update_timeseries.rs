@@ -1,7 +1,6 @@
 use anyhow::Result;
 use sea_orm::{ConnectionTrait, DatabaseBackend, DatabaseConnection, Statement};
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use tokio::time;
 use tracing::error;
 
