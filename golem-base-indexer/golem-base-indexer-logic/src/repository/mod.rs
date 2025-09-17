@@ -2,6 +2,7 @@ pub mod address;
 pub mod annotations;
 pub mod block;
 pub mod blockscout;
+pub mod chart;
 pub mod entities;
 pub mod logs;
 pub mod operations;

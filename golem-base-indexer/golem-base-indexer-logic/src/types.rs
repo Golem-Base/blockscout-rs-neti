@@ -361,3 +361,17 @@ pub struct AddressByEntitiesCreated {
     pub address: Address,
     pub entities_created_count: u64,
 }
+
+#[derive(Debug, Clone)]
+pub struct ChartPoint {
+    pub date: String,
+    pub date_to: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChartInfo {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+}

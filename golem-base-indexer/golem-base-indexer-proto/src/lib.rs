@@ -5,8 +5,8 @@ use const_hex::traits::ToHexExt;
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
     AddressByDataOwned, AddressByEntitiesCreated, AddressByEntitiesOwned, BiggestSpenders,
-    BlockEntitiesCount, BlockStorageUsage, EntitiesFilter, Entity, EntityDataSize,
-    EntityEffectiveDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
+    BlockEntitiesCount, BlockStorageUsage, ChartInfo, ChartPoint, EntitiesFilter, Entity,
+    EntityDataSize, EntityEffectiveDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
     EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter,
     NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter,
     OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
@@ -614,6 +614,26 @@ impl From<AddressByEntitiesCreated> for v1::AddressByEntitiesCreated {
             rank: v.rank,
             address: v.address.to_checksum(None),
             entities_created_count: v.entities_created_count,
+        }
+    }
+}
+
+impl From<ChartInfo> for v1::ChartInfo {
+    fn from(v: ChartInfo) -> Self {
+        Self {
+            id: v.id,
+            title: v.title,
+            description: v.description,
+        }
+    }
+}
+
+impl From<ChartPoint> for v1::ChartPoint {
+    fn from(v: ChartPoint) -> Self {
+        Self {
+            date: v.date,
+            date_to: v.date_to,
+            value: v.value,
         }
     }
 }

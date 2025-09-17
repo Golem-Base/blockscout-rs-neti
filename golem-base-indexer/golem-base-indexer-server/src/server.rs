@@ -3,7 +3,7 @@ use crate::{
         golem_base_indexer_service_actix::route_golem_base_indexer_service,
         health_actix::route_health, health_server::HealthServer,
     },
-    services::{GolemBaseIndexerService, HealthService},
+    services::{GolemBaseIndexerService, HealthService, UpdateTimeseriesService},
     settings::Settings,
 };
 use blockscout_endpoint_swagger::route_swagger;
@@ -61,6 +61,9 @@ pub async fn run(
     let health = Arc::new(HealthService::default());
 
     // TODO: init services here
+
+    let update_timeseries = UpdateTimeseriesService::new(Arc::clone(&db_connection));
+    update_timeseries.spawn_periodic_task(1800); // 1800 seconds = 30 minutes
 
     let golem_base_indexer = Arc::new(GolemBaseIndexerService::new(db_connection));
 
