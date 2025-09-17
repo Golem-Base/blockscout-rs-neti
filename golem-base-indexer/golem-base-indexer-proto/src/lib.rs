@@ -4,12 +4,13 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressByEntitiesCreated, AddressByEntitiesOwned, BiggestSpenders, BlockEntitiesCount,
-    BlockStorageUsage, ChartInfo, ChartPoint, EntitiesFilter, Entity, EntityDataSize,
-    EntityHistoryEntry, EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
-    ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
-    OperationData, OperationFilter, OperationView, OperationsCount, OperationsFilter,
-    PaginationMetadata, PaginationParams, StringAnnotation, StringAnnotationWithRelations,
+    AddressByDataOwned, AddressByEntitiesCreated, AddressByEntitiesOwned, BiggestSpenders,
+    BlockEntitiesCount, BlockStorageUsage, ChartInfo, ChartPoint, EntitiesFilter, Entity,
+    EntityDataSize, EntityEffectiveDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
+    EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter,
+    NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter,
+    OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
+    StringAnnotation, StringAnnotationWithRelations,
 };
 
 pub mod blockscout {
@@ -530,7 +531,27 @@ impl From<AddressByEntitiesOwned> for v1::AddressByEntitiesOwned {
     fn from(v: AddressByEntitiesOwned) -> Self {
         Self {
             address: v.address.to_checksum(None),
-            entities_count: v.entities_count as u64,
+            entities_count: v.entities_count,
+        }
+    }
+}
+
+impl TryFrom<v1::ListAddressByDataOwnedRequest> for PaginationParams {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListAddressByDataOwnedRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+        })
+    }
+}
+
+impl From<AddressByDataOwned> for v1::AddressByDataOwned {
+    fn from(v: AddressByDataOwned) -> Self {
+        Self {
+            address: v.address.to_checksum(None),
+            data_size: v.data_size,
         }
     }
 }
@@ -551,6 +572,27 @@ impl From<EntityDataSize> for v1::EntityDataSize {
         Self {
             entity_key: v.entity_key.to_string(),
             data_size: v.data_size,
+        }
+    }
+}
+
+impl TryFrom<v1::ListEffectivelyLargestEntitiesRequest> for PaginationParams {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListEffectivelyLargestEntitiesRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+        })
+    }
+}
+
+impl From<EntityEffectiveDataSize> for v1::EntityEffectiveDataSize {
+    fn from(v: EntityEffectiveDataSize) -> Self {
+        Self {
+            entity_key: v.entity_key.to_string(),
+            data_size: v.data_size,
+            lifespan: v.lifespan,
         }
     }
 }

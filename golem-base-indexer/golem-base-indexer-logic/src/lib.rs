@@ -4,6 +4,7 @@ use futures::{StreamExt, TryStreamExt};
 use golem_base_sdk::entity::{
     Create, EncodableGolemBaseTransaction, Extend, GolemBaseDelete, Update,
 };
+use key_mutex::tokio::KeyMutex;
 use lazy_static::lazy_static;
 use prometheus::{opts, register_counter, register_gauge, Counter, Gauge};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
@@ -89,13 +90,19 @@ impl Default for IndexerSettings {
 pub struct Indexer {
     db: Arc<DatabaseConnection>,
     settings: IndexerSettings,
+    locks: KeyMutex<EntityKey, ()>,
 }
 
 // FIXME integration tests
 // FIXME test what happens when DB connection fails
 impl Indexer {
     pub fn new(db: Arc<DatabaseConnection>, settings: IndexerSettings) -> Self {
-        Self { db, settings }
+        let locks = KeyMutex::new();
+        Self {
+            db,
+            settings,
+            locks,
+        }
     }
 
     #[instrument(skip_all)]
@@ -268,6 +275,7 @@ impl Indexer {
 
     #[instrument(skip(self, txn))]
     async fn reindex_entity<T: ConnectionTrait>(&self, txn: &T, entity: EntityKey) -> Result<()> {
+        let _guard = self.locks.lock(entity).await;
         match repository::operations::find_latest_operation(txn, entity).await? {
             Some(latest_op) => {
                 self.reindex_entity_with_latest_operation(txn, latest_op, entity)
@@ -378,6 +386,7 @@ impl Indexer {
         idx: u64,
     ) -> Result<()> {
         let key = entity_key(tx.hash, create.data.clone(), idx);
+        let _guard = self.locks.lock(key).await;
         tracing::info!("Processing Create operation");
 
         let latest_update = self.is_latest_update(txn, key, tx.hash, idx).await?;
@@ -458,6 +467,7 @@ impl Indexer {
         update: Update,
         idx: u64,
     ) -> Result<()> {
+        let _guard = self.locks.lock(update.entity_key).await;
         tracing::info!("Processing Update operation");
 
         let latest_update = self
@@ -546,6 +556,7 @@ impl Indexer {
         delete: GolemBaseDelete,
         idx: u64,
     ) -> Result<()> {
+        let _guard = self.locks.lock(delete).await;
         tracing::info!("Processing Delete operation");
 
         repository::operations::insert_operation(
@@ -592,6 +603,7 @@ impl Indexer {
         extend: Extend,
         idx: u64,
     ) -> Result<()> {
+        let _guard = self.locks.lock(extend.entity_key).await;
         tracing::info!("Processing Extend operation");
         repository::operations::insert_operation(
             txn,
@@ -669,6 +681,7 @@ impl Indexer {
             tracing::warn!("Extend Log event with no second topic?");
             return Ok(());
         };
+        let _guard = self.locks.lock(entity_key).await;
         tracing::info!("Processing extend log for entity {entity_key}");
 
         let latest_update = self
@@ -705,6 +718,7 @@ impl Indexer {
             tracing::warn!("Delete Log event with no second topic?");
             return Ok(());
         };
+        let _guard = self.locks.lock(entity_key).await;
         tracing::info!("Processing delete log for entity {entity_key}");
 
         repository::operations::insert_operation(
@@ -739,6 +753,8 @@ impl Indexer {
             },
         )
         .await?;
+
+        repository::annotations::deactivate_annotations(txn, entity_key).await?;
 
         Ok(())
     }

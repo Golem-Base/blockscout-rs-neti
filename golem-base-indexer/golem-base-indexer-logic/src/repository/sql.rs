@@ -167,11 +167,12 @@ pub const COUNT_ENTITIES_BY_BLOCK: &str = r#"
 SELECT
     COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
     COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
-    COUNT(*) FILTER (WHERE operation = 'delete' AND status = 'expired') AS expire_count,
-    COUNT(*) FILTER (WHERE operation = 'delete' AND status = 'deleted') AS delete_count,
+    COUNT(*) FILTER (WHERE operation = 'delete' AND recipient = '\x4200000000000000000000000000000000000015') AS expire_count,
+    COUNT(*) FILTER (WHERE operation = 'delete' AND recipient != '\x4200000000000000000000000000000000000015') AS delete_count,
     COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count
-FROM golem_base_entity_history
-WHERE block_number = $1
+FROM golem_base_operations
+INNER JOIN blocks on blocks.hash = golem_base_operations.block_hash
+WHERE blocks.number = $1 and blocks.consensus
 "#;
 
 pub const GET_STRING_ANNOTATIONS_WITH_RELATIONS: &str = r#"
@@ -217,6 +218,21 @@ ORDER BY
     entities_count DESC
 "#;
 
+pub const LIST_ADDRESS_BY_DATA_OWNED: &str = r#"
+SELECT
+    owner as address,
+    SUM(LENGTH(data)) AS data_size
+FROM 
+    golem_base_entities
+WHERE 
+    owner IS NOT NULL
+    AND status = 'active'
+GROUP BY 
+    owner
+ORDER BY 
+    data_size DESC
+"#;
+
 pub const STORAGE_USAGE_BY_BLOCK: &str = r#"
 WITH latest_entities_per_block AS (
   SELECT
@@ -257,6 +273,27 @@ WHERE
     AND status = 'active'
 ORDER BY
     data_size DESC
+"#;
+
+pub const LIST_ENTITIES_BY_EFFECTIVELY_LARGEST_DATA_SIZE: &str = r#"
+select
+    entity_key,
+    data_size,
+    lifespan
+from (
+    SELECT
+        key as entity_key,
+        octet_length(data) AS data_size,
+        coalesce(expires_at_block_number - createtx.block_number, 0)  AS lifespan
+    FROM
+        golem_base_entities
+    INNER JOIN
+        transactions as createtx on golem_base_entities.created_at_tx_hash = createtx.hash
+    WHERE 
+        golem_base_entities.status = 'active'
+) raw
+order by
+    (data_size * lifespan) desc
 "#;
 
 pub const LIST_ADDRESSES_BY_CREATE_OPERATIONS: &str = r#"

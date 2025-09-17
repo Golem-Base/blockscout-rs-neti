@@ -48,8 +48,8 @@ pub async fn insert_data<T: ConnectionTrait>(txn: &T, block: Block) -> Result<()
         let calldata: Vec<u8> = encode(tx.operations);
         let index = i as i64;
         txn.execute(Statement::from_sql_and_values(txn.get_database_backend(), r#"
-        insert into transactions (gas_used, gas_price, cumulative_gas_used, gas, hash, index, input, nonce, r, s, status, v, value, inserted_at, updated_at, block_hash, block_number, from_address_hash, to_address_hash)
-        values (100, 100, 100, 100, $1, $6, $2, 0, 0, 0, 1, 0, 0, current_timestamp, current_timestamp, $3, $4, $5, '\x0000000000000000000000000000000060138453')
+        insert into transactions (gas_used, gas_price, cumulative_gas_used, gas, hash, index, input, nonce, r, s, status, v, value, inserted_at, updated_at, block_hash, block_number, from_address_hash, to_address_hash, block_timestamp)
+        values (100, 100, 100, 100, $1, $6, $2, 0, 0, 0, 1, 0, 0, current_timestamp, current_timestamp, $3, $4, $5, '\x0000000000000000000000000000000060138453', $7)
     "#, [
                 tx_hash.as_slice().into(),
                 calldata.as_slice().into(),
@@ -57,6 +57,7 @@ pub async fn insert_data<T: ConnectionTrait>(txn: &T, block: Block) -> Result<()
                 block.number.into(),
                 tx.sender.as_slice().into(),
                 index.into(),
+                block_timestamp.into(),
             ])).await?;
     }
     Ok(())
