@@ -467,6 +467,31 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
+  /api/v1/transactions/custom-contract:
+    get:
+      operationId: GolemBaseIndexerService_ListCustomContractTransactions
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ListCustomContractTransactionsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
   /health:
     get:
       summary: |-
@@ -849,6 +874,16 @@ definitions:
           $ref: '#/definitions/v1BiggestSpender'
       pagination:
         $ref: '#/definitions/v1Pagination'
+  v1ListCustomContractTransactionsResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1Transaction'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
   v1ListEffectivelyLargestEntitiesResponse:
     type: object
     properties:
@@ -969,5 +1004,49 @@ definitions:
       value:
         type: string
       related_entities:
+        type: string
+        format: uint64
+  v1Transaction:
+    type: object
+    properties:
+      hash:
+        type: string
+      from_address_hash:
+        type: string
+      to_address_hash:
+        type: string
+      status:
+        type: string
+        format: uint64
+      block_hash:
+        type: string
+      block_number:
+        type: string
+        format: uint64
+      block_consensus:
+        type: boolean
+      index:
+        type: string
+        format: uint64
+      cumulative_gas_used:
+        type: string
+      gas_price:
+        type: string
+      block_timestamp:
+        type: string
+      error:
+        type: string
+      value:
+        type: string
+      input:
+        type: string
+      created_contract_address_hash:
+        type: string
+      type:
+        type: string
+        format: uint64
+      l1_transaction_origin:
+        type: string
+      l1_block_number:
         type: string
         format: uint64

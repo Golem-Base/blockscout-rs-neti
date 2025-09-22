@@ -25,6 +25,7 @@ service GolemBaseIndexerService {
   rpc ListLargestEntities(ListLargestEntitiesRequest) returns (ListLargestEntitiesResponse);
   rpc ListEffectivelyLargestEntities(ListEffectivelyLargestEntitiesRequest) returns (ListEffectivelyLargestEntitiesResponse);
   rpc ListAddressByEntitiesCreated(ListAddressByEntitiesCreatedRequest) returns (ListAddressByEntitiesCreatedResponse);
+  rpc ListCustomContractTransactions(ListCustomContractTransactionsRequest) returns (ListCustomContractTransactionsResponse);
 }
 
 message AddressStatsRequest {
@@ -367,4 +368,35 @@ message AddressByEntitiesCreated {
   uint64 rank = 1;
   string address = 2;
   uint64 entities_created_count = 3;
+}
+
+message ListCustomContractTransactionsRequest {
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
+}
+
+message ListCustomContractTransactionsResponse {
+  repeated Transaction items = 1;
+  Pagination pagination = 2;
+}
+
+message Transaction {
+  string hash = 1;
+  string from_address_hash = 2;
+  optional string to_address_hash = 3;
+  optional uint64 status = 4;
+  optional string block_hash = 5;
+  optional uint64 block_number = 6;
+  optional bool block_consensus = 7;
+  optional uint64 index = 8;
+  optional string cumulative_gas_used = 9;
+  optional string gas_price = 10;
+  optional string block_timestamp = 11;
+  optional string error = 12;
+  string value = 13;
+  string input = 14;
+  optional string created_contract_address_hash = 15;
+  optional uint64 type = 16;
+  optional string l1_transaction_origin = 17;
+  optional uint64 l1_block_number = 18;
 }

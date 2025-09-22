@@ -45,6 +45,7 @@ async fn list_addresses_by_data_owned() {
                         creates: vec![create.clone()],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
                 Transaction {
                     sender: owner2,
@@ -53,6 +54,7 @@ async fn list_addresses_by_data_owned() {
                         creates: vec![create.clone(), create.clone()],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
                 Transaction {
                     sender: owner3,
@@ -61,6 +63,7 @@ async fn list_addresses_by_data_owned() {
                         creates: vec![create.clone(), create.clone(), create.clone()],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
             ],
             ..Default::default()

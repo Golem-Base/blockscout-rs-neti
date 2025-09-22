@@ -65,6 +65,8 @@ CREATE TABLE transactions (
     has_error_in_internal_transactions boolean,
     block_timestamp timestamp without time zone,
     block_consensus boolean DEFAULT true,
+    l1_block_number integer,
+    l1_transaction_origin bytea,
     CONSTRAINT collated_block_number CHECK (((block_hash IS NULL) OR (block_number IS NOT NULL))),
     CONSTRAINT collated_cumalative_gas_used CHECK (((block_hash IS NULL) OR (cumulative_gas_used IS NOT NULL))),
     CONSTRAINT collated_gas_price CHECK (((block_hash IS NULL) OR (gas_price IS NOT NULL))),

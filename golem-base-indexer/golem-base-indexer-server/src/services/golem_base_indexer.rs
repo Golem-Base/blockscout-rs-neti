@@ -444,4 +444,29 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn list_custom_contract_transactions(
+        &self,
+        request: Request<ListCustomContractTransactionsRequest>,
+    ) -> Result<Response<ListCustomContractTransactionsResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!(
+                "Invalid custom contract transactions filter: {err}"
+            ))
+        })?;
+
+        let (transactions, pagination) =
+            repository::transactions::list_custom_contract_transactions(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query custom contract transactions");
+                    Status::internal("failed to query custom contract transactions")
+                })?;
+
+        Ok(Response::new(ListCustomContractTransactionsResponse {
+            items: transactions.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
 }

@@ -40,6 +40,7 @@ async fn test_get_entity_with_timestamp_overflow() {
                     }],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
         },
     )

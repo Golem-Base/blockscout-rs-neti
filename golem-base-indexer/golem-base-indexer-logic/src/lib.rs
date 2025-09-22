@@ -34,7 +34,7 @@ pub mod model;
 pub mod pagination;
 pub mod repository;
 pub mod types;
-mod well_known;
+pub mod well_known;
 
 lazy_static! {
     static ref TX_COUNTER: Counter = register_counter!(opts!(

@@ -51,6 +51,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListAddressByEntitiesCreated
       get: /api/v1/leaderboard/entities-created
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListCustomContractTransactions
+      get: /api/v1/transactions/custom-contract
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check
