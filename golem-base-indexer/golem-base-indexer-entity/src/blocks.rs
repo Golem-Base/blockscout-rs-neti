@@ -5,20 +5,51 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "blocks")]
 pub struct Model {
+    pub consensus: bool,
+    #[sea_orm(column_type = "Decimal(Some((50, 0)))", nullable)]
+    pub difficulty: Option<Decimal>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
+    pub gas_limit: Decimal,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
+    pub gas_used: Decimal,
     #[sea_orm(
         primary_key,
         auto_increment = false,
         column_type = "VarBinary(StringLen::None)"
     )]
     pub hash: Vec<u8>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub miner_hash: Vec<u8>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub nonce: Vec<u8>,
+    #[sea_orm(unique)]
     pub number: i64,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)", unique)]
+    pub parent_hash: Vec<u8>,
+    pub size: Option<i32>,
     pub timestamp: DateTime,
+    #[sea_orm(column_type = "Decimal(Some((50, 0)))", nullable)]
+    pub total_difficulty: Option<Decimal>,
+    pub inserted_at: DateTime,
+    pub updated_at: DateTime,
+    pub refetch_needed: Option<bool>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
+    pub base_fee_per_gas: Option<Decimal>,
+    pub is_empty: Option<bool>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::golem_base_entity_history::Entity")]
+    GolemBaseEntityHistory,
     #[sea_orm(has_many = "super::golem_base_operations::Entity")]
     GolemBaseOperations,
+}
+
+impl Related<super::golem_base_entity_history::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::GolemBaseEntityHistory.def()
+    }
 }
 
 impl Related<super::golem_base_operations::Entity> for Entity {

@@ -263,7 +263,7 @@ impl From<OperationView> for v1::Operation {
                 .map(ToHexExt::encode_hex_with_prefix),
             btl: v.op.operation.btl(),
             block_hash: v.op.metadata.block_hash.to_string(),
-            block_number: v.block_number,
+            block_number: v.op.metadata.block_number,
             transaction_hash: v.op.metadata.tx_hash.to_string(),
             index: v.op.metadata.index,
             gas_used: "0".into(),  // FIXME

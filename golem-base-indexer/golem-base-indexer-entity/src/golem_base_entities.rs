@@ -21,7 +21,7 @@ pub struct Model {
     pub created_at_tx_hash: Option<Vec<u8>>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub last_updated_at_tx_hash: Vec<u8>,
-    pub expires_at_block_number: i64,
+    pub expires_at_block_number: Option<i64>,
     pub inserted_at: DateTime,
     pub updated_at: DateTime,
 }

@@ -69,12 +69,14 @@ pub struct OperationMetadata {
     pub tx_hash: TxHash,
     pub block_hash: BlockHash,
     pub index: u64,
+    pub block_number: BlockNumber,
+    pub tx_index: u64,
 }
 
 #[derive(Clone, Debug)]
 pub struct OperationView {
     pub op: Operation,
-    pub block_number: BlockNumber,
+    pub block_timestamp: Timestamp,
 }
 
 #[derive(Clone, Debug)]
@@ -123,8 +125,21 @@ pub struct Tx {
     pub to_address_hash: Address,
     pub block_number: Option<BlockNumber>,
     pub block_hash: Option<BlockHash>,
+    pub block_timestamp: Option<Timestamp>,
     pub input: Bytes,
     pub index: Option<u64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConsensusTx {
+    pub hash: TxHash,
+    pub from_address_hash: Address,
+    pub to_address_hash: Address,
+    pub block_number: BlockNumber,
+    pub block_hash: BlockHash,
+    pub block_timestamp: Timestamp,
+    pub input: Bytes,
+    pub index: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,7 +157,7 @@ pub struct Entity {
     pub status: EntityStatus,
     pub created_at_tx_hash: Option<TxHash>,
     pub last_updated_at_tx_hash: TxHash,
-    pub expires_at_block_number: BlockNumber,
+    pub expires_at_block_number: Option<BlockNumber>,
 }
 
 #[derive(Debug, Clone)]
@@ -153,7 +168,7 @@ pub struct EntityWithExpTimestamp {
     pub status: EntityStatus,
     pub created_at_tx_hash: Option<TxHash>,
     pub last_updated_at_tx_hash: TxHash,
-    pub expires_at_block_number: BlockNumber,
+    pub expires_at_block_number: Option<BlockNumber>,
     pub expires_at_timestamp: Option<Timestamp>,
 }
 
@@ -173,7 +188,7 @@ pub struct FullEntity {
     pub updated_at_block_number: BlockNumber,
     pub updated_at_timestamp: Timestamp,
 
-    pub expires_at_block_number: BlockNumber,
+    pub expires_at_block_number: Option<BlockNumber>,
     pub expires_at_timestamp: Option<Timestamp>,
 
     pub owner: Option<Address>,
@@ -302,13 +317,14 @@ pub struct EntityHistoryEntry {
     pub tx_index: u64,
     pub op_index: u64,
     pub block_timestamp: Timestamp,
+    pub owner: Option<Address>,
     pub sender: Address,
     pub data: Option<Bytes>,
     pub prev_data: Option<Bytes>,
     pub operation: OperationData,
     pub status: EntityStatus,
     pub prev_status: Option<EntityStatus>,
-    pub expires_at_block_number: BlockNumber,
+    pub expires_at_block_number: Option<BlockNumber>,
     pub prev_expires_at_block_number: Option<BlockNumber>,
     pub expires_at_timestamp: Option<Timestamp>,
     pub prev_expires_at_timestamp: Option<Timestamp>,
@@ -390,4 +406,11 @@ pub struct Transaction {
     pub r#type: Option<i32>,
     pub l1_transaction_origin: Option<Address>,
     pub l1_block_number: Option<u64>,
+}
+
+#[derive(Debug, Clone, Ord, PartialEq, Eq, PartialOrd)]
+pub struct FullOperationIndex {
+    pub block_number: BlockNumber,
+    pub tx_index: u64,
+    pub op_index: u64,
 }

@@ -6,6 +6,7 @@ members = [
   "golem-base-indexer-migration",
   "golem-base-indexer-proto",
   "golem-base-indexer-server",
+  "golem-base-indexer-cli",
 ]
 
 [workspace.dependencies]
@@ -24,6 +25,7 @@ blockscout-endpoint-swagger = { git = "https://github.com/blockscout/blockscout-
 blockscout-service-launcher = "0.20.0"
 bytes = "1.10"
 chrono = "0.4"
+clap = { version = "4.5.48", features = ["derive"] }
 config = "0.15"
 const-hex = "1.14"
 futures = "0.3.31"

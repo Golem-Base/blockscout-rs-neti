@@ -4,13 +4,14 @@ use futures::{StreamExt, TryStreamExt};
 use golem_base_sdk::entity::{
     Create, EncodableGolemBaseTransaction, Extend, GolemBaseDelete, Update,
 };
-use key_mutex::tokio::KeyMutex;
+use key_mutex::tokio::{KeyMutex, OwnedMutexGuard};
 use lazy_static::lazy_static;
 use prometheus::{opts, register_counter, register_gauge, Counter, Gauge};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::{
+    collections::{hash_map::Entry, HashMap},
     sync::Arc,
     time::{self, Duration},
 };
@@ -18,19 +19,18 @@ use tokio::time::sleep;
 use tracing::{instrument, warn};
 
 use crate::{
-    golem_base::{decode_extend_log_data, entity_key},
-    repository::entities::{
-        GolemBaseEntityCreate, GolemBaseEntityDelete, GolemBaseEntityExtend, GolemBaseEntityUpdate,
-    },
+    golem_base::{block_timestamp, entity_key},
     types::{
-        Entity, EntityKey, EntityStatus, FullNumericAnnotation, FullStringAnnotation, Log,
-        NumericAnnotation, Operation, OperationData, OperationMetadata, StringAnnotation, Tx,
-        TxHash,
+        Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAnnotation,
+        FullOperationIndex, FullStringAnnotation, ListOperationsFilter, Log, NumericAnnotation,
+        Operation, OperationData, OperationMetadata, OperationsFilter, PaginationParams,
+        StringAnnotation, TxHash,
     },
 };
 
+mod annotations;
+mod consensus_tx;
 pub mod golem_base;
-pub mod model;
 pub mod pagination;
 pub mod repository;
 pub mod types;
@@ -169,8 +169,9 @@ impl Indexer {
             .await
             .with_context(|| format!("Deleting operations for tx hash {tx_hash}"))?;
 
+        let mut guards = HashMap::<_, _>::new();
         for entity in affected_entities {
-            self.reindex_entity(&txn, entity).await?;
+            self.reindex_entity(&txn, Some(&mut guards), entity).await?;
         }
 
         repository::transactions::finish_tx_cleanup(&txn, tx_hash).await?;
@@ -180,109 +181,122 @@ impl Indexer {
         Ok(())
     }
 
-    async fn reindex_entity_with_latest_operation<T: ConnectionTrait>(
+    async fn reindex_entity_with_ops<T: ConnectionTrait>(
         &self,
         txn: &T,
-        latest_op: Operation,
         entity: EntityKey,
     ) -> Result<()> {
-        let create_op = repository::operations::find_create_operation(txn, entity).await?;
-        let delete_op = repository::operations::find_delete_operation(txn, entity).await?;
-        let update_op = repository::operations::find_latest_update_operation(txn, entity).await?;
+        let (ops, _) = repository::operations::list_operations(
+            txn,
+            ListOperationsFilter {
+                pagination: PaginationParams {
+                    page: 0,
+                    page_size: i64::MAX as u64,
+                },
+                operation_type: None,
+                operations_filter: OperationsFilter {
+                    entity_key: Some(entity),
+                    ..Default::default()
+                },
+            },
+        )
+        .await?;
+        let owner = ops
+            .iter()
+            .find(|v| !matches!(v.op.operation, OperationData::Delete))
+            .map(|v| v.op.metadata.sender);
 
-        let create_op = create_op.as_ref();
-        let delete_op = delete_op.as_ref();
-        let update_op = update_op.as_ref();
+        repository::entities::delete_history(txn, entity).await?;
+        let mut prev_entry: Option<EntityHistoryEntry> = None;
+        for op in ops {
+            let status = match op.op.operation {
+                OperationData::Create(_, _) => EntityStatus::Active,
+                OperationData::Update(_, _) => EntityStatus::Active,
+                OperationData::Extend(_) => EntityStatus::Active,
+                OperationData::Delete => {
+                    if op.op.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS {
+                        EntityStatus::Expired
+                    } else {
+                        EntityStatus::Deleted
+                    }
+                }
+            };
 
-        let last_extend_expires_at = repository::logs::find_latest_extend_log(txn, entity)
-            .await?
-            .map(|v| decode_extend_log_data(&v.data))
-            .transpose()
-            .ok()
-            .flatten();
+            let expires_at_block_number = match op.op.operation {
+                OperationData::Create(_, btl) => Some(op.op.metadata.block_number + btl),
+                OperationData::Update(_, btl) => Some(op.op.metadata.block_number + btl),
+                OperationData::Extend(extend_btl) => prev_entry
+                    .as_ref()
+                    .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
+                OperationData::Delete => Some(op.op.metadata.block_number),
+            };
 
-        let data = match delete_op {
-            Some(_) => None,
-            None => update_op
-                .map(|v| v.operation.data().expect("Update op always has data"))
-                .or(create_op.map(|v| v.operation.data().expect("Create op always has data"))),
-        };
+            let data = match op.op.operation {
+                OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.data.to_owned()),
+                _ => op.op.operation.data().cloned(),
+            };
 
-        let status = match delete_op {
-            Some(x) if x.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS => {
-                EntityStatus::Expired
-            }
-            Some(_) => EntityStatus::Deleted,
-            _ => EntityStatus::Active,
-        };
+            let expires_at_timestamp = expires_at_block_number.and_then(|v| {
+                block_timestamp(
+                    v,
+                    &Block {
+                        number: op.op.metadata.block_number,
+                        timestamp: op.block_timestamp,
+                        hash: op.op.metadata.block_hash,
+                    },
+                )
+            });
 
-        let expires_at_block_number = match latest_op.operation {
-            OperationData::Create(_, _) => {
-                let op = create_op.expect("It's latest tx so it exists");
-                let btl = op.operation.btl().expect("Creates have BTL");
-                let create_tx = repository::blockscout::get_tx(txn, op.metadata.tx_hash)
-                    .await?
-                    .expect("If we have op, then we have tx");
-
-                // taking default for block number here might look bad, but if there's no block
-                // number it means that we had a chain reorg and tx was dropped. we're not handling it right
-                // now, or we would have dropped the create_tx, so it must still be in the queue - so it will
-                // be processed right after we finish with what we're doing here and we'll reprocess the
-                // expiration either way
-                create_tx.block_number.unwrap_or_default() + btl
-            }
-
-            OperationData::Update(_, _) => {
-                let op = update_op.expect("It's latest tx so it exists");
-                let btl = op.operation.btl().expect("Updates have BTL");
-                let update_tx = repository::blockscout::get_tx(txn, op.metadata.tx_hash)
-                    .await?
-                    .expect("If we have op, then we have tx");
-                update_tx.block_number.unwrap_or_default() + btl
-            }
-
-            OperationData::Delete => {
-                let op = delete_op.expect("It's latest tx so it exists");
-                let delete_tx = repository::blockscout::get_tx(txn, op.metadata.tx_hash)
-                    .await?
-                    .expect("If we have op, then we have tx");
-                delete_tx.block_number.unwrap_or_default()
-            }
-
-            OperationData::Extend(_) => last_extend_expires_at.expect("It's latest so it exists"),
-        };
-
-        let op = create_op.or(update_op).or(delete_op).unwrap_or(&latest_op);
-        let owner = if op.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS {
-            None
-        } else {
-            Some(op.metadata.sender)
-        };
-
-        let entity = Entity {
-            key: entity,
-            data: data.map(|v| v.to_owned()),
-            owner,
-            status,
-            created_at_tx_hash: create_op.map(|v| v.metadata.tx_hash),
-            last_updated_at_tx_hash: latest_op.metadata.tx_hash,
-            expires_at_block_number,
-        };
-
-        repository::entities::replace_entity(txn, entity).await?;
+            let entry = EntityHistoryEntry {
+                entity_key: entity,
+                block_number: op.op.metadata.block_number,
+                block_hash: op.op.metadata.block_hash,
+                transaction_hash: op.op.metadata.tx_hash,
+                tx_index: op.op.metadata.tx_index,
+                op_index: op.op.metadata.index,
+                block_timestamp: op.block_timestamp,
+                owner,
+                sender: op.op.metadata.sender,
+                data,
+                prev_data: prev_entry
+                    .as_ref()
+                    .and_then(|prev_entry| prev_entry.data.clone()),
+                operation: op.op.operation.clone(),
+                status,
+                prev_status: prev_entry.as_ref().map(|prev_entry| prev_entry.status),
+                expires_at_block_number,
+                prev_expires_at_block_number: prev_entry
+                    .as_ref()
+                    .and_then(|prev_entry| prev_entry.expires_at_block_number),
+                expires_at_timestamp,
+                prev_expires_at_timestamp: prev_entry
+                    .and_then(|prev_entry| prev_entry.expires_at_timestamp),
+                btl: op.op.operation.btl(),
+            };
+            repository::entities::insert_history_entry(txn, entry.clone()).await?;
+            prev_entry = Some(entry);
+        }
+        // FIXME what about annotations??
         Ok(())
     }
 
-    #[instrument(skip(self, txn))]
-    async fn reindex_entity<T: ConnectionTrait>(&self, txn: &T, entity: EntityKey) -> Result<()> {
-        let _guard = self.locks.lock(entity).await;
-        match repository::operations::find_latest_operation(txn, entity).await? {
-            Some(latest_op) => {
-                self.reindex_entity_with_latest_operation(txn, latest_op, entity)
-                    .await?
+    #[instrument(skip_all, fields(entity))]
+    pub async fn reindex_entity<T: ConnectionTrait>(
+        &self,
+        txn: &T,
+        guards: Option<&mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>>,
+        entity: EntityKey,
+    ) -> Result<()> {
+        if let Some(guards) = guards {
+            if let Entry::Vacant(e) = guards.entry(entity) {
+                e.insert(self.locks.lock(entity).await);
             }
+        }
+        match repository::operations::find_latest_operation(txn, entity).await? {
+            Some(_) => self.reindex_entity_with_ops(txn, entity).await?,
             None => repository::entities::drop_entity(txn, entity).await?,
         }
+        repository::entities::refresh_entity_based_on_history(txn, entity).await?;
         Ok(())
     }
 
@@ -296,8 +310,10 @@ impl Indexer {
             .await
             .with_context(|| format!("Getting tx {tx_hash}"))?;
         let tx = tx.ok_or(anyhow!("Somehow tx disappeared from the DB"))?;
+        let tx: ConsensusTx = tx.try_into()?;
 
         let mut op_idx = 0;
+        let mut guards = HashMap::<_, _>::new();
         if tx.to_address_hash == well_known::GOLEM_BASE_STORAGE_PROCESSOR_ADDRESS {
             let storagetx = match EncodableGolemBaseTransaction::decode(&mut &*tx.input) {
                 Ok(storagetx) => storagetx,
@@ -310,7 +326,7 @@ impl Indexer {
             // following operations are a good candidate for optimization when needed
             // possible improvements include parallelization and batching
             for create in storagetx.creates {
-                self.handle_create(&txn, &tx, create, op_idx)
+                self.handle_create(&txn, &mut guards, &tx, create, op_idx)
                     .await
                     .with_context(|| {
                         format!("Handling create op tx_hash={tx_hash} op_idx={op_idx}")
@@ -318,7 +334,7 @@ impl Indexer {
                 op_idx += 1;
             }
             for delete in storagetx.deletes {
-                self.handle_delete(&txn, &tx, delete, op_idx)
+                self.handle_delete(&txn, &mut guards, &tx, delete, op_idx)
                     .await
                     .with_context(|| {
                         format!("Handling delete op tx_hash={tx_hash} op_idx={op_idx}")
@@ -326,7 +342,7 @@ impl Indexer {
                 op_idx += 1;
             }
             for update in storagetx.updates {
-                self.handle_update(&txn, &tx, update, op_idx)
+                self.handle_update(&txn, &mut guards, &tx, update, op_idx)
                     .await
                     .with_context(|| {
                         format!("Handling update op tx_hash={tx_hash} op_idx={op_idx}")
@@ -334,7 +350,7 @@ impl Indexer {
                 op_idx += 1;
             }
             for extend in storagetx.extensions {
-                self.handle_extend(&txn, &tx, extend, op_idx)
+                self.handle_extend(&txn, &mut guards, &tx, extend, op_idx)
                     .await
                     .with_context(|| {
                         format!("Handling extend op tx_hash={tx_hash} op_idx={op_idx}")
@@ -353,20 +369,9 @@ impl Indexer {
             .await?;
 
             for delete_log in logs {
-                self.handle_expire_log(&txn, &tx, delete_log).await?;
+                self.handle_expire_log(&txn, &mut guards, &tx, delete_log)
+                    .await?;
             }
-        }
-
-        // FIXME what if blockscout lags with populating logs?
-        let logs = repository::logs::get_tx_logs(
-            &txn,
-            tx_hash,
-            well_known::GOLEM_BASE_STORAGE_ENTITY_BTL_EXTENDED,
-        )
-        .await?;
-
-        for extend_log in logs {
-            self.handle_extend_log(&txn, &tx, extend_log).await?;
         }
 
         repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
@@ -381,81 +386,158 @@ impl Indexer {
     async fn handle_create(
         &self,
         txn: &DatabaseTransaction,
-        tx: &Tx,
+        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        tx: &ConsensusTx,
         create: Create,
         idx: u64,
     ) -> Result<()> {
         let key = entity_key(tx.hash, create.data.clone(), idx);
-        let _guard = self.locks.lock(key).await;
+        if let Entry::Vacant(e) = guards.entry(key) {
+            e.insert(self.locks.lock(key).await);
+        }
         tracing::info!("Processing Create operation");
 
-        let latest_update = self.is_latest_update(txn, key, tx.hash, idx).await?;
-
-        repository::operations::insert_operation(
-            txn,
-            Operation {
-                metadata: OperationMetadata {
-                    entity_key: key,
-                    sender: tx.from_address_hash,
-                    recipient: tx.to_address_hash,
-                    tx_hash: tx.hash,
-                    block_hash: tx.block_hash.expect("We only process txes with block hash"),
-                    index: idx,
-                },
-                operation: OperationData::create(create.data.clone(), create.btl),
-            },
-        )
-        .await?;
-
-        repository::entities::insert_entity(
-            txn,
-            GolemBaseEntityCreate {
-                key,
-                data: create.data,
+        let op = Operation {
+            metadata: OperationMetadata {
+                entity_key: key,
                 sender: tx.from_address_hash,
-                created_at: tx.hash,
-                expires_at: tx
-                    .block_number
-                    .expect("We only process txes with block number")
-                    .saturating_add(create.btl),
+                recipient: tx.to_address_hash,
+                tx_hash: tx.hash,
+                block_hash: tx.block_hash,
+                index: idx,
+                tx_index: tx.index,
+                block_number: tx.block_number,
             },
+            operation: OperationData::create(create.data.clone(), create.btl),
+        };
+        repository::operations::insert_operation(txn, op.clone()).await?;
+
+        if repository::entities::get_oldest_entity_history_entry(
+            txn,
+            key,
+            FullOperationIndex {
+                block_number: tx.block_number,
+                tx_index: tx.index,
+                op_index: idx,
+            },
+        )
+        .await?
+        .is_some()
+        {
+            self.reindex_entity_with_ops(txn, key).await?;
+        } else {
+            self.insert_history_entry(txn, key, tx, op).await?;
+        }
+
+        repository::entities::refresh_entity_based_on_history(txn, key).await?;
+
+        self.store_annotations(
+            txn,
+            key,
+            tx,
+            idx,
+            create
+                .string_annotations
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            create
+                .numeric_annotations
+                .into_iter()
+                .map(Into::into)
+                .collect(),
         )
         .await?;
 
-        for annotation in create.string_annotations {
-            repository::annotations::insert_string_annotation(
-                txn,
-                FullStringAnnotation {
-                    entity_key: key,
-                    operation_tx_hash: tx.hash,
-                    operation_index: idx,
-                    annotation: StringAnnotation {
-                        key: annotation.key,
-                        value: annotation.value,
-                    },
-                },
-                latest_update,
-            )
-            .await?;
-        }
+        Ok(())
+    }
 
-        for annotation in create.numeric_annotations {
-            repository::annotations::insert_numeric_annotation(
-                txn,
-                FullNumericAnnotation {
-                    entity_key: key,
-                    operation_tx_hash: tx.hash,
-                    operation_index: idx,
-                    annotation: NumericAnnotation {
-                        key: annotation.key,
-                        value: annotation.value,
-                    },
-                },
-                latest_update,
-            )
-            .await?;
-        }
+    async fn insert_history_entry<T: ConnectionTrait>(
+        &self,
+        txn: &T,
+        entity_key: EntityKey,
+        tx: &ConsensusTx,
+        op: Operation,
+    ) -> Result<()> {
+        let idx = FullOperationIndex {
+            block_number: tx.block_number,
+            tx_index: tx.index,
+            op_index: op.metadata.index,
+        };
+        let prev_entry = repository::entities::get_latest_entity_history_entry(
+            txn,
+            entity_key,
+            Some(idx.clone()),
+        )
+        .await?;
+        let status = match op.operation {
+            OperationData::Delete
+                if tx.to_address_hash == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
+            {
+                EntityStatus::Expired
+            }
+            OperationData::Delete => EntityStatus::Deleted,
+            _ => EntityStatus::Active,
+        };
+        let owner = match op.operation {
+            OperationData::Delete
+                if tx.to_address_hash == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
+            {
+                prev_entry.as_ref().and_then(|v| v.owner)
+            }
+            _ => Some(tx.from_address_hash),
+        };
+        let data = match op.operation {
+            OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.data.clone()),
+            _ => op.operation.data().map(ToOwned::to_owned),
+        };
 
+        let expires_at_block_number = match op.operation {
+            OperationData::Create(_, btl) => Some(tx.block_number + btl),
+            OperationData::Update(_, btl) => Some(tx.block_number + btl),
+            OperationData::Extend(extend_btl) => prev_entry
+                .as_ref()
+                .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
+            OperationData::Delete => Some(tx.block_number),
+        };
+
+        let expires_at_timestamp = expires_at_block_number.and_then(|v| {
+            block_timestamp(
+                v,
+                &Block {
+                    number: tx.block_number,
+                    timestamp: tx.block_timestamp,
+                    hash: tx.block_hash,
+                },
+            )
+        });
+        let entry = EntityHistoryEntry {
+            entity_key,
+            block_number: tx.block_number,
+            block_hash: tx.block_hash,
+            transaction_hash: tx.hash,
+            tx_index: tx.index,
+            op_index: op.metadata.index,
+            block_timestamp: tx.block_timestamp,
+            owner,
+            sender: tx.from_address_hash,
+            data,
+            prev_data: prev_entry
+                .as_ref()
+                .and_then(|prev_entry| prev_entry.data.clone()),
+            operation: op.operation.clone(),
+            status,
+            prev_status: prev_entry.as_ref().map(|prev_entry| prev_entry.status),
+            expires_at_block_number,
+            prev_expires_at_block_number: prev_entry
+                .as_ref()
+                .and_then(|prev_entry| prev_entry.expires_at_block_number),
+            expires_at_timestamp,
+            prev_expires_at_timestamp: prev_entry
+                .and_then(|prev_entry| prev_entry.expires_at_timestamp),
+            btl: op.operation.btl(),
+        };
+        repository::entities::insert_history_entry(txn, entry.clone()).await?;
         Ok(())
     }
 
@@ -463,87 +545,68 @@ impl Indexer {
     async fn handle_update(
         &self,
         txn: &DatabaseTransaction,
-        tx: &Tx,
+        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        tx: &ConsensusTx,
         update: Update,
         idx: u64,
     ) -> Result<()> {
-        let _guard = self.locks.lock(update.entity_key).await;
+        if let Entry::Vacant(e) = guards.entry(update.entity_key) {
+            e.insert(self.locks.lock(update.entity_key).await);
+        }
         tracing::info!("Processing Update operation");
 
-        let latest_update = self
-            .is_latest_update(txn, update.entity_key, tx.hash, idx)
-            .await?;
+        let op = Operation {
+            metadata: OperationMetadata {
+                entity_key: update.entity_key,
+                sender: tx.from_address_hash,
+                recipient: tx.to_address_hash,
+                tx_hash: tx.hash,
+                block_hash: tx.block_hash,
+                index: idx,
+                block_number: tx.block_number,
+                tx_index: tx.index,
+            },
+            operation: OperationData::update(update.data.clone(), update.btl),
+        };
+        repository::operations::insert_operation(txn, op.clone()).await?;
 
-        repository::operations::insert_operation(
+        if repository::entities::get_oldest_entity_history_entry(
             txn,
-            Operation {
-                metadata: OperationMetadata {
-                    entity_key: update.entity_key,
-                    sender: tx.from_address_hash,
-                    recipient: tx.to_address_hash,
-                    tx_hash: tx.hash,
-                    block_hash: tx
-                        .block_hash
-                        .expect("We only process txses with block hash"),
-                    index: idx,
-                },
-                operation: OperationData::update(update.data.clone(), update.btl),
+            update.entity_key,
+            FullOperationIndex {
+                block_number: tx.block_number,
+                tx_index: tx.index,
+                op_index: idx,
             },
         )
+        .await?
+        .is_some()
+        {
+            self.reindex_entity_with_ops(txn, update.entity_key).await?;
+        } else {
+            self.insert_history_entry(txn, update.entity_key, tx, op)
+                .await?;
+        }
+
+        repository::entities::refresh_entity_based_on_history(txn, update.entity_key).await?;
+
+        self.store_annotations(
+            txn,
+            update.entity_key,
+            tx,
+            idx,
+            update
+                .string_annotations
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            update
+                .numeric_annotations
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        )
         .await?;
-
-        if latest_update {
-            repository::entities::update_entity(
-                txn,
-                GolemBaseEntityUpdate {
-                    key: update.entity_key,
-                    data: update.data,
-                    sender: tx.from_address_hash,
-                    updated_at: tx.hash,
-                    expires_at: tx
-                        .block_number
-                        .expect("We only process txes with block number")
-                        .saturating_add(update.btl),
-                },
-            )
-            .await?;
-
-            repository::annotations::deactivate_annotations(txn, update.entity_key).await?;
-        }
-
-        for annotation in update.string_annotations {
-            repository::annotations::insert_string_annotation(
-                txn,
-                FullStringAnnotation {
-                    entity_key: update.entity_key,
-                    operation_tx_hash: tx.hash,
-                    operation_index: idx,
-                    annotation: StringAnnotation {
-                        key: annotation.key,
-                        value: annotation.value,
-                    },
-                },
-                latest_update,
-            )
-            .await?;
-        }
-
-        for annotation in update.numeric_annotations {
-            repository::annotations::insert_numeric_annotation(
-                txn,
-                FullNumericAnnotation {
-                    entity_key: update.entity_key,
-                    operation_tx_hash: tx.hash,
-                    operation_index: idx,
-                    annotation: NumericAnnotation {
-                        key: annotation.key,
-                        value: annotation.value,
-                    },
-                },
-                latest_update,
-            )
-            .await?;
-        }
 
         Ok(())
     }
@@ -552,44 +615,32 @@ impl Indexer {
     async fn handle_delete(
         &self,
         txn: &DatabaseTransaction,
-        tx: &Tx,
+        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        tx: &ConsensusTx,
         delete: GolemBaseDelete,
         idx: u64,
     ) -> Result<()> {
-        let _guard = self.locks.lock(delete).await;
+        if let Entry::Vacant(e) = guards.entry(delete) {
+            e.insert(self.locks.lock(delete).await);
+        }
         tracing::info!("Processing Delete operation");
-
-        repository::operations::insert_operation(
-            txn,
-            Operation {
-                metadata: OperationMetadata {
-                    entity_key: delete,
-                    sender: tx.from_address_hash,
-                    recipient: tx.to_address_hash,
-                    tx_hash: tx.hash,
-                    block_hash: tx
-                        .block_hash
-                        .expect("We only process txses with block hash"),
-                    index: idx,
-                },
-                operation: OperationData::delete(),
-            },
-        )
-        .await?;
-
-        repository::entities::delete_entity(
-            txn,
-            GolemBaseEntityDelete {
-                key: delete,
-                status: EntityStatus::Deleted,
+        let op = Operation {
+            metadata: OperationMetadata {
+                entity_key: delete,
                 sender: tx.from_address_hash,
-                deleted_at_tx: tx.hash,
-                deleted_at_block: tx
-                    .block_number
-                    .expect("We only process txses with block number"),
+                recipient: tx.to_address_hash,
+                tx_hash: tx.hash,
+                block_hash: tx.block_hash,
+                index: idx,
+                block_number: tx.block_number,
+                tx_index: tx.index,
             },
-        )
-        .await?;
+            operation: OperationData::delete(),
+        };
+        repository::operations::insert_operation(txn, op.clone()).await?;
+
+        self.insert_history_entry(txn, delete, tx, op).await?;
+        repository::entities::refresh_entity_based_on_history(txn, delete).await?;
 
         repository::annotations::deactivate_annotations(txn, delete).await?;
         Ok(())
@@ -599,31 +650,49 @@ impl Indexer {
     async fn handle_extend(
         &self,
         txn: &DatabaseTransaction,
-        tx: &Tx,
+        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        tx: &ConsensusTx,
         extend: Extend,
         idx: u64,
     ) -> Result<()> {
-        let _guard = self.locks.lock(extend.entity_key).await;
+        if let Entry::Vacant(e) = guards.entry(extend.entity_key) {
+            e.insert(self.locks.lock(extend.entity_key).await);
+        }
         tracing::info!("Processing Extend operation");
-        repository::operations::insert_operation(
+        let op = Operation {
+            metadata: OperationMetadata {
+                entity_key: extend.entity_key,
+                sender: tx.from_address_hash,
+                recipient: tx.to_address_hash,
+                tx_hash: tx.hash,
+                block_hash: tx.block_hash,
+                index: idx,
+                block_number: tx.block_number,
+                tx_index: tx.index,
+            },
+            operation: OperationData::extend(extend.number_of_blocks),
+        };
+        repository::operations::insert_operation(txn, op.clone()).await?;
+
+        if repository::entities::get_oldest_entity_history_entry(
             txn,
-            Operation {
-                metadata: OperationMetadata {
-                    entity_key: extend.entity_key,
-                    sender: tx.from_address_hash,
-                    recipient: tx.to_address_hash,
-                    tx_hash: tx.hash,
-                    block_hash: tx
-                        .block_hash
-                        .expect("We only process txses with block hash"),
-                    index: idx,
-                },
-                operation: OperationData::extend(extend.number_of_blocks),
+            extend.entity_key,
+            FullOperationIndex {
+                block_number: tx.block_number,
+                tx_index: tx.index,
+                op_index: idx,
             },
         )
-        .await?;
+        .await?
+        .is_some()
+        {
+            self.reindex_entity_with_ops(txn, extend.entity_key).await?;
+        } else {
+            self.insert_history_entry(txn, extend.entity_key, tx, op)
+                .await?;
+        }
 
-        // updating entity expiration is handled based on events
+        repository::entities::refresh_entity_based_on_history(txn, extend.entity_key).await?;
 
         Ok(())
     }
@@ -632,8 +701,7 @@ impl Indexer {
         &self,
         txn: &DatabaseTransaction,
         entity_key: EntityKey,
-        tx_hash: TxHash,
-        operation_index: u64,
+        index: FullOperationIndex,
     ) -> Result<bool> {
         let entity = repository::entities::get_entity(txn, entity_key).await?;
 
@@ -643,118 +711,114 @@ impl Indexer {
             }
         }
 
-        let latest_stored_update =
-            repository::operations::get_latest_update(txn, entity_key).await?;
-        let latest_stored_update = if let Some(update) = latest_stored_update {
-            update
-        } else {
-            return Ok(true);
-        };
-
-        let candidate_update = repository::blockscout::get_tx(txn, tx_hash).await?;
-        let candidate_update = if let Some(tx) = candidate_update {
-            tx
-        } else {
-            tracing::warn!(tx=?tx_hash, "Transaction disappeared from the database");
-            return Ok(true);
-        };
-
-        let candidate_update = (
-            candidate_update
-                .block_number
-                .expect("We only process txses with block number"),
-            candidate_update
-                .index
-                .expect("We only process txses with index"),
-            operation_index,
-        );
-
-        Ok(candidate_update > latest_stored_update)
-    }
-
-    #[instrument(skip_all, fields(log))]
-    async fn handle_extend_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
-        // extends are handled after updates, so if it's in the same tx, we need to process it
-        let entity_key = if let Some(k) = log.second_topic {
-            k
-        } else {
-            tracing::warn!("Extend Log event with no second topic?");
-            return Ok(());
-        };
-        let _guard = self.locks.lock(entity_key).await;
-        tracing::info!("Processing extend log for entity {entity_key}");
-
-        let latest_update = self
-            .is_latest_update(txn, entity_key, tx.hash, u64::MAX)
-            .await?;
-
-        if latest_update {
-            let expires_at_block_number = if let Ok(v) = decode_extend_log_data(&log.data) {
-                v
-            } else {
-                tracing::warn!(data=?log.data, "Invalid GolemBaseStorageEntityBTLExtended event data encountered");
-                return Ok(());
-            };
-            repository::entities::extend_entity(
-                txn,
-                GolemBaseEntityExtend {
-                    key: entity_key,
-                    extended_at: tx.hash,
-                    sender: tx.from_address_hash,
-                    expires_at: expires_at_block_number,
-                },
-            )
-            .await?;
+        match repository::operations::get_latest_update(txn, entity_key).await? {
+            Some(latest_stored_index) => Ok(index >= latest_stored_index),
+            None => Ok(true),
         }
-
-        Ok(())
     }
 
     #[instrument(skip_all, fields(log))]
-    async fn handle_expire_log(&self, txn: &DatabaseTransaction, tx: &Tx, log: Log) -> Result<()> {
+    async fn handle_expire_log(
+        &self,
+        txn: &DatabaseTransaction,
+        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        tx: &ConsensusTx,
+        log: Log,
+    ) -> Result<()> {
         let entity_key = if let Some(k) = log.second_topic {
             k
         } else {
             tracing::warn!("Delete Log event with no second topic?");
             return Ok(());
         };
-        let _guard = self.locks.lock(entity_key).await;
+        if let Entry::Vacant(e) = guards.entry(entity_key) {
+            e.insert(self.locks.lock(entity_key).await);
+        }
         tracing::info!("Processing delete log for entity {entity_key}");
 
-        repository::operations::insert_operation(
-            txn,
-            Operation {
-                metadata: OperationMetadata {
-                    entity_key,
-                    sender: tx.from_address_hash,
-                    recipient: tx.to_address_hash,
-                    tx_hash: tx.hash,
-                    block_hash: tx
-                        .block_hash
-                        .expect("We only process txses with block hash"),
-                    index: log.index, // FIXME this should be an operation index, not log index,
-                                      // but we don't really have an operation in this case...
-                },
-                operation: OperationData::delete(),
-            },
-        )
-        .await?;
-
-        repository::entities::delete_entity(
-            txn,
-            GolemBaseEntityDelete {
-                key: entity_key,
-                status: EntityStatus::Expired,
+        let op = Operation {
+            metadata: OperationMetadata {
+                entity_key,
                 sender: tx.from_address_hash,
-                deleted_at_tx: tx.hash,
-                deleted_at_block: tx
-                    .block_number
-                    .expect("We only process txses with block number"),
+                recipient: tx.to_address_hash,
+                tx_hash: tx.hash,
+                block_hash: tx.block_hash,
+                block_number: tx.block_number,
+                tx_index: tx.index,
+                index: log.index, // FIXME this should be an operation index, not log index,
+                                  // but we don't really have an operation in this case...
             },
-        )
-        .await?;
+            operation: OperationData::delete(),
+        };
+        repository::operations::insert_operation(txn, op.clone()).await?;
+
+        self.insert_history_entry(txn, entity_key, tx, op).await?;
+        repository::entities::refresh_entity_based_on_history(txn, entity_key).await?;
 
         repository::annotations::deactivate_annotations(txn, entity_key).await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip_all, fields(entity_key))]
+    async fn store_annotations(
+        &self,
+        txn: &DatabaseTransaction,
+        entity_key: EntityKey,
+        tx: &ConsensusTx,
+        op_index: u64,
+        string_annotations: Vec<StringAnnotation>,
+        numeric_annotations: Vec<NumericAnnotation>,
+    ) -> Result<()> {
+        let latest_update = self
+            .is_latest_update(
+                txn,
+                entity_key,
+                FullOperationIndex {
+                    block_number: tx.block_number,
+                    tx_index: tx.index,
+                    op_index,
+                },
+            )
+            .await?;
+
+        if latest_update {
+            repository::annotations::deactivate_annotations(txn, entity_key).await?;
+        }
+
+        for annotation in string_annotations {
+            repository::annotations::insert_string_annotation(
+                txn,
+                FullStringAnnotation {
+                    entity_key,
+                    operation_tx_hash: tx.hash,
+                    operation_index: op_index,
+                    annotation: StringAnnotation {
+                        key: annotation.key,
+                        value: annotation.value,
+                    },
+                },
+                latest_update,
+            )
+            .await?;
+        }
+
+        for annotation in numeric_annotations {
+            repository::annotations::insert_numeric_annotation(
+                txn,
+                FullNumericAnnotation {
+                    entity_key,
+                    operation_tx_hash: tx.hash,
+                    operation_index: op_index,
+                    annotation: NumericAnnotation {
+                        key: annotation.key,
+                        value: annotation.value,
+                    },
+                },
+                latest_update,
+            )
+            .await?;
+        }
 
         Ok(())
     }
