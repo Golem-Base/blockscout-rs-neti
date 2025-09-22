@@ -53,6 +53,7 @@ async fn test_list_addresses_by_entities_created() {
                         }],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
                 Transaction {
                     sender: owner2,
@@ -74,6 +75,7 @@ async fn test_list_addresses_by_entities_created() {
                         }],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
                 Transaction {
                     sender: owner3,
@@ -95,6 +97,7 @@ async fn test_list_addresses_by_entities_created() {
                         ],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
             ],
             ..Default::default()
@@ -128,6 +131,7 @@ async fn test_list_addresses_by_entities_created() {
                     }],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
             ..Default::default()
         },
@@ -149,6 +153,7 @@ async fn test_list_addresses_by_entities_created() {
                     }],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
             ..Default::default()
         },

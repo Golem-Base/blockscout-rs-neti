@@ -10,7 +10,7 @@ use golem_base_indexer_logic::types::{
     EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter,
     NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter,
     OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
-    StringAnnotation, StringAnnotationWithRelations,
+    StringAnnotation, StringAnnotationWithRelations, Transaction,
 };
 
 pub mod blockscout {
@@ -614,6 +614,44 @@ impl From<AddressByEntitiesCreated> for v1::AddressByEntitiesCreated {
             rank: v.rank,
             address: v.address.to_checksum(None),
             entities_created_count: v.entities_created_count,
+        }
+    }
+}
+
+impl TryFrom<v1::ListCustomContractTransactionsRequest> for PaginationParams {
+    type Error = anyhow::Error;
+
+    fn try_from(request: v1::ListCustomContractTransactionsRequest) -> Result<Self> {
+        Ok(Self {
+            page: request.page.unwrap_or(1).max(1),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
+        })
+    }
+}
+
+impl From<Transaction> for v1::Transaction {
+    fn from(v: Transaction) -> Self {
+        Self {
+            hash: v.hash.to_string(),
+            from_address_hash: v.from_address_hash.to_checksum(None),
+            to_address_hash: v.to_address_hash.map(|v| v.to_checksum(None)),
+            status: v.status.map(|v| v as u64),
+            block_hash: v.block_hash.map(|v| v.to_string()),
+            block_number: v.block_number,
+            block_consensus: v.block_consensus,
+            index: v.index,
+            cumulative_gas_used: v.cumulative_gas_used.map(|v| v.to_string()),
+            gas_price: v.gas_price.map(|v| v.to_string()),
+            block_timestamp: v.block_timestamp.map(|v| v.to_rfc3339()),
+            error: v.error,
+            value: v.value.to_string(),
+            input: v.input.encode_hex_with_prefix(),
+            created_contract_address_hash: v
+                .created_contract_address_hash
+                .map(|v| v.to_checksum(None)),
+            r#type: v.r#type.map(|v| v as u64),
+            l1_transaction_origin: v.l1_transaction_origin.map(|v| v.to_checksum(None)),
+            l1_block_number: v.l1_block_number,
         }
     }
 }

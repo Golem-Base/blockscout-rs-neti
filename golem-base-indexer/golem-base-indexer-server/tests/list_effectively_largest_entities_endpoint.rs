@@ -56,6 +56,7 @@ async fn test_list_effectively_largest_entities_endpoint() {
                     ],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
         },
     )

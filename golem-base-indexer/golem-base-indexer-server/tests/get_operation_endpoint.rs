@@ -79,6 +79,7 @@ async fn test_get_operation_endpoint() {
                     ],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
         },
     )
@@ -151,6 +152,7 @@ async fn test_get_operation_endpoint() {
                     }],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
         },
     )
@@ -173,6 +175,7 @@ async fn test_get_operation_endpoint() {
                     deletes: vec![entity_key],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
         },
     )

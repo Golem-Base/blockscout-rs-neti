@@ -40,6 +40,7 @@ async fn test_list_addresses_by_entities_owned() {
                         }],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
                 Transaction {
                     sender: owner2,
@@ -57,6 +58,7 @@ async fn test_list_addresses_by_entities_owned() {
                         ],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
                 Transaction {
                     sender: owner3,
@@ -78,6 +80,7 @@ async fn test_list_addresses_by_entities_owned() {
                         ],
                         ..Default::default()
                     },
+                    ..Default::default()
                 },
             ],
             ..Default::default()

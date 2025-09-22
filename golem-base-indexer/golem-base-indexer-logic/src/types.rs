@@ -367,3 +367,25 @@ pub struct AddressActivity {
     pub first_seen: Option<DateTime<Utc>>,
     pub last_seen: Option<DateTime<Utc>>,
 }
+
+#[derive(Debug, Clone)]
+pub struct Transaction {
+    pub hash: TxHash,
+    pub from_address_hash: Address,
+    pub to_address_hash: Option<Address>,
+    pub status: Option<u8>,
+    pub block_number: Option<BlockNumber>,
+    pub block_hash: Option<BlockHash>,
+    pub block_consensus: Option<bool>,
+    pub block_timestamp: Option<Timestamp>,
+    pub index: Option<u64>,
+    pub cumulative_gas_used: Option<u64>,
+    pub gas_price: Option<u64>,
+    pub error: Option<String>,
+    pub input: Bytes,
+    pub value: CurrencyAmount,
+    pub created_contract_address_hash: Option<Address>,
+    pub r#type: Option<i32>,
+    pub l1_transaction_origin: Option<Address>,
+    pub l1_block_number: Option<u64>,
+}
