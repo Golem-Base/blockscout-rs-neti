@@ -35,7 +35,7 @@ impl TryFrom<TransactionsModel> for Transaction {
                 .to_string()
                 .parse::<CurrencyAmount>()
                 .context("Failed to convert value to CurrencyAmount")?,
-            input: value.input.clone().try_into()?,
+            input: value.input.clone().into(),
             gas_price: value
                 .gas_price
                 .map(|v| {
@@ -64,7 +64,7 @@ impl TryFrom<TransactionsModel> for Transaction {
                 .map(|v| v.as_slice().try_into())
                 .transpose()?,
             error: value.error,
-            r#type: value.r#type.map(|v| v as i32),
+            r#type: value.r#type,
             l1_transaction_origin: value
                 .l1_transaction_origin
                 .map(|v| v.as_slice().try_into())
