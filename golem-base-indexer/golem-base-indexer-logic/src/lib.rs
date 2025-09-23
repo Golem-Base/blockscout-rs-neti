@@ -1,10 +1,9 @@
 use alloy_rlp::Decodable;
 use anyhow::{anyhow, Context, Result};
-use futures::{StreamExt, TryStreamExt};
+use futures::StreamExt;
 use golem_base_sdk::entity::{
     Create, EncodableGolemBaseTransaction, Extend, GolemBaseDelete, Update,
 };
-use key_mutex::tokio::{KeyMutex, OwnedMutexGuard};
 use lazy_static::lazy_static;
 use prometheus::{opts, register_counter, register_gauge, Counter, Gauge};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
@@ -20,6 +19,7 @@ use tracing::{instrument, warn};
 
 use crate::{
     golem_base::{block_timestamp, entity_key},
+    repository::locks::Guard,
     types::{
         Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAnnotation,
         FullOperationIndex, FullStringAnnotation, ListOperationsFilter, Log, NumericAnnotation,
@@ -90,23 +90,18 @@ impl Default for IndexerSettings {
 pub struct Indexer {
     db: Arc<DatabaseConnection>,
     settings: IndexerSettings,
-    locks: KeyMutex<EntityKey, ()>,
 }
 
 // FIXME integration tests
 // FIXME test what happens when DB connection fails
 impl Indexer {
     pub fn new(db: Arc<DatabaseConnection>, settings: IndexerSettings) -> Self {
-        let locks = KeyMutex::new();
-        Self {
-            db,
-            settings,
-            locks,
-        }
+        Self { db, settings }
     }
 
     #[instrument(skip_all)]
     pub async fn run(self) -> Result<()> {
+        repository::locks::clear(&*self.db).await?;
         loop {
             self.tick().await.inspect_err(|e| {
                 tracing::error!(
@@ -138,19 +133,27 @@ impl Indexer {
         tracing::info!("Tick");
         repository::blockscout::stream_unprocessed_tx_hashes(&*self.db)
             .await?
-            .map(Ok)
-            .try_for_each_concurrent(self.settings.concurrency, |tx| async move {
-                self.handle_tx(tx).await
+            .for_each_concurrent(self.settings.concurrency, |tx| async move {
+                // ignore errors, it's most likely just a deadlock anyway, we'll just retry.
+                let _ = self
+                    .handle_tx(tx)
+                    .await
+                    .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx failed"));
             })
-            .await?;
+            .await;
 
         repository::blockscout::stream_tx_hashes_for_cleanup(&*self.db)
             .await?
-            .map(Ok)
-            .try_for_each_concurrent(self.settings.concurrency, |tx| async move {
-                self.handle_tx_cleanup(tx).await
+            .for_each_concurrent(self.settings.concurrency, |tx| async move {
+                // ignore errors, it's most likely just a deadlock anyway, we'll just retry.
+                let _ = self
+                    .handle_tx_cleanup(tx)
+                    .await
+                    .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx cleanup failed"));
             })
-            .await
+            .await;
+
+        Ok(())
     }
 
     #[instrument(skip(self))]
@@ -175,8 +178,12 @@ impl Indexer {
             self.reindex_entity(&txn, Some(&mut guards), entity).await?;
         }
 
+        repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
         repository::transactions::finish_tx_cleanup(&txn, tx_hash).await?;
 
+        for guard in guards.into_values() {
+            guard.unlock(&txn).await?;
+        }
         txn.commit().await?;
         TX_REORG_COUNTER.inc();
         Ok(())
@@ -285,12 +292,12 @@ impl Indexer {
     pub async fn reindex_entity<T: ConnectionTrait>(
         &self,
         txn: &T,
-        guards: Option<&mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>>,
+        guards: Option<&mut HashMap<EntityKey, Guard>>,
         entity: EntityKey,
     ) -> Result<()> {
         if let Some(guards) = guards {
             if let Entry::Vacant(e) = guards.entry(entity) {
-                e.insert(self.locks.lock(entity).await);
+                e.insert(repository::locks::lock(txn, entity).await?);
             }
         }
         match repository::operations::find_latest_operation(txn, entity).await? {
@@ -376,6 +383,9 @@ impl Indexer {
         }
 
         repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
+        for guard in guards.into_values() {
+            guard.unlock(&txn).await?;
+        }
         txn.commit().await?;
 
         TX_COUNTER.inc();
@@ -387,14 +397,14 @@ impl Indexer {
     async fn handle_create(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         create: Create,
         idx: u64,
     ) -> Result<()> {
         let key = entity_key(tx.hash, create.data.clone(), idx);
         if let Entry::Vacant(e) = guards.entry(key) {
-            e.insert(self.locks.lock(key).await);
+            e.insert(repository::locks::lock(txn, key).await?);
         }
         tracing::info!("Processing Create operation");
 
@@ -546,13 +556,13 @@ impl Indexer {
     async fn handle_update(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         update: Update,
         idx: u64,
     ) -> Result<()> {
         if let Entry::Vacant(e) = guards.entry(update.entity_key) {
-            e.insert(self.locks.lock(update.entity_key).await);
+            e.insert(repository::locks::lock(txn, update.entity_key).await?);
         }
         tracing::info!("Processing Update operation");
 
@@ -616,13 +626,13 @@ impl Indexer {
     async fn handle_delete(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         delete: GolemBaseDelete,
         idx: u64,
     ) -> Result<()> {
         if let Entry::Vacant(e) = guards.entry(delete) {
-            e.insert(self.locks.lock(delete).await);
+            e.insert(repository::locks::lock(txn, delete).await?);
         }
         tracing::info!("Processing Delete operation");
         let op = Operation {
@@ -651,13 +661,13 @@ impl Indexer {
     async fn handle_extend(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         extend: Extend,
         idx: u64,
     ) -> Result<()> {
         if let Entry::Vacant(e) = guards.entry(extend.entity_key) {
-            e.insert(self.locks.lock(extend.entity_key).await);
+            e.insert(repository::locks::lock(txn, extend.entity_key).await?);
         }
         tracing::info!("Processing Extend operation");
         let op = Operation {
@@ -722,7 +732,7 @@ impl Indexer {
     async fn handle_expire_log(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, OwnedMutexGuard<EntityKey, ()>>,
+        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         log: Log,
     ) -> Result<()> {
@@ -733,7 +743,7 @@ impl Indexer {
             return Ok(());
         };
         if let Entry::Vacant(e) = guards.entry(entity_key) {
-            e.insert(self.locks.lock(entity_key).await);
+            e.insert(repository::locks::lock(txn, entity_key).await?);
         }
         tracing::info!("Processing delete log for entity {entity_key}");
 

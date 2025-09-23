@@ -5,6 +5,7 @@ pub mod prelude;
 pub mod blocks;
 pub mod golem_base_entities;
 pub mod golem_base_entity_history;
+pub mod golem_base_entity_locks;
 pub mod golem_base_numeric_annotations;
 pub mod golem_base_operations;
 pub mod golem_base_pending_transaction_cleanups;

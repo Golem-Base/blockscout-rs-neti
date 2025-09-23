@@ -10,6 +10,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"
+            create table golem_base_entity_locks (key bytea primary key not null);
             alter table golem_base_pending_transaction_operations add column block_number bigint, add column index bigint;
         "#;
 
