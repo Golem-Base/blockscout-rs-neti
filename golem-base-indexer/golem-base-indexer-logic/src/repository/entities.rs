@@ -477,7 +477,6 @@ pub async fn get_entity_history<T: ConnectionTrait>(
     let paginator = golem_base_entity_history::Entity::find()
         .filter(golem_base_entity_history::Column::EntityKey.eq(entity_key))
         .order_by_asc(golem_base_entity_history::Column::BlockNumber)
-        .order_by_asc(golem_base_entity_history::Column::TransactionHash)
         .order_by_asc(golem_base_entity_history::Column::TxIndex)
         .order_by_asc(golem_base_entity_history::Column::OpIndex)
         .paginate(db, filter.pagination.page_size);
