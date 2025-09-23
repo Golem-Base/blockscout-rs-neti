@@ -9,8 +9,8 @@ impl MigrationTrait for Migration {
         let sql = r#"
 CREATE MATERIALIZED VIEW golem_base_leaderboard_data_owned AS
 SELECT
-    ROW_NUMBER() OVER(ORDER BY SUM(LENGTH(data)) DESC) as rank,
-    owner as address,
+    ROW_NUMBER() OVER(ORDER BY SUM(LENGTH(data)) DESC) AS rank,
+    owner AS address,
     SUM(LENGTH(data)) AS data_size
 FROM 
     golem_base_entities

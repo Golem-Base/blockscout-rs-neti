@@ -9,9 +9,9 @@ impl MigrationTrait for Migration {
         let sql = r#"
 CREATE MATERIALIZED VIEW golem_base_leaderboard_biggest_spenders AS
 SELECT 
-    ROW_NUMBER() OVER(ORDER BY SUM(cumulative_gas_used * gas_price) DESC) as rank,
-    from_address_hash as address, 
-    CAST(SUM(cumulative_gas_used * gas_price) AS TEXT) as total_fees
+    ROW_NUMBER() OVER(ORDER BY SUM(cumulative_gas_used * gas_price) DESC) AS rank,
+    from_address_hash AS address, 
+    CAST(SUM(cumulative_gas_used * gas_price) AS TEXT) AS total_fees
 FROM 
     transactions
 WHERE

@@ -9,8 +9,8 @@ impl MigrationTrait for Migration {
         let sql = r#"
 CREATE MATERIALIZED VIEW golem_base_leaderboard_entities_created AS
 SELECT
-    ROW_NUMBER() OVER(ORDER BY COUNT(*) DESC, MIN(inserted_at) ASC) as rank,
-    sender as address,
+    ROW_NUMBER() OVER(ORDER BY COUNT(*) DESC, MIN(inserted_at) ASC) AS rank,
+    sender AS address,
     COUNT(*) AS entities_created_count,
     MIN(inserted_at) AS first_created_at
 FROM
