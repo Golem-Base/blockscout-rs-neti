@@ -145,24 +145,6 @@ where
     and block_consensus = 't'
 "#;
 
-pub const FIND_TX_FEE_BIGGEST_SPENDERS: &str = r#"
-SELECT 
-    ROW_NUMBER() OVER(ORDER BY SUM(cumulative_gas_used * gas_price) DESC) as rank,
-    from_address_hash as address, 
-    CAST(SUM(cumulative_gas_used * gas_price) AS TEXT) as total_fees
-FROM 
-    transactions
-WHERE
-    cumulative_gas_used IS NOT NULL
-    AND cumulative_gas_used > 0
-    AND gas_price IS NOT NULL
-    AND gas_price > 0
-GROUP BY 
-    from_address_hash
-ORDER BY 
-    SUM(cumulative_gas_used * gas_price) DESC
-"#;
-
 pub const COUNT_ENTITIES_BY_BLOCK: &str = r#"
 SELECT
     COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
@@ -330,6 +312,15 @@ WHERE
         OR it.from_address_hash = $1
         OR it.to_address_hash = $1
     )
+"#;
+
+pub const LEADERBOARD_BIGGEST_SPENDERS: &str = r#"
+SELECT
+    rank,
+    address,
+    total_fees
+FROM
+    golem_base_leaderboard_biggest_spenders
 "#;
 
 pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"

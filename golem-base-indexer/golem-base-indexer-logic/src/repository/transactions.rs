@@ -128,7 +128,7 @@ pub async fn list_biggest_spenders<T: ConnectionTrait>(
     db: &T,
     pagination: PaginationParams,
 ) -> Result<(Vec<BiggestSpenders>, PaginationMetadata)> {
-    let stmt = Statement::from_string(db.get_database_backend(), sql::FIND_TX_FEE_BIGGEST_SPENDERS);
+    let stmt = Statement::from_string(db.get_database_backend(), sql::LEADERBOARD_BIGGEST_SPENDERS);
 
     let paginator = DbBiggestSpenders::find_by_statement(stmt).paginate(db, pagination.page_size);
 

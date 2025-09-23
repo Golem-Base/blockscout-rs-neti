@@ -6,7 +6,9 @@ use golem_base_indexer_logic::{
     Indexer,
 };
 use helpers::sample::insert_gas_transactions;
+use helpers::utils::refresh_leaderboards;
 use pretty_assertions::assert_eq;
+use std::sync::Arc;
 
 use crate::helpers::assert_json::{assert_fields, assert_fields_array, assert_has_keys};
 
@@ -18,7 +20,6 @@ async fn test_list_biggest_spenders_endpoint() {
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
 
     let indexer = Indexer::new(client.clone(), Default::default());
-    indexer.tick().await.unwrap();
 
     let sender = Address::random();
 
@@ -31,6 +32,7 @@ async fn test_list_biggest_spenders_endpoint() {
         .await
         .unwrap();
     indexer.tick().await.unwrap();
+    refresh_leaderboards(Arc::clone(&client)).await.unwrap();
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
@@ -66,6 +68,7 @@ async fn test_list_biggest_spenders_endpoint() {
         .unwrap();
     }
     indexer.tick().await.unwrap();
+    refresh_leaderboards(Arc::clone(&client)).await.unwrap();
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
