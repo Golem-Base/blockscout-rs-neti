@@ -32,6 +32,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: admin
           POSTGRES_USER: postgres
+          POSTGRES_INITDB_ARGS: "-c max_connections=500"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -57,7 +58,7 @@ jobs:
         if: success() || failure()
 
       - name: Integration tests
-        run: RUST_BACKTRACE=1 RUST_LOG=info cargo test --locked --workspace --test '*' -- --nocapture --include-ignored
+        run: RUST_BACKTRACE=1 RUST_LOG=info,sqlx=warn cargo test -j 2 --locked --workspace --test '*' -- --nocapture --include-ignored
         if: success() || failure()
         env:
           DATABASE_URL: postgres://postgres:admin@localhost:5432/
