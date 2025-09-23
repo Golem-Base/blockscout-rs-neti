@@ -346,6 +346,7 @@ pub struct AddressByDataOwned {
 
 #[derive(Debug, Clone)]
 pub struct EntityDataSize {
+    pub rank: u64,
     pub entity_key: EntityKey,
     pub data_size: u64,
 }

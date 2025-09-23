@@ -718,6 +718,9 @@ definitions:
   v1EntityDataSize:
     type: object
     properties:
+      rank:
+        type: string
+        format: uint64
       entity_key:
         type: string
       data_size:

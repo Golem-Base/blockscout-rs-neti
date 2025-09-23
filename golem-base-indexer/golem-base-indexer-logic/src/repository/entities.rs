@@ -76,6 +76,7 @@ struct DbAddressByDataOwned {
 
 #[derive(Debug, FromQueryResult)]
 struct DbEntityDataSize {
+    pub rank: i64,
     pub entity_key: Vec<u8>,
     pub data_size: i32,
 }
@@ -136,6 +137,7 @@ impl TryFrom<DbEntityDataSize> for EntityDataSize {
 
     fn try_from(value: DbEntityDataSize) -> Result<Self> {
         Ok(Self {
+            rank: value.rank.try_into()?,
             entity_key: value.entity_key.as_slice().try_into()?,
             data_size: value.data_size as u64,
         })
@@ -648,7 +650,7 @@ pub async fn list_largest_entities<T: ConnectionTrait>(
 ) -> Result<(Vec<EntityDataSize>, PaginationMetadata)> {
     let paginator = DbEntityDataSize::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        sql::LIST_ENTITIES_BY_LARGEST_DATA_SIZE,
+        sql::LEADERBOARD_LARGEST_ENTITIES,
         [],
     ))
     .paginate(db, filter.page_size);

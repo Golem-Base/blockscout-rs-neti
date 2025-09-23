@@ -572,6 +572,7 @@ impl TryFrom<v1::ListLargestEntitiesRequest> for PaginationParams {
 impl From<EntityDataSize> for v1::EntityDataSize {
     fn from(v: EntityDataSize) -> Self {
         Self {
+            rank: v.rank,
             entity_key: v.entity_key.to_string(),
             data_size: v.data_size,
         }

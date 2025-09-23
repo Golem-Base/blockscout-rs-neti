@@ -214,19 +214,6 @@ SELECT
 FROM current_state
 "#;
 
-pub const LIST_ENTITIES_BY_LARGEST_DATA_SIZE: &str = r#"
-SELECT
-    key as entity_key,
-    octet_length(data) AS data_size
-FROM
-    golem_base_entities
-WHERE 
-    data IS NOT NULL
-    AND status = 'active'
-ORDER BY
-    data_size DESC
-"#;
-
 pub const LIST_ENTITIES_BY_EFFECTIVELY_LARGEST_DATA_SIZE: &str = r#"
 select
     entity_key,
@@ -300,6 +287,15 @@ SELECT
     data_size
 FROM
     golem_base_leaderboard_data_owned
+"#;
+
+pub const LEADERBOARD_LARGEST_ENTITIES: &str = r#"
+SELECT
+    rank,
+    entity_key,
+    data_size
+FROM
+    golem_base_leaderboard_largest_entities
 "#;
 
 pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"
