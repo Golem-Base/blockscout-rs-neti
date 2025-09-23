@@ -590,10 +590,16 @@ definitions:
         format: uint64
       operations_counts:
         $ref: '#/definitions/v1CountOperationsResponse'
-      first_seen:
+      first_seen_timestamp:
         type: string
-      last_seen:
+      last_seen_timestamp:
         type: string
+      first_seen_block:
+        type: string
+        format: uint64
+      last_seen_block:
+        type: string
+        format: uint64
   v1BiggestSpender:
     type: object
     properties:

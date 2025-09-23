@@ -28,15 +28,19 @@ struct DbAddressTxsCount {
 
 #[derive(Debug, FromQueryResult)]
 struct DbAddressActivity {
-    pub first_seen: Option<chrono::NaiveDateTime>,
-    pub last_seen: Option<chrono::NaiveDateTime>,
+    pub first_seen_timestamp: Option<chrono::NaiveDateTime>,
+    pub last_seen_timestamp: Option<chrono::NaiveDateTime>,
+    pub first_seen_block: Option<i32>,
+    pub last_seen_block: Option<i32>,
 }
 
 impl From<DbAddressActivity> for AddressActivity {
     fn from(v: DbAddressActivity) -> Self {
         Self {
-            first_seen: v.first_seen.map(|v| v.and_utc()),
-            last_seen: v.last_seen.map(|v| v.and_utc()),
+            first_seen_timestamp: v.first_seen_timestamp.map(|v| v.and_utc()),
+            last_seen_timestamp: v.last_seen_timestamp.map(|v| v.and_utc()),
+            first_seen_block: v.first_seen_block.map(|v| v as u64),
+            last_seen_block: v.last_seen_block.map(|v| v as u64),
         }
     }
 }

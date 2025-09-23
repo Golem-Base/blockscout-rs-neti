@@ -36,8 +36,10 @@ async fn test_get_address_stats_endpoint_works() {
         },
         "size_of_active_entities": "88",
         "total_transactions": "6",
-        "first_seen": "2025-07-22T11:31:28+00:00",
-        "last_seen": "2025-07-22T11:31:35+00:00",
+        "first_seen_timestamp": "2025-07-22T11:31:28+00:00",
+        "last_seen_timestamp": "2025-07-22T11:31:35+00:00",
+        "first_seen_block": "1",
+        "last_seen_block": "7",
     });
     assert_eq!(response, expected);
 
@@ -59,8 +61,10 @@ async fn test_get_address_stats_endpoint_works() {
         },
         "size_of_active_entities": "0",
         "total_transactions": "0",
-        "first_seen": "2025-07-22T11:31:28+00:00",
-        "last_seen": "2025-07-22T11:31:28+00:00",
+        "first_seen_timestamp": "2025-07-22T11:31:28+00:00",
+        "last_seen_timestamp": "2025-07-22T11:31:28+00:00",
+        "first_seen_block": "1",
+        "last_seen_block": "1",
     });
     assert_eq!(response, expected);
 
@@ -80,8 +84,10 @@ async fn test_get_address_stats_endpoint_works() {
         },
         "size_of_active_entities": "0",
         "total_transactions": "0",
-        "first_seen": null,
-        "last_seen": null,
+        "first_seen_timestamp": null,
+        "last_seen_timestamp": null,
+        "first_seen_block": null,
+        "last_seen_block": null,
     });
     assert_eq!(response, expected);
 }

@@ -316,8 +316,10 @@ ORDER BY
 
 pub const GET_ADDRESS_ACTIVITY: &str = r#"
 SELECT
-    MIN(t.block_timestamp) AS first_seen,
-    MAX(t.block_timestamp) AS last_seen
+    MIN(t.block_timestamp) AS first_seen_timestamp,
+    MAX(t.block_timestamp) AS last_seen_timestamp,
+    MIN(t.block_number) AS first_seen_block,
+    MAX(t.block_number) AS last_seen_block
 FROM
     transactions t
 LEFT JOIN

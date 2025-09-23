@@ -246,8 +246,12 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             total_transactions: tx_counts.total_transactions,
             failed_transactions: tx_counts.failed_transactions,
             operations_counts: Some(operations_counts.into()),
-            first_seen: address_activity.first_seen.map(|v| v.to_rfc3339()),
-            last_seen: address_activity.last_seen.map(|v| v.to_rfc3339()),
+            first_seen_timestamp: address_activity
+                .first_seen_timestamp
+                .map(|v| v.to_rfc3339()),
+            last_seen_timestamp: address_activity.last_seen_timestamp.map(|v| v.to_rfc3339()),
+            first_seen_block: address_activity.first_seen_block,
+            last_seen_block: address_activity.last_seen_block,
         }))
     }
 

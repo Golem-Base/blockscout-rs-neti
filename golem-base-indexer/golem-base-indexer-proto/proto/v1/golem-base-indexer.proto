@@ -39,8 +39,10 @@ message AddressStatsResponse {
   uint64 total_transactions = 4;
   uint64 failed_transactions = 5;
   CountOperationsResponse operations_counts = 6;
-  optional string first_seen = 7;
-  optional string last_seen = 8;
+  optional string first_seen_timestamp = 7;
+  optional string last_seen_timestamp = 8;
+  optional uint64 first_seen_block = 9;
+  optional uint64 last_seen_block = 10;
 }
 
 message GetEntityRequest {
