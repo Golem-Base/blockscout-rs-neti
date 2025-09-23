@@ -27,35 +27,37 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.AddressStats
       get: /api/v1/address/{address}/stats
 
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListBiggestSpenders
-      get: /api/v1/leaderboard/biggest-spenders
-
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.BlockStats
       get: /api/v1/block/{block_number}/stats
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListEntitiesByBtl
-      get: /api/v1/leaderboard/entities-by-btl
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListAddressByEntitiesOwned
-      get: /api/v1/leaderboard/entities-owned
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListAddressByDataOwned
-      get: /api/v1/leaderboard/data-owned
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListLargestEntities
-      get: /api/v1/leaderboard/largest-entities
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListEffectivelyLargestEntities
-      get: /api/v1/leaderboard/effectively-largest-entities
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListAddressByEntitiesCreated
-      get: /api/v1/leaderboard/entities-created
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ListCustomContractTransactions
       get: /api/v1/transactions/custom-contract
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.AddressLeaderboardRanks
       get: /api/v1/address/{address}/leaderboard-ranks
+
+    # Leaderboards
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardBiggestSpenders
+      get: /api/v1/leaderboard/biggest-spenders
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardEntitiesCreated
+      get: /api/v1/leaderboard/entities-created
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardEntitiesOwned
+      get: /api/v1/leaderboard/entities-owned
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardDataOwned
+      get: /api/v1/leaderboard/data-owned
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardLargestEntities
+      get: /api/v1/leaderboard/largest-entities
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardEffectivelyLargestEntities
+      get: /api/v1/leaderboard/effectively-largest-entities
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardEntitiesByBtl
+      get: /api/v1/leaderboard/entities-by-btl
 
     #################### Health ####################
 

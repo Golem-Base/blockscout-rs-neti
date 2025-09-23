@@ -234,6 +234,14 @@ WHERE
     )
 "#;
 
+pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"
+SELECT
+    (SELECT rank FROM golem_base_leaderboard_biggest_spenders WHERE address = $1) AS biggest_spenders,
+    (SELECT rank FROM golem_base_leaderboard_entities_created WHERE address = $1) AS entities_created,
+    (SELECT rank FROM golem_base_leaderboard_entities_owned WHERE address = $1) AS entities_owned,
+    (SELECT rank FROM golem_base_leaderboard_data_owned WHERE address = $1) AS data_owned;
+"#;
+
 pub const LEADERBOARD_BIGGEST_SPENDERS: &str = r#"
 SELECT
     rank,
@@ -287,12 +295,4 @@ SELECT
     lifespan
 FROM
     golem_base_leaderboard_effectively_largest_entities
-"#;
-
-pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"
-SELECT
-    (SELECT rank FROM golem_base_leaderboard_biggest_spenders WHERE address = $1) AS biggest_spenders,
-    (SELECT rank FROM golem_base_leaderboard_entities_created WHERE address = $1) AS entities_created,
-    (SELECT rank FROM golem_base_leaderboard_entities_owned WHERE address = $1) AS entities_owned,
-    (SELECT rank FROM golem_base_leaderboard_data_owned WHERE address = $1) AS data_owned;
 "#;
