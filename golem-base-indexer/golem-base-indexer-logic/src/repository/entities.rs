@@ -83,6 +83,7 @@ struct DbEntityDataSize {
 
 #[derive(Debug, FromQueryResult)]
 struct DbEntityEffectiveDataSize {
+    pub rank: i64,
     pub entity_key: Vec<u8>,
     pub data_size: i32,
     pub lifespan: i64,
@@ -149,6 +150,7 @@ impl TryFrom<DbEntityEffectiveDataSize> for EntityEffectiveDataSize {
 
     fn try_from(value: DbEntityEffectiveDataSize) -> Result<Self> {
         Ok(Self {
+            rank: value.rank.try_into()?,
             entity_key: value.entity_key.as_slice().try_into()?,
             data_size: value.data_size.try_into()?,
             lifespan: value.lifespan.try_into()?,
@@ -665,7 +667,7 @@ pub async fn list_effectively_largest_entities<T: ConnectionTrait>(
 ) -> Result<(Vec<EntityEffectiveDataSize>, PaginationMetadata)> {
     let paginator = DbEntityEffectiveDataSize::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        sql::LIST_ENTITIES_BY_EFFECTIVELY_LARGEST_DATA_SIZE,
+        sql::LEADERBOARD_EFFECTIVELY_LARGEST_ENTITIES,
         [],
     ))
     .paginate(db, filter.page_size);

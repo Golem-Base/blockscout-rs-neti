@@ -214,27 +214,6 @@ SELECT
 FROM current_state
 "#;
 
-pub const LIST_ENTITIES_BY_EFFECTIVELY_LARGEST_DATA_SIZE: &str = r#"
-select
-    entity_key,
-    data_size,
-    lifespan
-from (
-    SELECT
-        key as entity_key,
-        octet_length(data) AS data_size,
-        coalesce(expires_at_block_number - createtx.block_number, 0)  AS lifespan
-    FROM
-        golem_base_entities
-    INNER JOIN
-        transactions as createtx on golem_base_entities.created_at_tx_hash = createtx.hash
-    WHERE 
-        golem_base_entities.status = 'active'
-) raw
-order by
-    (data_size * lifespan) desc
-"#;
-
 pub const GET_ADDRESS_ACTIVITY: &str = r#"
 SELECT
     MIN(t.block_timestamp) AS first_seen,
@@ -296,6 +275,16 @@ SELECT
     data_size
 FROM
     golem_base_leaderboard_largest_entities
+"#;
+
+pub const LEADERBOARD_EFFECTIVELY_LARGEST_ENTITIES: &str = r#"
+SELECT
+    rank,
+    entity_key,
+    data_size,
+    lifespan
+FROM
+    golem_base_leaderboard_effectively_largest_entities
 "#;
 
 pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"

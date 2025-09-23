@@ -353,9 +353,10 @@ message ListEffectivelyLargestEntitiesResponse {
 }
 
 message EntityEffectiveDataSize {
-  string entity_key = 1;
-  uint64 data_size = 2;
-  uint64 lifespan = 3; // lifespan in blocks
+  uint64 rank = 1;
+  string entity_key = 2;
+  uint64 data_size = 3;
+  uint64 lifespan = 4; // lifespan in blocks
 }
 
 message ListAddressByEntitiesCreatedRequest {

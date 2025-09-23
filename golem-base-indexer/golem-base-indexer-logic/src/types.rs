@@ -353,6 +353,7 @@ pub struct EntityDataSize {
 
 #[derive(Debug, Clone)]
 pub struct EntityEffectiveDataSize {
+    pub rank: u64,
     pub entity_key: EntityKey,
     pub data_size: u64,
     pub lifespan: BlockNumber,
