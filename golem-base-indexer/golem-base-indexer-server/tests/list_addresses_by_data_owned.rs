@@ -8,12 +8,13 @@ use golem_base_sdk::{
     entity::{Create, EncodableGolemBaseTransaction},
     Address,
 };
-use pretty_assertions::assert_eq;
-
-use crate::helpers::{
+use helpers::{
     assert_json::{assert_fields, assert_fields_array},
     sample::{Block, Transaction},
+    utils::refresh_leaderboards,
 };
+use pretty_assertions::assert_eq;
+use std::sync::Arc;
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
@@ -72,10 +73,11 @@ async fn list_addresses_by_data_owned() {
     .await
     .unwrap();
 
-    Indexer::new(client, Default::default())
+    Indexer::new(client.clone(), Default::default())
         .tick()
         .await
         .unwrap();
+    refresh_leaderboards(Arc::clone(&client)).await.unwrap();
 
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/leaderboard/data-owned").await;

@@ -339,6 +339,7 @@ pub struct AddressByEntitiesOwned {
 
 #[derive(Debug, Clone)]
 pub struct AddressByDataOwned {
+    pub rank: u64,
     pub address: Address,
     pub data_size: u64,
 }

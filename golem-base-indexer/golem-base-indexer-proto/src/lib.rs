@@ -551,6 +551,7 @@ impl TryFrom<v1::ListAddressByDataOwnedRequest> for PaginationParams {
 impl From<AddressByDataOwned> for v1::AddressByDataOwned {
     fn from(v: AddressByDataOwned) -> Self {
         Self {
+            rank: v.rank,
             address: v.address.to_checksum(None),
             data_size: v.data_size,
         }

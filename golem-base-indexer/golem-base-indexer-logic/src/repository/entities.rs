@@ -69,6 +69,7 @@ struct DbAddressByEntitiesOwned {
 
 #[derive(Debug, FromQueryResult)]
 struct DbAddressByDataOwned {
+    pub rank: i64,
     pub address: Vec<u8>,
     pub data_size: i64,
 }
@@ -123,6 +124,7 @@ impl TryFrom<DbAddressByDataOwned> for AddressByDataOwned {
 
     fn try_from(value: DbAddressByDataOwned) -> Result<Self> {
         Ok(Self {
+            rank: value.rank.try_into()?,
             address: value.address.as_slice().try_into()?,
             data_size: value.data_size.try_into()?,
         })
@@ -631,7 +633,7 @@ pub async fn list_addresses_by_data_owned<T: ConnectionTrait>(
 ) -> Result<(Vec<AddressByDataOwned>, PaginationMetadata)> {
     let paginator = DbAddressByDataOwned::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        sql::LIST_ADDRESS_BY_DATA_OWNED,
+        sql::LEADERBOARD_DATA_OWNED,
         [],
     ))
     .paginate(db, filter.page_size);
