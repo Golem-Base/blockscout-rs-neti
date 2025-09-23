@@ -469,4 +469,25 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn address_leaderboard_ranks(
+        &self,
+        request: Request<AddressLeaderboardRanksRequest>,
+    ) -> Result<Response<AddressLeaderboardRanksResponse>, Status> {
+        let AddressLeaderboardRanksRequest { address } = request.into_inner();
+        let address = address.parse().map_err(|err| {
+            tracing::error!(?err, "invalid address");
+            Status::invalid_argument("invalid address")
+        })?;
+
+        let leaderboard_ranks =
+            repository::address::get_address_leaderboard_ranks(&*self.db, address)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to get address leaderboard ranks");
+                    Status::internal("failed to get address leaderboard ranks")
+                })?;
+
+        Ok(Response::new(leaderboard_ranks.into()))
+    }
 }

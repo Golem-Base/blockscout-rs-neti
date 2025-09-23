@@ -389,3 +389,11 @@ pub struct Transaction {
     pub l1_transaction_origin: Option<Address>,
     pub l1_block_number: Option<u64>,
 }
+
+#[derive(Debug, Clone)]
+pub struct AddressLeaderboardRanks {
+    pub biggest_spenders: u64,
+    pub entities_created: u64,
+    pub entities_owned: u64,
+    pub data_owned: u64,
+}

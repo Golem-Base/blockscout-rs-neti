@@ -4,8 +4,8 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressByDataOwned, AddressByEntitiesCreated, AddressByEntitiesOwned, BiggestSpenders,
-    BlockEntitiesCount, BlockStorageUsage, EntitiesFilter, Entity, EntityDataSize,
+    AddressByDataOwned, AddressByEntitiesCreated, AddressByEntitiesOwned, AddressLeaderboardRanks,
+    BiggestSpenders, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter, Entity, EntityDataSize,
     EntityEffectiveDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
     EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter,
     NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter,
@@ -652,6 +652,17 @@ impl From<Transaction> for v1::Transaction {
             r#type: v.r#type.map(|v| v as u64),
             l1_transaction_origin: v.l1_transaction_origin.map(|v| v.to_checksum(None)),
             l1_block_number: v.l1_block_number,
+        }
+    }
+}
+
+impl From<AddressLeaderboardRanks> for v1::AddressLeaderboardRanksResponse {
+    fn from(ranks: AddressLeaderboardRanks) -> Self {
+        Self {
+            biggest_spenders: ranks.biggest_spenders,
+            entities_created: ranks.entities_created,
+            entities_owned: ranks.entities_owned,
+            data_owned: ranks.data_owned,
         }
     }
 }

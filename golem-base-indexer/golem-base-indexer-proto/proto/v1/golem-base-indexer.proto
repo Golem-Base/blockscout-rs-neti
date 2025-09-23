@@ -26,6 +26,7 @@ service GolemBaseIndexerService {
   rpc ListEffectivelyLargestEntities(ListEffectivelyLargestEntitiesRequest) returns (ListEffectivelyLargestEntitiesResponse);
   rpc ListAddressByEntitiesCreated(ListAddressByEntitiesCreatedRequest) returns (ListAddressByEntitiesCreatedResponse);
   rpc ListCustomContractTransactions(ListCustomContractTransactionsRequest) returns (ListCustomContractTransactionsResponse);
+  rpc AddressLeaderboardRanks(AddressLeaderboardRanksRequest) returns (AddressLeaderboardRanksResponse);
 }
 
 message AddressStatsRequest {
@@ -399,4 +400,15 @@ message Transaction {
   optional uint64 type = 16;
   optional string l1_transaction_origin = 17;
   optional uint64 l1_block_number = 18;
+}
+
+message AddressLeaderboardRanksRequest {
+  string address = 1;
+}
+
+message AddressLeaderboardRanksResponse {
+  uint64 biggest_spenders = 1;
+  uint64 entities_created = 2;
+  uint64 entities_owned = 3;
+  uint64 data_owned = 4;
 }

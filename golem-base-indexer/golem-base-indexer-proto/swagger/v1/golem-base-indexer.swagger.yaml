@@ -10,6 +10,25 @@ consumes:
 produces:
   - application/json
 paths:
+  /api/v1/address/{address}/leaderboard-ranks:
+    get:
+      operationId: GolemBaseIndexerService_AddressLeaderboardRanks
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1AddressLeaderboardRanksResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: address
+          in: path
+          required: true
+          type: string
+      tags:
+        - GolemBaseIndexerService
   /api/v1/address/{address}/stats:
     get:
       operationId: GolemBaseIndexerService_AddressStats
@@ -568,6 +587,21 @@ definitions:
       address:
         type: string
       entities_count:
+        type: string
+        format: uint64
+  v1AddressLeaderboardRanksResponse:
+    type: object
+    properties:
+      biggest_spenders:
+        type: string
+        format: uint64
+      entities_created:
+        type: string
+        format: uint64
+      entities_owned:
+        type: string
+        format: uint64
+      data_owned:
         type: string
         format: uint64
   v1AddressStatsResponse:
