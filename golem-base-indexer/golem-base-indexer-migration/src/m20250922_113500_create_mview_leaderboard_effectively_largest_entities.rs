@@ -23,8 +23,7 @@ FROM (
     INNER JOIN
         transactions AS createtx ON golem_base_entities.created_at_tx_hash = createtx.hash
     WHERE 
-        golem_base_entities.status = 'active' AND
-        data IS NOT NULL
+        golem_base_entities.status = 'active'
 ) raw
 ORDER BY
     (data_size * lifespan) DESC;
