@@ -278,24 +278,6 @@ order by
     (data_size * lifespan) desc
 "#;
 
-pub const LIST_ADDRESSES_BY_CREATE_OPERATIONS: &str = r#"
-SELECT
-    ROW_NUMBER() OVER(ORDER BY COUNT(*) DESC, MIN(inserted_at) ASC) as rank,
-    sender as address,
-    COUNT(*) AS entities_created_count,
-    MIN(inserted_at) AS first_created_at
-FROM
-    golem_base_operations
-WHERE
-    operation = 'create'
-    AND sender IS NOT NULL
-GROUP BY
-    address
-ORDER BY
-    entities_created_count DESC,
-    first_created_at ASC
-"#;
-
 pub const GET_ADDRESS_ACTIVITY: &str = r#"
 SELECT
     MIN(t.block_timestamp) AS first_seen,
@@ -321,6 +303,15 @@ SELECT
     total_fees
 FROM
     golem_base_leaderboard_biggest_spenders
+"#;
+
+pub const LEADERBOARD_ENTITIES_CREATED: &str = r#"
+SELECT
+    rank,
+    address,
+    entities_created_count
+FROM
+    golem_base_leaderboard_entities_created
 "#;
 
 pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"

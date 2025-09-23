@@ -446,7 +446,7 @@ pub async fn list_addresses_by_create_operations<T: ConnectionTrait>(
 ) -> Result<(Vec<AddressByEntitiesCreated>, PaginationMetadata)> {
     let paginator = DbAddressByEntitiesCreated::find_by_statement(Statement::from_sql_and_values(
         db.get_database_backend(),
-        sql::LIST_ADDRESSES_BY_CREATE_OPERATIONS,
+        sql::LEADERBOARD_ENTITIES_CREATED,
         [],
     ))
     .paginate(db, filter.page_size);
