@@ -368,8 +368,10 @@ pub struct AddressByEntitiesCreated {
 
 #[derive(Debug, Clone)]
 pub struct AddressActivity {
-    pub first_seen: Option<DateTime<Utc>>,
-    pub last_seen: Option<DateTime<Utc>>,
+    pub first_seen_timestamp: Option<DateTime<Utc>>,
+    pub last_seen_timestamp: Option<DateTime<Utc>>,
+    pub first_seen_block: Option<u64>,
+    pub last_seen_block: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
