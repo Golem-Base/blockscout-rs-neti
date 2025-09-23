@@ -4,7 +4,7 @@ use futures::{Stream, StreamExt};
 use golem_base_indexer_entity::{
     golem_base_pending_transaction_cleanups, golem_base_pending_transaction_operations,
 };
-use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement, StreamTrait};
+use sea_orm::{prelude::*, DbBackend, FromQueryResult, QuerySelect, Statement, StreamTrait};
 use tracing::instrument;
 
 use super::sql;
@@ -114,6 +114,7 @@ pub async fn stream_tx_hashes_for_cleanup<T: StreamTrait + ConnectionTrait>(
     db: &T,
 ) -> Result<impl Stream<Item = TxHash> + '_> {
     Ok(golem_base_pending_transaction_cleanups::Entity::find()
+        .limit(500)
         .stream(db)
         .await
         .context("Failed to get tx hashes for cleanup")?

@@ -71,7 +71,7 @@ pub enum Relation {
     GolemBaseOperations,
     #[sea_orm(has_one = "super::golem_base_pending_transaction_cleanups::Entity")]
     GolemBasePendingTransactionCleanups,
-    #[sea_orm(has_one = "super::golem_base_pending_transaction_operations::Entity")]
+    #[sea_orm(has_many = "super::golem_base_pending_transaction_operations::Entity")]
     GolemBasePendingTransactionOperations,
 }
 

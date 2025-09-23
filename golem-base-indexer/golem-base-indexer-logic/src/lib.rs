@@ -135,6 +135,7 @@ impl Indexer {
 
     #[instrument(skip_all)]
     pub async fn tick(&self) -> Result<()> {
+        tracing::info!("Tick");
         repository::blockscout::stream_unprocessed_tx_hashes(&*self.db)
             .await?
             .map(Ok)

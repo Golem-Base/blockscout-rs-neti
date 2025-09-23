@@ -13,6 +13,7 @@ mod m20250904_082310_add_golem_base_events_abi;
 mod m20250915_140948_optimize_history_view;
 mod m20250919_080000_update_indexer_queue_trigger;
 mod m20250920_085525_history_as_table;
+mod m20250923_150237_process_txs_in_order;
 
 pub struct Migrator;
 
@@ -32,6 +33,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250915_140948_optimize_history_view::Migration),
             Box::new(m20250919_080000_update_indexer_queue_trigger::Migration),
             Box::new(m20250920_085525_history_as_table::Migration),
+            Box::new(m20250923_150237_process_txs_in_order::Migration),
         ]
     }
 
