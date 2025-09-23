@@ -52,7 +52,7 @@ pub async fn init_golem_base_indexer_server<F>(db: TestDbGuard, settings_setup: 
 where
     F: Fn(Settings) -> Settings,
 {
-    tracing_subscriber::fmt::init();
+    let _ = tracing_subscriber::fmt::try_init();
 
     let (settings, base) = {
         let mut settings = Settings::default(db.db_url());
