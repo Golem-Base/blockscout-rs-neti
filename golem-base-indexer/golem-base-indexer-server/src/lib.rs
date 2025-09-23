@@ -6,4 +6,6 @@ mod settings;
 
 pub use indexer::run as run_indexer;
 pub use server::run as run_server;
+pub use services::LeaderboardsUpdaterService;
 pub use settings::Settings;
+
