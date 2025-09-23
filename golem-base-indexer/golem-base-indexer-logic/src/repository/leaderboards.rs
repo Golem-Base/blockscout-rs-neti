@@ -1,14 +1,17 @@
-use crate::pagination::{paginate, paginate_try_from};
-use crate::repository::sql;
-use crate::types::{
-    CurrencyAmount, EntityWithExpTimestamp, LeaderboardBiggestSpendersItem,
-    LeaderboardDataOwnedItem, LeaderboardEffectivelyLargestEntitiesItem,
-    LeaderboardEntitiesCreatedItem, LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem,
-    PaginationMetadata, PaginationParams,
+use crate::{
+    pagination::{paginate, paginate_try_from},
+    repository::sql,
+    types::{
+        CurrencyAmount, EntityWithExpTimestamp, LeaderboardBiggestSpendersItem,
+        LeaderboardDataOwnedItem, LeaderboardEffectivelyLargestEntitiesItem,
+        LeaderboardEntitiesCreatedItem, LeaderboardEntitiesOwnedItem,
+        LeaderboardLargestEntitiesItem, PaginationMetadata, PaginationParams,
+    },
 };
 use anyhow::{anyhow, Context, Result};
-use golem_base_indexer_entity::golem_base_entities;
-use golem_base_indexer_entity::sea_orm_active_enums::GolemBaseEntityStatusType;
+use golem_base_indexer_entity::{
+    golem_base_entities, sea_orm_active_enums::GolemBaseEntityStatusType,
+};
 use sea_orm::{prelude::*, DbBackend, FromQueryResult, QueryOrder, Statement};
 use tracing::instrument;
 

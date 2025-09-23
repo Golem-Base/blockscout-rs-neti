@@ -1,12 +1,15 @@
 mod helpers;
 
 use blockscout_service_launcher::test_server;
-use golem_base_indexer_logic::types::TxHash;
-use golem_base_indexer_logic::Indexer;
-use golem_base_sdk::entity::{Create, EncodableGolemBaseTransaction};
-use golem_base_sdk::Address;
-use helpers::sample::{insert_data, insert_gas_transactions, Block, Transaction};
-use helpers::utils::refresh_leaderboards;
+use golem_base_indexer_logic::{types::TxHash, Indexer};
+use golem_base_sdk::{
+    entity::{Create, EncodableGolemBaseTransaction},
+    Address,
+};
+use helpers::{
+    sample::{insert_data, insert_gas_transactions, Block, Transaction},
+    utils::refresh_leaderboards,
+};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use test_server::send_get_request;

@@ -5,8 +5,7 @@ use golem_base_indexer_logic::{
     types::{Address, CurrencyAmount},
     Indexer,
 };
-use helpers::sample::insert_gas_transactions;
-use helpers::utils::refresh_leaderboards;
+use helpers::{sample::insert_gas_transactions, utils::refresh_leaderboards};
 use pretty_assertions::assert_eq;
 use std::sync::Arc;
 
