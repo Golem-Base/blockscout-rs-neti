@@ -185,21 +185,6 @@ where
 group by key, value
 "#;
 
-pub const LIST_ADDRESS_BY_ENTITIES_OWNED: &str = r#"
-SELECT
-    owner as address,
-    COUNT(*) AS entities_count
-FROM 
-    golem_base_entities
-WHERE 
-    owner IS NOT NULL
-    AND status = 'active'
-GROUP BY 
-    owner
-ORDER BY 
-    entities_count DESC
-"#;
-
 pub const LIST_ADDRESS_BY_DATA_OWNED: &str = r#"
 SELECT
     owner as address,
@@ -312,6 +297,15 @@ SELECT
     entities_created_count
 FROM
     golem_base_leaderboard_entities_created
+"#;
+
+pub const LEADERBOARD_ENTITIES_OWNED: &str = r#"
+SELECT
+    rank,
+    address,
+    entities_count
+FROM
+    golem_base_leaderboard_entities_owned
 "#;
 
 pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"

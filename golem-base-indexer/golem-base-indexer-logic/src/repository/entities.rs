@@ -62,6 +62,7 @@ pub struct GolemBaseEntityExtend {
 
 #[derive(Debug, FromQueryResult)]
 struct DbAddressByEntitiesOwned {
+    pub rank: i64,
     pub address: Vec<u8>,
     pub entities_count: i64,
 }
@@ -110,6 +111,7 @@ impl TryFrom<DbAddressByEntitiesOwned> for AddressByEntitiesOwned {
 
     fn try_from(value: DbAddressByEntitiesOwned) -> Result<Self> {
         Ok(Self {
+            rank: value.rank.try_into()?,
             address: value.address.as_slice().try_into()?,
             entities_count: value.entities_count.try_into()?,
         })
@@ -614,7 +616,7 @@ pub async fn list_addresses_by_entities_owned<T: ConnectionTrait>(
 ) -> Result<(Vec<AddressByEntitiesOwned>, PaginationMetadata)> {
     let paginator = DbAddressByEntitiesOwned::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        sql::LIST_ADDRESS_BY_ENTITIES_OWNED,
+        sql::LEADERBOARD_ENTITIES_OWNED,
         [],
     ))
     .paginate(db, filter.page_size);

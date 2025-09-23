@@ -332,6 +332,7 @@ pub struct BlockStorageUsage {
 
 #[derive(Debug, Clone)]
 pub struct AddressByEntitiesOwned {
+    pub rank: u64,
     pub address: Address,
     pub entities_count: u64,
 }

@@ -530,6 +530,7 @@ impl TryFrom<v1::ListAddressByEntitiesOwnedRequest> for PaginationParams {
 impl From<AddressByEntitiesOwned> for v1::AddressByEntitiesOwned {
     fn from(v: AddressByEntitiesOwned) -> Self {
         Self {
+            rank: v.rank,
             address: v.address.to_checksum(None),
             entities_count: v.entities_count,
         }
