@@ -34,8 +34,9 @@ pub mod model;
 pub mod pagination;
 pub mod repository;
 pub mod types;
+pub mod updater_leaderboards;
 pub mod updater_timeseries;
-mod well_known;
+pub mod well_known;
 
 lazy_static! {
     static ref TX_COUNTER: Counter = register_counter!(opts!(

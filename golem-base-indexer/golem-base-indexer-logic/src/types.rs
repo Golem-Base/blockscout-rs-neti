@@ -287,13 +287,6 @@ pub struct AddressTxsCount {
 }
 
 #[derive(Debug, Clone)]
-pub struct BiggestSpenders {
-    pub rank: u64,
-    pub address: Address,
-    pub total_fees: CurrencyAmount,
-}
-
-#[derive(Debug, Clone)]
 pub struct EntityHistoryEntry {
     pub entity_key: EntityKey,
     pub block_number: BlockNumber,
@@ -331,35 +324,41 @@ pub struct BlockStorageUsage {
 }
 
 #[derive(Debug, Clone)]
-pub struct AddressByEntitiesOwned {
-    pub address: Address,
-    pub entities_count: u64,
+pub struct AddressActivity {
+    pub first_seen_timestamp: Option<DateTime<Utc>>,
+    pub last_seen_timestamp: Option<DateTime<Utc>>,
+    pub first_seen_block: Option<u64>,
+    pub last_seen_block: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AddressByDataOwned {
-    pub address: Address,
-    pub data_size: u64,
+pub struct Transaction {
+    pub hash: TxHash,
+    pub from_address_hash: Address,
+    pub to_address_hash: Option<Address>,
+    pub status: Option<u8>,
+    pub block_number: Option<BlockNumber>,
+    pub block_hash: Option<BlockHash>,
+    pub block_consensus: Option<bool>,
+    pub block_timestamp: Option<Timestamp>,
+    pub index: Option<u64>,
+    pub cumulative_gas_used: Option<u64>,
+    pub gas_price: Option<u64>,
+    pub error: Option<String>,
+    pub input: Bytes,
+    pub value: CurrencyAmount,
+    pub created_contract_address_hash: Option<Address>,
+    pub r#type: Option<i32>,
+    pub l1_transaction_origin: Option<Address>,
+    pub l1_block_number: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
-pub struct EntityDataSize {
-    pub entity_key: EntityKey,
-    pub data_size: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct EntityEffectiveDataSize {
-    pub entity_key: EntityKey,
-    pub data_size: u64,
-    pub lifespan: BlockNumber,
-}
-
-#[derive(Debug, Clone)]
-pub struct AddressByEntitiesCreated {
-    pub rank: u64,
-    pub address: Address,
-    pub entities_created_count: u64,
+pub struct AddressLeaderboardRanks {
+    pub biggest_spenders: u64,
+    pub entities_created: u64,
+    pub entities_owned: u64,
+    pub data_owned: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -374,4 +373,48 @@ pub struct ChartInfo {
     pub id: String,
     pub title: String,
     pub description: String,
+}
+
+// Leaderboards
+#[derive(Debug, Clone)]
+pub struct LeaderboardBiggestSpendersItem {
+    pub rank: u64,
+    pub address: Address,
+    pub total_fees: CurrencyAmount,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardEntitiesCreatedItem {
+    pub rank: u64,
+    pub address: Address,
+    pub entities_created_count: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardEntitiesOwnedItem {
+    pub rank: u64,
+    pub address: Address,
+    pub entities_count: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardDataOwnedItem {
+    pub rank: u64,
+    pub address: Address,
+    pub data_size: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardLargestEntitiesItem {
+    pub rank: u64,
+    pub entity_key: EntityKey,
+    pub data_size: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardEffectivelyLargestEntitiesItem {
+    pub rank: u64,
+    pub entity_key: EntityKey,
+    pub data_size: u64,
+    pub lifespan: BlockNumber,
 }

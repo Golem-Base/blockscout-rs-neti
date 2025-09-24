@@ -71,6 +71,7 @@ async fn test_list_entities_by_btl_endpoint() {
                     ],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
         },
     )
@@ -90,6 +91,7 @@ async fn test_list_entities_by_btl_endpoint() {
                     deletes: vec![deleted_entity_key],
                     ..Default::default()
                 },
+                ..Default::default()
             }],
         },
     )

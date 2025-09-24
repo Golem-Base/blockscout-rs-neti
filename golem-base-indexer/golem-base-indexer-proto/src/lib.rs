@@ -4,13 +4,14 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressByDataOwned, AddressByEntitiesCreated, AddressByEntitiesOwned, BiggestSpenders,
-    BlockEntitiesCount, BlockStorageUsage, ChartInfo, ChartPoint, EntitiesFilter, Entity,
-    EntityDataSize, EntityEffectiveDataSize, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
-    EntityWithExpTimestamp, FullEntity, ListEntitiesFilter, ListOperationsFilter,
-    NumericAnnotation, NumericAnnotationWithRelations, OperationData, OperationFilter,
-    OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
-    StringAnnotation, StringAnnotationWithRelations,
+    AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, ChartInfo, ChartPoint,
+    EntitiesFilter, Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
+    EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
+    LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
+    LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, ListEntitiesFilter,
+    ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations, OperationData,
+    OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata,
+    PaginationParams, StringAnnotation, StringAnnotationWithRelations, Transaction,
 };
 
 pub mod blockscout {
@@ -463,24 +464,14 @@ impl TryFrom<v1::CountEntitiesRequest> for EntitiesFilter {
     }
 }
 
-impl TryFrom<v1::ListBiggestSpendersRequest> for PaginationParams {
+impl TryFrom<v1::PaginationRequest> for PaginationParams {
     type Error = anyhow::Error;
 
-    fn try_from(request: v1::ListBiggestSpendersRequest) -> Result<Self> {
+    fn try_from(request: v1::PaginationRequest) -> Result<Self> {
         Ok(Self {
             page: request.page.unwrap_or(1).max(1),
             page_size: request.page_size.unwrap_or(100).clamp(1, 100),
         })
-    }
-}
-
-impl From<BiggestSpenders> for v1::BiggestSpender {
-    fn from(value: BiggestSpenders) -> Self {
-        Self {
-            rank: value.rank,
-            address: value.address.to_checksum(None),
-            total_fees: value.total_fees.to_string(),
-        }
     }
 }
 
@@ -505,10 +496,10 @@ impl From<BlockStorageUsage> for v1::BlockStatsStorage {
     }
 }
 
-impl TryFrom<v1::ListEntitiesByBtlRequest> for PaginationParams {
+impl TryFrom<v1::ListCustomContractTransactionsRequest> for PaginationParams {
     type Error = anyhow::Error;
 
-    fn try_from(request: v1::ListEntitiesByBtlRequest) -> Result<Self> {
+    fn try_from(request: v1::ListCustomContractTransactionsRequest) -> Result<Self> {
         Ok(Self {
             page: request.page.unwrap_or(1).max(1),
             page_size: request.page_size.unwrap_or(100).clamp(1, 100),
@@ -516,104 +507,40 @@ impl TryFrom<v1::ListEntitiesByBtlRequest> for PaginationParams {
     }
 }
 
-impl TryFrom<v1::ListAddressByEntitiesOwnedRequest> for PaginationParams {
-    type Error = anyhow::Error;
-
-    fn try_from(request: v1::ListAddressByEntitiesOwnedRequest) -> Result<Self> {
-        Ok(Self {
-            page: request.page.unwrap_or(1).max(1),
-            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
-        })
-    }
-}
-
-impl From<AddressByEntitiesOwned> for v1::AddressByEntitiesOwned {
-    fn from(v: AddressByEntitiesOwned) -> Self {
+impl From<Transaction> for v1::Transaction {
+    fn from(v: Transaction) -> Self {
         Self {
-            address: v.address.to_checksum(None),
-            entities_count: v.entities_count,
+            hash: v.hash.to_string(),
+            from_address_hash: v.from_address_hash.to_checksum(None),
+            to_address_hash: v.to_address_hash.map(|v| v.to_checksum(None)),
+            status: v.status.map(|v| v as u64),
+            block_hash: v.block_hash.map(|v| v.to_string()),
+            block_number: v.block_number,
+            block_consensus: v.block_consensus,
+            index: v.index,
+            cumulative_gas_used: v.cumulative_gas_used.map(|v| v.to_string()),
+            gas_price: v.gas_price.map(|v| v.to_string()),
+            block_timestamp: v.block_timestamp.map(|v| v.to_rfc3339()),
+            error: v.error,
+            value: v.value.to_string(),
+            input: v.input.encode_hex_with_prefix(),
+            created_contract_address_hash: v
+                .created_contract_address_hash
+                .map(|v| v.to_checksum(None)),
+            r#type: v.r#type.map(|v| v as u64),
+            l1_transaction_origin: v.l1_transaction_origin.map(|v| v.to_checksum(None)),
+            l1_block_number: v.l1_block_number,
         }
     }
 }
 
-impl TryFrom<v1::ListAddressByDataOwnedRequest> for PaginationParams {
-    type Error = anyhow::Error;
-
-    fn try_from(request: v1::ListAddressByDataOwnedRequest) -> Result<Self> {
-        Ok(Self {
-            page: request.page.unwrap_or(1).max(1),
-            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
-        })
-    }
-}
-
-impl From<AddressByDataOwned> for v1::AddressByDataOwned {
-    fn from(v: AddressByDataOwned) -> Self {
+impl From<AddressLeaderboardRanks> for v1::AddressLeaderboardRanksResponse {
+    fn from(ranks: AddressLeaderboardRanks) -> Self {
         Self {
-            address: v.address.to_checksum(None),
-            data_size: v.data_size,
-        }
-    }
-}
-
-impl TryFrom<v1::ListLargestEntitiesRequest> for PaginationParams {
-    type Error = anyhow::Error;
-
-    fn try_from(request: v1::ListLargestEntitiesRequest) -> Result<Self> {
-        Ok(Self {
-            page: request.page.unwrap_or(1).max(1),
-            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
-        })
-    }
-}
-
-impl From<EntityDataSize> for v1::EntityDataSize {
-    fn from(v: EntityDataSize) -> Self {
-        Self {
-            entity_key: v.entity_key.to_string(),
-            data_size: v.data_size,
-        }
-    }
-}
-
-impl TryFrom<v1::ListEffectivelyLargestEntitiesRequest> for PaginationParams {
-    type Error = anyhow::Error;
-
-    fn try_from(request: v1::ListEffectivelyLargestEntitiesRequest) -> Result<Self> {
-        Ok(Self {
-            page: request.page.unwrap_or(1).max(1),
-            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
-        })
-    }
-}
-
-impl From<EntityEffectiveDataSize> for v1::EntityEffectiveDataSize {
-    fn from(v: EntityEffectiveDataSize) -> Self {
-        Self {
-            entity_key: v.entity_key.to_string(),
-            data_size: v.data_size,
-            lifespan: v.lifespan,
-        }
-    }
-}
-
-impl TryFrom<v1::ListAddressByEntitiesCreatedRequest> for PaginationParams {
-    type Error = anyhow::Error;
-
-    fn try_from(request: v1::ListAddressByEntitiesCreatedRequest) -> Result<Self> {
-        Ok(Self {
-            page: request.page.unwrap_or(1).max(1),
-            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
-        })
-    }
-}
-
-impl From<AddressByEntitiesCreated> for v1::AddressByEntitiesCreated {
-    fn from(v: AddressByEntitiesCreated) -> Self {
-        Self {
-            rank: v.rank,
-            address: v.address.to_checksum(None),
-            entities_created_count: v.entities_created_count,
+            biggest_spenders: ranks.biggest_spenders,
+            entities_created: ranks.entities_created,
+            entities_owned: ranks.entities_owned,
+            data_owned: ranks.data_owned,
         }
     }
 }
@@ -634,6 +561,70 @@ impl From<ChartPoint> for v1::ChartPoint {
             date: v.date,
             date_to: v.date_to,
             value: v.value,
+        }
+    }
+}
+
+// Leaderboards
+impl From<LeaderboardBiggestSpendersItem> for v1::LeaderboardBiggestSpendersItem {
+    fn from(v: LeaderboardBiggestSpendersItem) -> Self {
+        Self {
+            rank: v.rank,
+            address: v.address.to_checksum(None),
+            total_fees: v.total_fees.to_string(),
+        }
+    }
+}
+
+impl From<LeaderboardEntitiesCreatedItem> for v1::LeaderboardEntitiesCreatedItem {
+    fn from(v: LeaderboardEntitiesCreatedItem) -> Self {
+        Self {
+            rank: v.rank,
+            address: v.address.to_checksum(None),
+            entities_created_count: v.entities_created_count,
+        }
+    }
+}
+
+impl From<LeaderboardEntitiesOwnedItem> for v1::LeaderboardEntitiesOwnedItem {
+    fn from(v: LeaderboardEntitiesOwnedItem) -> Self {
+        Self {
+            rank: v.rank,
+            address: v.address.to_checksum(None),
+            entities_count: v.entities_count,
+        }
+    }
+}
+
+impl From<LeaderboardDataOwnedItem> for v1::LeaderboardDataOwnedItem {
+    fn from(v: LeaderboardDataOwnedItem) -> Self {
+        Self {
+            rank: v.rank,
+            address: v.address.to_checksum(None),
+            data_size: v.data_size,
+        }
+    }
+}
+
+impl From<LeaderboardLargestEntitiesItem> for v1::LeaderboardLargestEntitiesItem {
+    fn from(v: LeaderboardLargestEntitiesItem) -> Self {
+        Self {
+            rank: v.rank,
+            entity_key: v.entity_key.to_string(),
+            data_size: v.data_size,
+        }
+    }
+}
+
+impl From<LeaderboardEffectivelyLargestEntitiesItem>
+    for v1::LeaderboardEffectivelyLargestEntitiesItem
+{
+    fn from(v: LeaderboardEffectivelyLargestEntitiesItem) -> Self {
+        Self {
+            rank: v.rank,
+            entity_key: v.entity_key.to_string(),
+            data_size: v.data_size,
+            lifespan: v.lifespan,
         }
     }
 }
