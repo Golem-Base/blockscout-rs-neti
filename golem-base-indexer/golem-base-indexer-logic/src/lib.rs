@@ -297,7 +297,6 @@ impl Indexer {
                 .await?;
         }
 
-        // FIXME what about annotations??
         Ok(())
     }
 
