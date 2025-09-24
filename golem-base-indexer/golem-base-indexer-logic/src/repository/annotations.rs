@@ -11,7 +11,7 @@ use crate::{
     repository::sql,
     types::{
         EntityKey, FullNumericAnnotation, FullStringAnnotation, NumericAnnotation,
-        NumericAnnotationWithRelations, StringAnnotation, StringAnnotationWithRelations,
+        NumericAnnotationWithRelations, StringAnnotation, StringAnnotationWithRelations, TxHash,
     },
 };
 
@@ -228,4 +228,54 @@ pub async fn find_active_numeric_annotations<T: ConnectionTrait>(
     .into_iter()
     .map(TryInto::<NumericAnnotationWithRelations>::try_into)
     .collect::<Result<Vec<_>>>()
+}
+
+#[instrument(skip(db))]
+pub async fn activate_annotations<T: ConnectionTrait>(
+    db: &T,
+    entity_key: EntityKey,
+    index: (TxHash, u64),
+) -> Result<()> {
+    let entity_key: Vec<u8> = entity_key.as_slice().into();
+    let tx_hash: Vec<u8> = index.0.as_slice().into();
+
+    let res = golem_base_string_annotations::Entity::update_many()
+        .col_expr(
+            golem_base_string_annotations::Column::Active,
+            Expr::value(true),
+        )
+        .filter(golem_base_string_annotations::Column::EntityKey.eq(entity_key.clone()))
+        .filter(golem_base_string_annotations::Column::OperationTxHash.eq(tx_hash.clone()))
+        .filter(golem_base_string_annotations::Column::OperationIndex.eq(index.1))
+        .exec(db)
+        .await;
+
+    match res {
+        Ok(_) => {}
+        Err(DbErr::RecordNotUpdated) => {}
+        Err(e) => {
+            return Err(e).context("Deactivating string annotations");
+        }
+    };
+
+    let res = golem_base_numeric_annotations::Entity::update_many()
+        .col_expr(
+            golem_base_numeric_annotations::Column::Active,
+            Expr::value(true),
+        )
+        .filter(golem_base_numeric_annotations::Column::EntityKey.eq(entity_key))
+        .filter(golem_base_numeric_annotations::Column::OperationTxHash.eq(tx_hash))
+        .filter(golem_base_numeric_annotations::Column::OperationIndex.eq(index.1))
+        .exec(db)
+        .await;
+
+    match res {
+        Ok(_) => {}
+        Err(DbErr::RecordNotUpdated) => {}
+        Err(e) => {
+            return Err(e).context("Deactivating numeric annotations");
+        }
+    };
+
+    Ok(())
 }

@@ -215,6 +215,7 @@ impl Indexer {
 
         repository::entities::delete_history(txn, entity).await?;
         let mut prev_entry: Option<EntityHistoryEntry> = None;
+        let mut active_annotations_index = None;
         for op in ops {
             let status = match op.op.operation {
                 OperationData::Create(_, _) => EntityStatus::Active,
@@ -254,6 +255,12 @@ impl Indexer {
                 )
             });
 
+            active_annotations_index = match op.op.operation {
+                OperationData::Delete => None,
+                OperationData::Extend(_) => active_annotations_index,
+                _ => Some((op.op.metadata.tx_hash, op.op.metadata.index)),
+            };
+
             let entry = EntityHistoryEntry {
                 entity_key: entity,
                 block_number: op.op.metadata.block_number,
@@ -283,6 +290,12 @@ impl Indexer {
             repository::entities::insert_history_entry(txn, entry.clone()).await?;
             prev_entry = Some(entry);
         }
+        repository::annotations::deactivate_annotations(txn, entity).await?;
+        if let Some(active_annotations_index) = active_annotations_index {
+            repository::annotations::activate_annotations(txn, entity, active_annotations_index)
+                .await?;
+        }
+
         // FIXME what about annotations??
         Ok(())
     }
