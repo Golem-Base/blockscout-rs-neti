@@ -2,7 +2,7 @@ use crate::proto::{
     golem_base_indexer_service_server::GolemBaseIndexerService as GolemBaseIndexer, *,
 };
 use golem_base_indexer_logic::{
-    repository::{self},
+    repository,
     types::{ListOperationsFilter, OperationsFilter},
 };
 use sea_orm::DatabaseConnection;
@@ -255,29 +255,6 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
-    async fn list_biggest_spenders(
-        &self,
-        request: Request<ListBiggestSpendersRequest>,
-    ) -> Result<Response<ListBiggestSpendersResponse>, Status> {
-        let inner = request.into_inner();
-        let filter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!("Invalid biggest spenders filter: {err}"))
-        })?;
-
-        let (spenders, pagination) =
-            repository::transactions::list_biggest_spenders(&*self.db, filter)
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query biggest spenders");
-                    Status::internal("failed to query biggest spenders")
-                })?;
-
-        Ok(Response::new(ListBiggestSpendersResponse {
-            items: spenders.into_iter().map(Into::into).collect(),
-            pagination: Some(pagination.into()),
-        }))
-    }
-
     async fn block_stats(
         &self,
         request: Request<BlockStatsRequest>,
@@ -310,145 +287,6 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
-    async fn list_entities_by_btl(
-        &self,
-        request: Request<ListEntitiesByBtlRequest>,
-    ) -> Result<Response<ListEntitiesByBtlResponse>, Status> {
-        let inner = request.into_inner();
-        let filter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!("Invalid entities by btl filter: {err}"))
-        })?;
-
-        let (entities, pagination) = repository::entities::list_entities_by_btl(&*self.db, filter)
-            .await
-            .map_err(|err| {
-                tracing::error!(?err, "failed to query entities by btl");
-                Status::internal("failed to query entities by btl")
-            })?;
-
-        Ok(Response::new(ListEntitiesByBtlResponse {
-            items: entities.into_iter().map(Into::into).collect(),
-            pagination: Some(pagination.into()),
-        }))
-    }
-
-    async fn list_address_by_entities_owned(
-        &self,
-        request: Request<ListAddressByEntitiesOwnedRequest>,
-    ) -> Result<Response<ListAddressByEntitiesOwnedResponse>, Status> {
-        let inner = request.into_inner();
-        let filter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!("Invalid entities owned filter: {err}"))
-        })?;
-
-        let (entities_owned, pagination) =
-            repository::entities::list_addresses_by_entities_owned(&*self.db, filter)
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query addresses by entities owned");
-                    Status::internal("failed to query addresses by entities owned")
-                })?;
-
-        Ok(Response::new(ListAddressByEntitiesOwnedResponse {
-            items: entities_owned.into_iter().map(Into::into).collect(),
-            pagination: Some(pagination.into()),
-        }))
-    }
-
-    async fn list_address_by_data_owned(
-        &self,
-        request: Request<ListAddressByDataOwnedRequest>,
-    ) -> Result<Response<ListAddressByDataOwnedResponse>, Status> {
-        let inner = request.into_inner();
-        let filter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!("Invalid entities owned filter: {err}"))
-        })?;
-
-        let (data_owned, pagination) =
-            repository::entities::list_addresses_by_data_owned(&*self.db, filter)
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query addresses by data owned");
-                    Status::internal("failed to query addresses by data owned")
-                })?;
-
-        Ok(Response::new(ListAddressByDataOwnedResponse {
-            items: data_owned.into_iter().map(Into::into).collect(),
-            pagination: Some(pagination.into()),
-        }))
-    }
-
-    async fn list_largest_entities(
-        &self,
-        request: Request<ListLargestEntitiesRequest>,
-    ) -> Result<Response<ListLargestEntitiesResponse>, Status> {
-        let inner = request.into_inner();
-        let filter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!("Invalid largest entities filter: {err}"))
-        })?;
-
-        let (largest_entities, pagination) =
-            repository::entities::list_largest_entities(&*self.db, filter)
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query largest entities");
-                    Status::internal("failed to query largest entities")
-                })?;
-
-        Ok(Response::new(ListLargestEntitiesResponse {
-            items: largest_entities.into_iter().map(Into::into).collect(),
-            pagination: Some(pagination.into()),
-        }))
-    }
-
-    async fn list_effectively_largest_entities(
-        &self,
-        request: Request<ListEffectivelyLargestEntitiesRequest>,
-    ) -> Result<Response<ListEffectivelyLargestEntitiesResponse>, Status> {
-        let inner = request.into_inner();
-        let filter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!(
-                "Invalid effectively largest entities filter: {err}"
-            ))
-        })?;
-
-        let (largest_entities, pagination) =
-            repository::entities::list_effectively_largest_entities(&*self.db, filter)
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query effectively largest entities");
-                    Status::internal("failed to query effectively largest entities")
-                })?;
-
-        Ok(Response::new(ListEffectivelyLargestEntitiesResponse {
-            items: largest_entities.into_iter().map(Into::into).collect(),
-            pagination: Some(pagination.into()),
-        }))
-    }
-
-    async fn list_address_by_entities_created(
-        &self,
-        request: Request<ListAddressByEntitiesCreatedRequest>,
-    ) -> Result<Response<ListAddressByEntitiesCreatedResponse>, Status> {
-        let inner = request.into_inner();
-        let filter = inner.try_into().map_err(|err| {
-            Status::invalid_argument(format!("Invalid entities created filter: {err}"))
-        })?;
-
-        let (entities_created, pagination) =
-            repository::operations::list_addresses_by_create_operations(&*self.db, filter)
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query addresses by entities created");
-                    Status::internal("failed to query addresses by entities created")
-                })?;
-
-        Ok(Response::new(ListAddressByEntitiesCreatedResponse {
-            items: entities_created.into_iter().map(Into::into).collect(),
-            pagination: Some(pagination.into()),
-        }))
-    }
-
     async fn list_custom_contract_transactions(
         &self,
         request: Request<ListCustomContractTransactionsRequest>,
@@ -470,6 +308,193 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
 
         Ok(Response::new(ListCustomContractTransactionsResponse {
             items: transactions.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
+    async fn address_leaderboard_ranks(
+        &self,
+        request: Request<AddressLeaderboardRanksRequest>,
+    ) -> Result<Response<AddressLeaderboardRanksResponse>, Status> {
+        let AddressLeaderboardRanksRequest { address } = request.into_inner();
+        let address = address.parse().map_err(|err| {
+            tracing::error!(?err, "invalid address");
+            Status::invalid_argument("invalid address")
+        })?;
+
+        let leaderboard_ranks =
+            repository::address::get_address_leaderboard_ranks(&*self.db, address)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to get address leaderboard ranks");
+                    Status::internal("failed to get address leaderboard ranks")
+                })?;
+
+        Ok(Response::new(leaderboard_ranks.into()))
+    }
+
+    // Leaderboards
+    async fn leaderboard_biggest_spenders(
+        &self,
+        request: Request<PaginationRequest>,
+    ) -> Result<Response<LeaderboardBiggestSpendersResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid biggest spenders filter: {err}"))
+        })?;
+
+        let (spenders, pagination) =
+            repository::leaderboards::leaderboard_biggest_spenders(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query biggest spenders");
+                    Status::internal("failed to query biggest spenders")
+                })?;
+
+        Ok(Response::new(LeaderboardBiggestSpendersResponse {
+            items: spenders.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
+    async fn leaderboard_entities_created(
+        &self,
+        request: Request<PaginationRequest>,
+    ) -> Result<Response<LeaderboardEntitiesCreatedResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entities created filter: {err}"))
+        })?;
+
+        let (entities_created, pagination) =
+            repository::leaderboards::leaderboard_entities_created(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query addresses by entities created");
+                    Status::internal("failed to query addresses by entities created")
+                })?;
+
+        Ok(Response::new(LeaderboardEntitiesCreatedResponse {
+            items: entities_created.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
+    async fn leaderboard_entities_owned(
+        &self,
+        request: Request<PaginationRequest>,
+    ) -> Result<Response<LeaderboardEntitiesOwnedResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entities owned filter: {err}"))
+        })?;
+
+        let (entities_owned, pagination) =
+            repository::leaderboards::leaderboard_entities_owned(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query addresses by entities owned");
+                    Status::internal("failed to query addresses by entities owned")
+                })?;
+
+        Ok(Response::new(LeaderboardEntitiesOwnedResponse {
+            items: entities_owned.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
+    async fn leaderboard_data_owned(
+        &self,
+        request: Request<PaginationRequest>,
+    ) -> Result<Response<LeaderboardDataOwnedResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entities owned filter: {err}"))
+        })?;
+
+        let (data_owned, pagination) =
+            repository::leaderboards::leaderboard_data_owned(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query addresses by data owned");
+                    Status::internal("failed to query addresses by data owned")
+                })?;
+
+        Ok(Response::new(LeaderboardDataOwnedResponse {
+            items: data_owned.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
+    async fn leaderboard_largest_entities(
+        &self,
+        request: Request<PaginationRequest>,
+    ) -> Result<Response<LeaderboardLargestEntitiesResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid largest entities filter: {err}"))
+        })?;
+
+        let (largest_entities, pagination) =
+            repository::leaderboards::leaderboard_largest_entities(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query largest entities");
+                    Status::internal("failed to query largest entities")
+                })?;
+
+        Ok(Response::new(LeaderboardLargestEntitiesResponse {
+            items: largest_entities.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
+    async fn leaderboard_effectively_largest_entities(
+        &self,
+        request: Request<PaginationRequest>,
+    ) -> Result<Response<LeaderboardEffectivelyLargestEntitiesResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!(
+                "Invalid effectively largest entities filter: {err}"
+            ))
+        })?;
+
+        let (largest_entities, pagination) =
+            repository::leaderboards::leaderboard_effectively_largest_entities(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query effectively largest entities");
+                    Status::internal("failed to query effectively largest entities")
+                })?;
+
+        Ok(Response::new(
+            LeaderboardEffectivelyLargestEntitiesResponse {
+                items: largest_entities.into_iter().map(Into::into).collect(),
+                pagination: Some(pagination.into()),
+            },
+        ))
+    }
+
+    async fn leaderboard_entities_by_btl(
+        &self,
+        request: Request<PaginationRequest>,
+    ) -> Result<Response<LeaderboardEntitiesByBtlResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid entities by btl filter: {err}"))
+        })?;
+
+        let (entities, pagination) =
+            repository::leaderboards::leaderboard_entities_by_btl(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query entities by btl");
+                    Status::internal("failed to query entities by btl")
+                })?;
+
+        Ok(Response::new(LeaderboardEntitiesByBtlResponse {
+            items: entities.into_iter().map(Into::into).collect(),
             pagination: Some(pagination.into()),
         }))
     }

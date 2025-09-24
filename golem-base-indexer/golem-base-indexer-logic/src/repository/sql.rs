@@ -145,24 +145,6 @@ where
     and block_consensus = 't'
 "#;
 
-pub const FIND_TX_FEE_BIGGEST_SPENDERS: &str = r#"
-SELECT 
-    ROW_NUMBER() OVER(ORDER BY SUM(cumulative_gas_used * gas_price) DESC) as rank,
-    from_address_hash as address, 
-    CAST(SUM(cumulative_gas_used * gas_price) AS TEXT) as total_fees
-FROM 
-    transactions
-WHERE
-    cumulative_gas_used IS NOT NULL
-    AND cumulative_gas_used > 0
-    AND gas_price IS NOT NULL
-    AND gas_price > 0
-GROUP BY 
-    from_address_hash
-ORDER BY 
-    SUM(cumulative_gas_used * gas_price) DESC
-"#;
-
 pub const COUNT_ENTITIES_BY_BLOCK: &str = r#"
 SELECT
     COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
@@ -203,36 +185,6 @@ where
 group by key, value
 "#;
 
-pub const LIST_ADDRESS_BY_ENTITIES_OWNED: &str = r#"
-SELECT
-    owner as address,
-    COUNT(*) AS entities_count
-FROM 
-    golem_base_entities
-WHERE 
-    owner IS NOT NULL
-    AND status = 'active'
-GROUP BY 
-    owner
-ORDER BY 
-    entities_count DESC
-"#;
-
-pub const LIST_ADDRESS_BY_DATA_OWNED: &str = r#"
-SELECT
-    owner as address,
-    SUM(LENGTH(data)) AS data_size
-FROM 
-    golem_base_entities
-WHERE 
-    owner IS NOT NULL
-    AND status = 'active'
-GROUP BY 
-    owner
-ORDER BY 
-    data_size DESC
-"#;
-
 pub const STORAGE_USAGE_BY_BLOCK: &str = r#"
 WITH latest_entities_per_block AS (
   SELECT
@@ -262,58 +214,6 @@ SELECT
 FROM current_state
 "#;
 
-pub const LIST_ENTITIES_BY_LARGEST_DATA_SIZE: &str = r#"
-SELECT
-    key as entity_key,
-    octet_length(data) AS data_size
-FROM
-    golem_base_entities
-WHERE 
-    data IS NOT NULL
-    AND status = 'active'
-ORDER BY
-    data_size DESC
-"#;
-
-pub const LIST_ENTITIES_BY_EFFECTIVELY_LARGEST_DATA_SIZE: &str = r#"
-select
-    entity_key,
-    data_size,
-    lifespan
-from (
-    SELECT
-        key as entity_key,
-        octet_length(data) AS data_size,
-        coalesce(expires_at_block_number - createtx.block_number, 0)  AS lifespan
-    FROM
-        golem_base_entities
-    INNER JOIN
-        transactions as createtx on golem_base_entities.created_at_tx_hash = createtx.hash
-    WHERE 
-        golem_base_entities.status = 'active'
-) raw
-order by
-    (data_size * lifespan) desc
-"#;
-
-pub const LIST_ADDRESSES_BY_CREATE_OPERATIONS: &str = r#"
-SELECT
-    ROW_NUMBER() OVER(ORDER BY COUNT(*) DESC, MIN(inserted_at) ASC) as rank,
-    sender as address,
-    COUNT(*) AS entities_created_count,
-    MIN(inserted_at) AS first_created_at
-FROM
-    golem_base_operations
-WHERE
-    operation = 'create'
-    AND sender IS NOT NULL
-GROUP BY
-    address
-ORDER BY
-    entities_created_count DESC,
-    first_created_at ASC
-"#;
-
 pub const GET_ADDRESS_ACTIVITY: &str = r#"
 SELECT
     MIN(t.block_timestamp) AS first_seen_timestamp,
@@ -332,4 +232,67 @@ WHERE
         OR it.from_address_hash = $1
         OR it.to_address_hash = $1
     )
+"#;
+
+pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"
+SELECT
+    (SELECT rank FROM golem_base_leaderboard_biggest_spenders WHERE address = $1) AS biggest_spenders,
+    (SELECT rank FROM golem_base_leaderboard_entities_created WHERE address = $1) AS entities_created,
+    (SELECT rank FROM golem_base_leaderboard_entities_owned WHERE address = $1) AS entities_owned,
+    (SELECT rank FROM golem_base_leaderboard_data_owned WHERE address = $1) AS data_owned;
+"#;
+
+pub const LEADERBOARD_BIGGEST_SPENDERS: &str = r#"
+SELECT
+    rank,
+    address,
+    total_fees
+FROM
+    golem_base_leaderboard_biggest_spenders
+"#;
+
+pub const LEADERBOARD_ENTITIES_CREATED: &str = r#"
+SELECT
+    rank,
+    address,
+    entities_created_count
+FROM
+    golem_base_leaderboard_entities_created
+"#;
+
+pub const LEADERBOARD_ENTITIES_OWNED: &str = r#"
+SELECT
+    rank,
+    address,
+    entities_count
+FROM
+    golem_base_leaderboard_entities_owned
+"#;
+
+pub const LEADERBOARD_DATA_OWNED: &str = r#"
+SELECT
+    rank,
+    address,
+    data_size
+FROM
+    golem_base_leaderboard_data_owned
+"#;
+
+pub const LEADERBOARD_LARGEST_ENTITIES: &str = r#"
+SELECT
+    rank,
+    entity_key,
+    data_size
+FROM
+    golem_base_leaderboard_largest_entities
+"#;
+
+pub const LEADERBOARD_EFFECTIVELY_LARGEST_ENTITIES: &str = r#"
+SELECT
+    rank,
+    entity_key,
+    data_size,
+    lifespan
+FROM
+    golem_base_leaderboard_effectively_largest_entities
 "#;

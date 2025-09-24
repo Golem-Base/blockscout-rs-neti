@@ -61,7 +61,6 @@ pub async fn run(
     let health = Arc::new(HealthService::default());
 
     // TODO: init services here
-
     let golem_base_indexer = Arc::new(GolemBaseIndexerService::new(db_connection));
 
     let router = Router {
