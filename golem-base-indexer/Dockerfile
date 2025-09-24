@@ -28,6 +28,7 @@ RUN groupadd $APP_USER \
   && useradd -g $APP_USER $APP_USER
 
 COPY --from=build /app/target/release/golem-base-indexer-server /app/golem-base-indexer-server
+COPY --from=build /app/target/release/golem-base-indexer-cli /app/golem-base-indexer-cli
 COPY --from=build /app/golem-base-indexer-proto/swagger/v1/golem-base-indexer.swagger.yaml /app/golem-base-indexer.swagger.yaml
 
 # Change directory access for app user

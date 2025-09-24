@@ -1,26 +1,25 @@
 use anyhow::{anyhow, Context, Result};
 use golem_base_indexer_entity::{
-    golem_base_entities, golem_base_numeric_annotations, golem_base_string_annotations,
-    sea_orm_active_enums::GolemBaseEntityStatusType,
+    golem_base_entities, golem_base_entity_history, golem_base_numeric_annotations,
+    golem_base_string_annotations, sea_orm_active_enums::GolemBaseEntityStatusType,
 };
 use sea_orm::{
     prelude::*,
     sea_query::OnConflict,
     sqlx::types::chrono::Utc,
     ActiveValue::{NotSet, Set},
-    FromQueryResult, Iterable, QueryOrder, Statement,
+    Condition, FromQueryResult, Iterable, QueryOrder, Statement,
 };
 use tracing::instrument;
 
 use crate::{
     golem_base::block_timestamp,
-    model::entity_history,
     pagination::{paginate, paginate_try_from},
     repository::sql,
     types::{
         Address, Block, BlockNumber, Bytes, EntitiesFilter, Entity, EntityHistoryEntry,
         EntityHistoryFilter, EntityKey, EntityStatus, EntityWithExpTimestamp, FullEntity,
-        ListEntitiesFilter, OperationFilter, PaginationMetadata, TxHash,
+        FullOperationIndex, ListEntitiesFilter, OperationFilter, PaginationMetadata, TxHash,
     },
 };
 
@@ -93,7 +92,10 @@ impl TryFrom<golem_base_entities::Model> for Entity {
                 .map(|v| v.as_slice().try_into())
                 .transpose()?,
             last_updated_at_tx_hash: value.last_updated_at_tx_hash.as_slice().try_into()?,
-            expires_at_block_number: value.expires_at_block_number.try_into()?,
+            expires_at_block_number: value
+                .expires_at_block_number
+                .map(TryInto::try_into)
+                .transpose()?,
         })
     }
 }
@@ -101,8 +103,9 @@ impl TryFrom<golem_base_entities::Model> for Entity {
 impl EntityWithExpTimestamp {
     pub fn try_new(value: golem_base_entities::Model, reference_block: &Block) -> Result<Self> {
         let entity_base: Entity = value.try_into()?;
-        let expires_at_timestamp =
-            block_timestamp(entity_base.expires_at_block_number, reference_block);
+        let expires_at_timestamp = entity_base
+            .expires_at_block_number
+            .and_then(|v| block_timestamp(v, reference_block));
 
         Ok(Self {
             key: entity_base.key,
@@ -118,18 +121,27 @@ impl EntityWithExpTimestamp {
 }
 
 impl EntityHistoryEntry {
-    fn try_new(value: entity_history::Model, reference_block: &Block) -> Result<Self> {
-        let expires_at_block_number: BlockNumber = value.expires_at_block_number.try_into()?;
+    fn try_new(value: golem_base_entity_history::Model) -> Result<Self> {
+        let reference_block = Block {
+            hash: value.block_hash.as_slice().try_into()?,
+            number: value.block_number.try_into()?,
+            timestamp: value.block_timestamp.and_utc(),
+        };
+        let expires_at_block_number: Option<BlockNumber> = value
+            .expires_at_block_number
+            .map(|v| v.try_into())
+            .transpose()?;
         let prev_expires_at_block_number: Option<BlockNumber> = value
             .prev_expires_at_block_number
             .map(|v| v.try_into())
             .transpose()?;
 
-        let expires_at_timestamp = block_timestamp(expires_at_block_number, reference_block);
+        let expires_at_timestamp =
+            expires_at_block_number.and_then(|v| block_timestamp(v, &reference_block));
 
         let prev_expires_at_timestamp =
             prev_expires_at_block_number.and_then(|expires_at_block_number| {
-                block_timestamp(expires_at_block_number, reference_block)
+                block_timestamp(expires_at_block_number, &reference_block)
             });
 
         Ok(Self {
@@ -140,6 +152,7 @@ impl EntityHistoryEntry {
             tx_index: value.tx_index.try_into()?,
             op_index: value.op_index.try_into()?,
             block_timestamp: value.block_timestamp.and_utc(),
+            owner: value.owner.map(|v| v.as_slice().try_into()).transpose()?,
             sender: value.sender.as_slice().try_into()?,
             operation: value.operation.into(),
             data: value.data.map(|v| v.into()),
@@ -153,150 +166,6 @@ impl EntityHistoryEntry {
             btl: value.btl.map(|v| v.try_into()).transpose()?,
         })
     }
-}
-
-#[instrument(skip(db))]
-pub async fn insert_entity<T: ConnectionTrait>(
-    db: &T,
-    entity: GolemBaseEntityCreate,
-) -> Result<()> {
-    let created_at: Vec<u8> = entity.created_at.as_slice().into();
-    let model = golem_base_entities::ActiveModel {
-        key: Set(entity.key.as_slice().into()),
-        data: Set(Some(entity.data.clone().into())),
-        status: Set(GolemBaseEntityStatusType::Active),
-        owner: Set(Some(entity.sender.as_slice().into())),
-        created_at_tx_hash: Set(Some(created_at.clone())),
-        expires_at_block_number: Set(entity.expires_at.try_into()?),
-        last_updated_at_tx_hash: Set(created_at),
-        inserted_at: NotSet,
-        updated_at: NotSet,
-    };
-    golem_base_entities::Entity::insert(model)
-        .on_conflict(
-            OnConflict::column(golem_base_entities::Column::Key)
-                .update_columns([
-                    golem_base_entities::Column::Owner,
-                    golem_base_entities::Column::CreatedAtTxHash,
-                    golem_base_entities::Column::UpdatedAt,
-                ])
-                .to_owned(),
-        )
-        .exec(db)
-        .await
-        .with_context(|| format!("Failed to insert entity: {entity:?}"))?;
-    Ok(())
-}
-
-#[instrument(skip(db))]
-pub async fn update_entity<T: ConnectionTrait>(
-    db: &T,
-    entity: GolemBaseEntityUpdate,
-) -> Result<()> {
-    let model = golem_base_entities::ActiveModel {
-        key: Set(entity.key.as_slice().into()),
-        data: Set(Some(entity.data.clone().into())),
-        owner: Set(Some(entity.sender.as_slice().into())),
-        status: Set(GolemBaseEntityStatusType::Active),
-        expires_at_block_number: Set(entity.expires_at.try_into()?),
-        last_updated_at_tx_hash: Set(entity.updated_at.as_slice().into()),
-        updated_at: Set(Utc::now().naive_utc()),
-        created_at_tx_hash: NotSet,
-        inserted_at: NotSet,
-    };
-
-    golem_base_entities::Entity::insert(model)
-        .on_conflict(
-            OnConflict::column(golem_base_entities::Column::Key)
-                .update_columns([
-                    golem_base_entities::Column::Owner,
-                    golem_base_entities::Column::Data,
-                    golem_base_entities::Column::ExpiresAtBlockNumber,
-                    golem_base_entities::Column::LastUpdatedAtTxHash,
-                    golem_base_entities::Column::UpdatedAt,
-                ])
-                .to_owned(),
-        )
-        .exec(db)
-        .await
-        .with_context(|| format!("Failed to update entity: {entity:?}"))?;
-
-    Ok(())
-}
-
-#[instrument(skip(db))]
-pub async fn delete_entity<T: ConnectionTrait>(
-    db: &T,
-    entity: GolemBaseEntityDelete,
-) -> Result<()> {
-    let owner = if entity.status == EntityStatus::Deleted {
-        Set(Some(entity.sender.as_slice().into()))
-    } else {
-        NotSet
-    };
-
-    let model = golem_base_entities::ActiveModel {
-        key: Set(entity.key.as_slice().into()),
-        status: Set(entity.status.into()),
-        last_updated_at_tx_hash: Set(entity.deleted_at_tx.as_slice().into()),
-        owner,
-        updated_at: Set(Utc::now().naive_utc()),
-        data: Set(None),
-        expires_at_block_number: Set(entity.deleted_at_block.try_into()?),
-        inserted_at: NotSet,
-        created_at_tx_hash: NotSet,
-    };
-
-    golem_base_entities::Entity::insert(model)
-        .on_conflict(
-            OnConflict::column(golem_base_entities::Column::Key)
-                .update_columns([
-                    golem_base_entities::Column::Data,
-                    golem_base_entities::Column::Status,
-                    golem_base_entities::Column::LastUpdatedAtTxHash,
-                    golem_base_entities::Column::UpdatedAt,
-                    golem_base_entities::Column::ExpiresAtBlockNumber,
-                ])
-                .to_owned(),
-        )
-        .exec(db)
-        .await
-        .with_context(|| format!("Failed to delete entity: {entity:?}"))?;
-    Ok(())
-}
-
-#[instrument(skip(db))]
-pub async fn extend_entity<T: ConnectionTrait>(
-    db: &T,
-    entity: GolemBaseEntityExtend,
-) -> Result<()> {
-    let model = golem_base_entities::ActiveModel {
-        key: Set(entity.key.as_slice().into()),
-        expires_at_block_number: Set(entity.expires_at.try_into()?),
-        last_updated_at_tx_hash: Set(entity.extended_at.as_slice().into()),
-        owner: Set(Some(entity.sender.as_slice().into())),
-        updated_at: Set(Utc::now().naive_utc()),
-        status: Set(GolemBaseEntityStatusType::Active),
-        data: NotSet,
-        inserted_at: NotSet,
-        created_at_tx_hash: NotSet,
-    };
-
-    golem_base_entities::Entity::insert(model)
-        .on_conflict(
-            OnConflict::column(golem_base_entities::Column::Key)
-                .update_columns([
-                    golem_base_entities::Column::Owner,
-                    golem_base_entities::Column::ExpiresAtBlockNumber,
-                    golem_base_entities::Column::LastUpdatedAtTxHash,
-                    golem_base_entities::Column::UpdatedAt,
-                ])
-                .to_owned(),
-        )
-        .exec(db)
-        .await
-        .with_context(|| format!("Failed to extend entity: {entity:?}"))?;
-    Ok(())
 }
 
 #[instrument(skip(db))]
@@ -377,8 +246,9 @@ pub async fn get_full_entity<T: ConnectionTrait>(
         None => None,
     };
 
-    let expires_at_timestamp =
-        block_timestamp(entity.expires_at_block_number as u64, &current_block);
+    let expires_at_timestamp = entity
+        .expires_at_block_number
+        .and_then(|v| block_timestamp(v as u64, &current_block));
 
     let latest_operation = super::operations::find_latest_operation(db, key)
         .await?
@@ -402,7 +272,10 @@ pub async fn get_full_entity<T: ConnectionTrait>(
         updated_at_operation_index: latest_operation.metadata.index,
         updated_at_block_number: latest_op_block.number,
         updated_at_timestamp: latest_op_block.timestamp,
-        expires_at_block_number: entity.expires_at_block_number.try_into()?,
+        expires_at_block_number: entity
+            .expires_at_block_number
+            .map(TryInto::try_into)
+            .transpose()?,
         expires_at_timestamp,
         owner: entity.owner.map(|v| v.as_slice().try_into()).transpose()?,
         gas_used: Default::default(), // FIXME when we have gas per operation
@@ -427,31 +300,6 @@ pub async fn find_by_tx_hash<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> Res
 }
 
 #[instrument(skip(db))]
-pub async fn replace_entity<T: ConnectionTrait>(db: &T, entity: Entity) -> Result<()> {
-    let entity = golem_base_entities::ActiveModel {
-        key: Set(entity.key.as_slice().into()),
-        data: Set(entity.data.map(|v| v.into())),
-        status: Set(entity.status.into()),
-        owner: Set(entity.owner.map(|v| v.as_slice().into())),
-        created_at_tx_hash: Set(entity.created_at_tx_hash.map(|v| v.as_slice().into())),
-        expires_at_block_number: Set(entity.expires_at_block_number.try_into()?),
-        last_updated_at_tx_hash: Set(entity.last_updated_at_tx_hash.as_slice().into()),
-        inserted_at: NotSet,
-        updated_at: Set(Utc::now().naive_utc()),
-    };
-    golem_base_entities::Entity::insert(entity)
-        .on_conflict(
-            OnConflict::column(golem_base_entities::Column::Key)
-                .update_columns(golem_base_entities::Column::iter())
-                .to_owned(),
-        )
-        .exec(db)
-        .await
-        .context("Failed to replace entity")?;
-    Ok(())
-}
-
-#[instrument(skip(db))]
 pub async fn drop_entity<T: ConnectionTrait>(db: &T, entity: EntityKey) -> Result<()> {
     let entity: Vec<u8> = entity.as_slice().into();
     golem_base_entities::Entity::delete_by_id(entity)
@@ -462,29 +310,111 @@ pub async fn drop_entity<T: ConnectionTrait>(db: &T, entity: EntityKey) -> Resul
 }
 
 #[instrument(skip(db))]
+pub async fn get_latest_entity_history_entry<T: ConnectionTrait>(
+    db: &T,
+    entity_key: EntityKey,
+    older_than: Option<FullOperationIndex>,
+) -> Result<Option<EntityHistoryEntry>> {
+    let entity_key: Vec<u8> = entity_key.as_slice().into();
+
+    let mut q = golem_base_entity_history::Entity::find()
+        .filter(golem_base_entity_history::Column::EntityKey.eq(entity_key));
+
+    if let Some(FullOperationIndex {
+        block_number,
+        tx_index,
+        op_index,
+    }) = older_than
+    {
+        use golem_base_entity_history::Column;
+        q = q.filter(
+            Condition::any()
+                .add(Column::BlockNumber.lt(block_number))
+                .add(
+                    Column::BlockNumber
+                        .eq(block_number)
+                        .and(Column::TxIndex.lt(tx_index)),
+                )
+                .add(
+                    Column::BlockNumber
+                        .eq(block_number)
+                        .and(Column::TxIndex.eq(tx_index))
+                        .and(Column::OpIndex.lt(op_index)),
+                ),
+        )
+    }
+
+    q.order_by_desc(golem_base_entity_history::Column::BlockNumber)
+        .order_by_desc(golem_base_entity_history::Column::TxIndex)
+        .order_by_desc(golem_base_entity_history::Column::OpIndex)
+        .one(db)
+        .await
+        .context("Failed to get latest history entry")?
+        .map(EntityHistoryEntry::try_new)
+        .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn get_oldest_entity_history_entry<T: ConnectionTrait>(
+    db: &T,
+    entity_key: EntityKey,
+    newer_than: FullOperationIndex,
+) -> Result<Option<EntityHistoryEntry>> {
+    let entity_key: Vec<u8> = entity_key.as_slice().into();
+
+    use golem_base_entity_history::Column;
+    let FullOperationIndex {
+        block_number,
+        tx_index,
+        op_index,
+    } = newer_than;
+    golem_base_entity_history::Entity::find()
+        .filter(golem_base_entity_history::Column::EntityKey.eq(entity_key))
+        .filter(
+            Condition::any()
+                .add(Column::BlockNumber.gt(block_number))
+                .add(
+                    Column::BlockNumber
+                        .eq(block_number)
+                        .and(Column::TxIndex.gt(tx_index)),
+                )
+                .add(
+                    Column::BlockNumber
+                        .eq(block_number)
+                        .and(Column::TxIndex.eq(tx_index))
+                        .and(Column::OpIndex.gt(op_index)),
+                ),
+        )
+        .order_by_asc(golem_base_entity_history::Column::BlockNumber)
+        .order_by_asc(golem_base_entity_history::Column::TxIndex)
+        .order_by_asc(golem_base_entity_history::Column::OpIndex)
+        .one(db)
+        .await
+        .context("Failed to get oldest history entry")?
+        .map(EntityHistoryEntry::try_new)
+        .transpose()
+}
+
+#[instrument(skip(db))]
 pub async fn get_entity_history<T: ConnectionTrait>(
     db: &T,
     filter: EntityHistoryFilter,
 ) -> Result<(Vec<EntityHistoryEntry>, PaginationMetadata)> {
     let entity_key: Vec<u8> = filter.entity_key.as_slice().into();
 
-    let paginator = entity_history::Entity::find()
-        .filter(entity_history::Column::EntityKey.eq(entity_key))
-        .order_by_asc(entity_history::Column::BlockNumber)
-        .order_by_asc(entity_history::Column::TransactionHash)
-        .order_by_asc(entity_history::Column::TxIndex)
-        .order_by_asc(entity_history::Column::OpIndex)
+    let paginator = golem_base_entity_history::Entity::find()
+        .filter(golem_base_entity_history::Column::EntityKey.eq(entity_key))
+        .order_by_asc(golem_base_entity_history::Column::BlockNumber)
+        .order_by_asc(golem_base_entity_history::Column::TxIndex)
+        .order_by_asc(golem_base_entity_history::Column::OpIndex)
         .paginate(db, filter.pagination.page_size);
 
     let (items, pagination_metadata) = paginate(paginator, filter.pagination).await?;
 
-    let reference_block = super::blockscout::get_current_block(db)
-        .await?
-        .ok_or(anyhow!("No blocks indexed yet"))?;
     Ok((
         items
             .into_iter()
-            .map(|v| EntityHistoryEntry::try_new(v, &reference_block))
+            .map(EntityHistoryEntry::try_new)
             .collect::<Result<Vec<_>>>()?,
         pagination_metadata,
     ))
@@ -497,16 +427,99 @@ pub async fn get_entity_operation<T: ConnectionTrait>(
 ) -> Result<Option<EntityHistoryEntry>> {
     let tx_hash: Vec<u8> = filter.tx_hash.as_slice().into();
 
-    let reference_block = super::blockscout::get_current_block(db)
-        .await?
-        .ok_or(anyhow!("No blocks indexed yet"))?;
-
-    entity_history::Entity::find()
-        .filter(entity_history::Column::TransactionHash.eq(tx_hash))
-        .filter(entity_history::Column::OpIndex.eq(filter.op_index as i64))
+    golem_base_entity_history::Entity::find()
+        .filter(golem_base_entity_history::Column::TransactionHash.eq(tx_hash))
+        .filter(golem_base_entity_history::Column::OpIndex.eq(filter.op_index as i64))
         .one(db)
         .await
         .with_context(|| format!("Failed to get entity operation: {filter:?}"))?
-        .map(|v| EntityHistoryEntry::try_new(v, &reference_block))
+        .map(EntityHistoryEntry::try_new)
         .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn insert_history_entry<T: ConnectionTrait>(
+    db: &T,
+    entry: EntityHistoryEntry,
+) -> Result<()> {
+    let entry = golem_base_entity_history::ActiveModel {
+        entity_key: Set(entry.entity_key.as_slice().into()),
+        block_number: Set(entry.block_number.try_into()?),
+        block_hash: Set(entry.block_hash.as_slice().into()),
+        transaction_hash: Set(entry.transaction_hash.as_slice().into()),
+        tx_index: Set(entry.tx_index.try_into()?),
+        op_index: Set(entry.op_index.try_into()?),
+        block_timestamp: Set(entry.block_timestamp.naive_utc()),
+        owner: Set(entry.owner.map(|v| v.as_slice().into())),
+        sender: Set(entry.sender.as_slice().into()),
+        operation: Set(entry.operation.into()),
+        data: Set(entry.data.map(|v| v.into())),
+        prev_data: Set(entry.prev_data.map(|v| v.into())),
+        btl: Set(entry.btl.map(|v| v.into())),
+        status: Set(entry.status.into()),
+        prev_status: Set(entry.prev_status.map(|v| v.into())),
+        expires_at_block_number: Set(entry
+            .expires_at_block_number
+            .map(|v| v.try_into())
+            .transpose()?),
+        prev_expires_at_block_number: Set(entry
+            .prev_expires_at_block_number
+            .map(|v| v.try_into())
+            .transpose()?),
+    };
+    golem_base_entity_history::Entity::insert(entry)
+        .exec(db)
+        .await
+        .context("Failed to insert history entry")?;
+    Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn delete_history<T: ConnectionTrait>(db: &T, entity: EntityKey) -> Result<()> {
+    let entity: Vec<u8> = entity.as_slice().into();
+    golem_base_entity_history::Entity::delete_many()
+        .filter(golem_base_entity_history::Column::EntityKey.eq(entity))
+        .exec(db)
+        .await
+        .context("Failed to delete entity history")?;
+    Ok(())
+}
+#[instrument(skip(db))]
+pub async fn refresh_entity_based_on_history<T: ConnectionTrait>(
+    db: &T,
+    key: EntityKey,
+) -> Result<()> {
+    let latest_entry = get_latest_entity_history_entry(db, key, None).await?;
+
+    if let Some(latest_entry) = latest_entry {
+        let create_op = super::operations::find_create_operation(db, key).await?;
+
+        let entity = golem_base_entities::ActiveModel {
+            key: Set(key.as_slice().into()),
+            data: Set(latest_entry.data.map(Into::into)),
+            status: Set(latest_entry.status.into()),
+            owner: Set(latest_entry.owner.map(|v| v.as_slice().into())),
+            created_at_tx_hash: Set(create_op.map(|v| v.metadata.tx_hash.as_slice().into())),
+            last_updated_at_tx_hash: Set(latest_entry.transaction_hash.as_slice().into()),
+            expires_at_block_number: Set(latest_entry
+                .expires_at_block_number
+                .map(TryInto::try_into)
+                .transpose()?),
+            inserted_at: NotSet,
+            updated_at: Set(Utc::now().naive_utc()),
+        };
+        golem_base_entities::Entity::insert(entity)
+            .on_conflict(
+                OnConflict::column(golem_base_entities::Column::Key)
+                    .update_columns(golem_base_entities::Column::iter())
+                    .to_owned(),
+            )
+            .exec(db)
+            .await
+            .context("Failed to replace entity")?;
+    } else {
+        drop_entity(db, key).await?;
+    }
+
+    Ok(())
 }

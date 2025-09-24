@@ -13,12 +13,14 @@ mod m20250904_082310_add_golem_base_events_abi;
 mod m20250909_062255_create_mview_timeseries_data_usage;
 mod m20250915_140948_optimize_history_view;
 mod m20250919_080000_update_indexer_queue_trigger;
+mod m20250920_085525_history_as_table;
 mod m20250922_081148_create_mview_leaderboard_biggest_spenders;
 mod m20250922_110337_create_mview_leaderboard_entities_owned;
 mod m20250922_112804_create_mview_leaderboard_data_owned;
 mod m20250922_112933_create_mview_leaderboard_largest_entities;
 mod m20250922_113500_create_mview_leaderboard_effectively_largest_entities;
 mod m20250922_113754_create_mview_leaderboard_entities_created;
+mod m20250923_150237_process_txs_in_order;
 
 pub struct Migrator;
 
@@ -38,6 +40,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20250909_062255_create_mview_timeseries_data_usage::Migration),
             Box::new(m20250915_140948_optimize_history_view::Migration),
             Box::new(m20250919_080000_update_indexer_queue_trigger::Migration),
+            Box::new(m20250920_085525_history_as_table::Migration),
+            Box::new(m20250923_150237_process_txs_in_order::Migration),
             Box::new(m20250922_081148_create_mview_leaderboard_biggest_spenders::Migration),
             Box::new(m20250922_110337_create_mview_leaderboard_entities_owned::Migration),
             Box::new(m20250922_112804_create_mview_leaderboard_data_owned::Migration),

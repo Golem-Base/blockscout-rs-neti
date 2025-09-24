@@ -1,0 +1,11 @@
+[package]
+name = "golem-base-indexer-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+golem-base-indexer-logic = { path = "../golem-base-indexer-logic" }
+sea-orm.workspace = true
+tokio.workspace = true

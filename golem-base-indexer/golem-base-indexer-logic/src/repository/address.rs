@@ -8,13 +8,6 @@ use crate::types::{
 
 use super::sql;
 
-#[derive(FromQueryResult)]
-pub struct FullOperationIndex {
-    pub block_number: i32,
-    pub transaction_index: i32,
-    pub operation_index: i64,
-}
-
 #[derive(Debug, FromQueryResult)]
 struct DbAddressEntitiesCount {
     pub total_entities: i64,

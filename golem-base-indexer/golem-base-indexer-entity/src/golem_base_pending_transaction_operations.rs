@@ -12,6 +12,10 @@ pub struct Model {
     )]
     pub hash: Vec<u8>,
     pub inserted_at: DateTime,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub block_number: i64,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub index: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

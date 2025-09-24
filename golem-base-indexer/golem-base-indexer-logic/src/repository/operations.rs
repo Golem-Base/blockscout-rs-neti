@@ -1,7 +1,7 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use golem_base_indexer_entity::{
-    blocks, golem_base_numeric_annotations, golem_base_operations, golem_base_string_annotations,
-    sea_orm_active_enums::GolemBaseOperationType,
+    blocks, golem_base_entity_history, golem_base_numeric_annotations, golem_base_operations,
+    golem_base_string_annotations, sea_orm_active_enums::GolemBaseOperationType,
 };
 use sea_orm::{
     prelude::*,
@@ -13,7 +13,7 @@ use tracing::instrument;
 use crate::{
     pagination::paginate_try_from,
     types::{
-        BlockNumber, BlockNumberOrHashFilter, EntityKey, ListOperationsFilter, Operation,
+        BlockNumberOrHashFilter, EntityKey, FullOperationIndex, ListOperationsFilter, Operation,
         OperationData, OperationMetadata, OperationView, OperationsCount, OperationsFilter,
         PaginationMetadata, PaginationParams, TxHash,
     },
@@ -22,10 +22,22 @@ use crate::{
 use super::sql;
 
 #[derive(FromQueryResult)]
-pub struct FullOperationIndex {
+pub struct DbFullOperationIndex {
     pub block_number: i32,
     pub transaction_index: i32,
     pub operation_index: i64,
+}
+
+impl TryFrom<DbFullOperationIndex> for FullOperationIndex {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbFullOperationIndex) -> Result<Self> {
+        Ok(Self {
+            block_number: value.block_number.try_into()?,
+            tx_index: value.transaction_index.try_into()?,
+            op_index: value.operation_index.try_into()?,
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -82,18 +94,23 @@ impl From<Vec<OperationGroupCount>> for OperationsCount {
     }
 }
 
+impl From<OperationData> for GolemBaseOperationType {
+    fn from(v: OperationData) -> Self {
+        match v {
+            OperationData::Create(_, _) => Self::Create,
+            OperationData::Update(_, _) => Self::Update,
+            OperationData::Delete => Self::Delete,
+            OperationData::Extend(_) => Self::Extend,
+        }
+    }
+}
 impl TryFrom<ListOperationsFilter> for DbListOperationsFilter {
     type Error = anyhow::Error;
 
     fn try_from(v: ListOperationsFilter) -> Result<Self> {
         Ok(Self {
             pagination: v.pagination,
-            operation_type: v.operation_type.map(|op| match op {
-                OperationData::Create(_, _) => GolemBaseOperationType::Create,
-                OperationData::Update(_, _) => GolemBaseOperationType::Update,
-                OperationData::Delete => GolemBaseOperationType::Delete,
-                OperationData::Extend(_) => GolemBaseOperationType::Extend,
-            }),
+            operation_type: v.operation_type.map(|op| op.into()),
             operations_filter: v.operations_filter.try_into()?,
         })
     }
@@ -149,23 +166,9 @@ impl TryFrom<golem_base_operations::Model> for Operation {
                 tx_hash: v.transaction_hash.as_slice().try_into()?,
                 block_hash: v.block_hash.as_slice().try_into()?,
                 index: v.index.try_into()?,
+                block_number: v.block_number.try_into()?,
+                tx_index: v.tx_index.try_into()?,
             },
-        })
-    }
-}
-
-impl TryFrom<(golem_base_operations::Model, Option<blocks::Model>)> for OperationView {
-    type Error = anyhow::Error;
-
-    fn try_from(v: (golem_base_operations::Model, Option<blocks::Model>)) -> Result<Self> {
-        let (op, block) = v;
-
-        Ok(Self {
-            op: Operation::try_from(op.clone())?,
-            block_number: block
-                .ok_or(anyhow!("missing block number"))?
-                .number
-                .try_into()?,
         })
     }
 }
@@ -206,6 +209,8 @@ impl TryFrom<Operation> for golem_base_operations::ActiveModel {
             transaction_hash: Set(md.tx_hash.as_slice().into()),
             block_hash: Set(md.block_hash.as_slice().into()),
             index: Set(md.index.try_into()?),
+            block_number: Set(md.block_number.try_into()?),
+            tx_index: Set(md.tx_index.try_into()?),
             inserted_at: NotSet,
         })
     }
@@ -227,8 +232,8 @@ pub async fn insert_operation<T: ConnectionTrait>(db: &T, op: Operation) -> Resu
 pub async fn get_latest_update<T: ConnectionTrait>(
     db: &T,
     entity_key: EntityKey,
-) -> Result<Option<(BlockNumber, u64, u64)>> {
-    let res = FullOperationIndex::find_by_statement(Statement::from_sql_and_values(
+) -> Result<Option<FullOperationIndex>> {
+    let res = DbFullOperationIndex::find_by_statement(Statement::from_sql_and_values(
         DbBackend::Postgres,
         sql::GET_LATEST_UPDATE_OPERATION_INDEX,
         [entity_key.as_slice().into()],
@@ -237,15 +242,9 @@ pub async fn get_latest_update<T: ConnectionTrait>(
     .await
     .with_context(|| format!("Failed to get latest update: {entity_key}"))?;
 
-    res.map(|v| -> Result<_> {
-        Ok((
-            v.block_number.try_into()?,
-            v.transaction_index.try_into()?,
-            v.operation_index.try_into()?,
-        ))
-    })
-    .transpose()
-    .with_context(|| format!("Failed to get latest update: {entity_key}"))
+    res.map(TryInto::try_into)
+        .transpose()
+        .with_context(|| format!("Failed to get latest update: {entity_key}"))
 }
 
 #[instrument(skip(db))]
@@ -267,10 +266,7 @@ pub async fn get_operation<T: ConnectionTrait>(
 }
 
 fn filtered_operations(filter: DbOperationsFilter) -> Select<golem_base_operations::Entity> {
-    let mut q = golem_base_operations::Entity::find().join(
-        sea_orm::JoinType::LeftJoin,
-        golem_base_operations::Relation::Blocks.def(),
-    );
+    let mut q = golem_base_operations::Entity::find().inner_join(blocks::Entity);
 
     if let Some(key) = filter.entity_key {
         q = q.filter(golem_base_operations::Column::EntityKey.eq(key));
@@ -307,11 +303,29 @@ pub async fn list_operations<T: ConnectionTrait>(
     let query_with_blocks = query.select_also(blocks::Entity);
 
     let paginator = query_with_blocks
-        .order_by_asc(golem_base_operations::Column::TransactionHash)
+        .order_by_asc(golem_base_operations::Column::BlockNumber)
+        .order_by_asc(golem_base_operations::Column::TxIndex)
         .order_by_asc(golem_base_operations::Column::Index)
         .paginate(db, filter.pagination.page_size);
 
     paginate_try_from(paginator, filter.pagination).await
+}
+
+impl TryFrom<(golem_base_operations::Model, Option<blocks::Model>)> for OperationView {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        value: (golem_base_operations::Model, Option<blocks::Model>),
+    ) -> Result<Self, Self::Error> {
+        if let (op, Some(block)) = value {
+            Ok(Self {
+                op: op.try_into()?,
+                block_timestamp: block.timestamp.and_utc(),
+            })
+        } else {
+            bail!("Operation with no block");
+        }
+    }
 }
 
 #[instrument(skip(db))]
@@ -393,6 +407,10 @@ pub async fn delete_by_tx_hash<T: ConnectionTrait>(db: &T, tx_hash: TxHash) -> R
         .await?;
     golem_base_numeric_annotations::Entity::delete_many()
         .filter(golem_base_numeric_annotations::Column::OperationTxHash.eq(db_tx_hash.clone()))
+        .exec(db)
+        .await?;
+    golem_base_entity_history::Entity::delete_many()
+        .filter(golem_base_entity_history::Column::TransactionHash.eq(db_tx_hash.clone()))
         .exec(db)
         .await?;
     golem_base_operations::Entity::delete_many()
