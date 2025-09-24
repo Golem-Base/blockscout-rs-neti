@@ -2,8 +2,9 @@ mod helpers;
 
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
-use sea_orm::{ConnectionTrait, DbBackend, Statement};
+use helpers::utils::refresh_timeseries;
 use serde_json::{json, Value};
+use std::sync::Arc;
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
@@ -18,14 +19,7 @@ async fn chart_data_usage_should_work() {
         .tick()
         .await
         .unwrap();
-
-    client
-        .execute(Statement::from_string(
-            DbBackend::Postgres,
-            "REFRESH MATERIALIZED VIEW golem_base_timeseries",
-        ))
-        .await
-        .expect("Refresh of MATERIALIZED VIEW failed!");
+    refresh_timeseries(Arc::clone(&client)).await.unwrap();
 
     // Hourly
     let response: Value = test_server::send_get_request(

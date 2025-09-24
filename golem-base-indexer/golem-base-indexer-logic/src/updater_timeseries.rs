@@ -4,23 +4,27 @@ use std::{sync::Arc, time::Duration};
 use tokio::time;
 use tracing::error;
 
+const TIMESERIES_MATERIALIZED_VIEWS: &[&str] = &["golem_base_timeseries"];
+
 #[derive(Clone)]
-pub struct UpdateTimeseriesService {
+pub struct TimeseriesUpdaterService {
     db: Arc<DatabaseConnection>,
 }
 
-impl UpdateTimeseriesService {
+impl TimeseriesUpdaterService {
     pub fn new(db: Arc<DatabaseConnection>) -> Self {
         Self { db }
     }
 
-    pub async fn refresh_timeseries(&self) -> Result<()> {
-        self.db
-            .execute(Statement::from_string(
-                DatabaseBackend::Postgres,
-                "REFRESH MATERIALIZED VIEW golem_base_timeseries",
-            ))
-            .await?;
+    pub async fn refresh_views(&self) -> Result<()> {
+        for mview in TIMESERIES_MATERIALIZED_VIEWS {
+            self.db
+                .execute(Statement::from_string(
+                    DatabaseBackend::Postgres,
+                    format!("REFRESH MATERIALIZED VIEW {}", mview),
+                ))
+                .await?;
+        }
 
         Ok(())
     }
@@ -34,7 +38,7 @@ impl UpdateTimeseriesService {
             loop {
                 interval.tick().await;
 
-                if let Err(e) = refresher.refresh_timeseries().await {
+                if let Err(e) = refresher.refresh_views().await {
                     error!("Timeseries refresh failed: {}", e);
                 }
             }
