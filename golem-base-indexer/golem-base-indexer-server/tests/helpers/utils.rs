@@ -1,7 +1,8 @@
 use anyhow::Result;
 use bytes::Bytes;
-use golem_base_indexer_logic::updater_leaderboards::LeaderboardsUpdaterService;
-use golem_base_indexer_logic::updater_timeseries::TimeseriesUpdaterService;
+use golem_base_indexer_logic::{
+    updater_leaderboards::LeaderboardsUpdaterService, updater_timeseries::TimeseriesUpdaterService,
+};
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
