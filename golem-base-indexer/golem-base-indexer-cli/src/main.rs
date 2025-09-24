@@ -10,7 +10,7 @@ use sea_orm::{DatabaseConnection, TransactionTrait};
 
 #[derive(Parser)]
 struct Cli {
-    #[arg(long)]
+    #[arg(long, env = "DATABASE_URL")]
     db: String,
 
     #[command(subcommand)]
