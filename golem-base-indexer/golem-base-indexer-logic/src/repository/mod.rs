@@ -8,4 +8,5 @@ pub mod locks;
 pub mod logs;
 pub mod operations;
 mod sql;
+pub mod timeseries;
 pub mod transactions;

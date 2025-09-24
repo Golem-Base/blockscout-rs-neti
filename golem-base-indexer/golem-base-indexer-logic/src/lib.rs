@@ -35,6 +35,7 @@ pub mod pagination;
 pub mod repository;
 pub mod types;
 pub mod updater_leaderboards;
+pub mod updater_timeseries;
 pub mod well_known;
 
 lazy_static! {

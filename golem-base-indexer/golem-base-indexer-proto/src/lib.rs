@@ -4,9 +4,9 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, EntitiesFilter, Entity,
-    EntityHistoryEntry, EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
-    LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
+    AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, ChartInfo, ChartPoint,
+    EntitiesFilter, Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
+    EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, ListEntitiesFilter,
     ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations, OperationData,
@@ -541,6 +541,26 @@ impl From<AddressLeaderboardRanks> for v1::AddressLeaderboardRanksResponse {
             entities_created: ranks.entities_created,
             entities_owned: ranks.entities_owned,
             data_owned: ranks.data_owned,
+        }
+    }
+}
+
+impl From<ChartInfo> for v1::ChartInfo {
+    fn from(v: ChartInfo) -> Self {
+        Self {
+            id: v.id,
+            title: v.title,
+            description: v.description,
+        }
+    }
+}
+
+impl From<ChartPoint> for v1::ChartPoint {
+    fn from(v: ChartPoint) -> Self {
+        Self {
+            date: v.date,
+            date_to: v.date_to,
+            value: v.value,
         }
     }
 }

@@ -2921,6 +2921,7 @@ dependencies = [
  "pretty_assertions",
  "prometheus",
  "sea-orm",
+ "sea-query",
  "serde",
  "serde_with",
  "tokio",

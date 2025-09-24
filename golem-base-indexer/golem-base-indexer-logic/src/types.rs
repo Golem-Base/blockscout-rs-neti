@@ -384,6 +384,20 @@ pub struct AddressLeaderboardRanks {
     pub data_owned: u64,
 }
 
+#[derive(Debug, Clone)]
+pub struct ChartPoint {
+    pub date: String,
+    pub date_to: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChartInfo {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+}
+
 // Leaderboards
 #[derive(Debug, Clone)]
 pub struct LeaderboardBiggestSpendersItem {

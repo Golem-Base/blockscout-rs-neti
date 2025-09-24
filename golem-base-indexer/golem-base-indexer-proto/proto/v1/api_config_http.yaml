@@ -59,6 +59,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardEntitiesByBtl
       get: /api/v1/leaderboard/entities-by-btl
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartDataUsage
+      get: /api/v1/chart/data-usage
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check
