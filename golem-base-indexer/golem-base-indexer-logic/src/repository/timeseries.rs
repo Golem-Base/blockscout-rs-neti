@@ -26,7 +26,7 @@ impl TryFrom<i32> for ChartResolution {
 }
 
 #[derive(Iden)]
-pub enum GolemBaseTimeseries {
+pub enum GolemBaseTimeseriesDataUsage {
     Table,
     Timestamp,
     ActiveDataBytes,
@@ -45,7 +45,7 @@ struct DbChartDataUsageHourly {
 }
 
 #[instrument(skip(db))]
-pub async fn chart_data_usage<T: ConnectionTrait>(
+pub async fn timeseries_data_usage<T: ConnectionTrait>(
     db: &T,
     from: Option<String>,
     to: Option<String>,
@@ -198,16 +198,16 @@ fn parse_datetime_range(
 fn build_daily_value_before_query(before_date: NaiveDate) -> SelectStatement {
     Query::select()
         .expr_as(
-            Expr::col(GolemBaseTimeseries::Timestamp).cast_as("date"),
+            Expr::col(GolemBaseTimeseriesDataUsage::Timestamp).cast_as("date"),
             "timestamp",
         )
         .expr_as(
-            Expr::max(Expr::col(GolemBaseTimeseries::ActiveDataBytes)),
-            GolemBaseTimeseries::ActiveDataBytes,
+            Expr::max(Expr::col(GolemBaseTimeseriesDataUsage::ActiveDataBytes)),
+            GolemBaseTimeseriesDataUsage::ActiveDataBytes,
         )
-        .from(GolemBaseTimeseries::Table)
+        .from(GolemBaseTimeseriesDataUsage::Table)
         .and_where(
-            Expr::col(GolemBaseTimeseries::Timestamp)
+            Expr::col(GolemBaseTimeseriesDataUsage::Timestamp)
                 .cast_as("date")
                 .lt(before_date),
         )
@@ -220,14 +220,14 @@ fn build_daily_value_before_query(before_date: NaiveDate) -> SelectStatement {
 fn build_daily_data_usage_query(from: Option<NaiveDate>, to: Option<NaiveDate>) -> SelectStatement {
     let mut query = Query::select()
         .expr_as(
-            Expr::col(GolemBaseTimeseries::Timestamp).cast_as("date"),
+            Expr::col(GolemBaseTimeseriesDataUsage::Timestamp).cast_as("date"),
             "timestamp",
         )
         .expr_as(
-            Expr::max(Expr::col(GolemBaseTimeseries::ActiveDataBytes)),
-            GolemBaseTimeseries::ActiveDataBytes,
+            Expr::max(Expr::col(GolemBaseTimeseriesDataUsage::ActiveDataBytes)),
+            GolemBaseTimeseriesDataUsage::ActiveDataBytes,
         )
-        .from(GolemBaseTimeseries::Table)
+        .from(GolemBaseTimeseriesDataUsage::Table)
         .group_by_col("timestamp")
         .order_by("timestamp", sea_query::Order::Asc)
         .to_owned();
@@ -235,21 +235,21 @@ fn build_daily_data_usage_query(from: Option<NaiveDate>, to: Option<NaiveDate>) 
     match (from, to) {
         (Some(from_date), Some(to_date)) => {
             query.and_where(
-                Expr::col(GolemBaseTimeseries::Timestamp)
+                Expr::col(GolemBaseTimeseriesDataUsage::Timestamp)
                     .cast_as("date")
                     .between(from_date, to_date),
             );
         }
         (Some(from_date), None) => {
             query.and_where(
-                Expr::col(GolemBaseTimeseries::Timestamp)
+                Expr::col(GolemBaseTimeseriesDataUsage::Timestamp)
                     .cast_as("date")
                     .gte(from_date),
             );
         }
         (None, Some(to_date)) => {
             query.and_where(
-                Expr::col(GolemBaseTimeseries::Timestamp)
+                Expr::col(GolemBaseTimeseriesDataUsage::Timestamp)
                     .cast_as("date")
                     .lte(to_date),
             );
@@ -319,12 +319,15 @@ fn generate_daily_points(
 fn build_hourly_last_value_before_query(before_datetime: NaiveDateTime) -> SelectStatement {
     Query::select()
         .columns([
-            GolemBaseTimeseries::Timestamp,
-            GolemBaseTimeseries::ActiveDataBytes,
+            GolemBaseTimeseriesDataUsage::Timestamp,
+            GolemBaseTimeseriesDataUsage::ActiveDataBytes,
         ])
-        .from(GolemBaseTimeseries::Table)
-        .and_where(Expr::col(GolemBaseTimeseries::Timestamp).lt(before_datetime))
-        .order_by(GolemBaseTimeseries::Timestamp, sea_query::Order::Desc)
+        .from(GolemBaseTimeseriesDataUsage::Table)
+        .and_where(Expr::col(GolemBaseTimeseriesDataUsage::Timestamp).lt(before_datetime))
+        .order_by(
+            GolemBaseTimeseriesDataUsage::Timestamp,
+            sea_query::Order::Desc,
+        )
         .limit(1)
         .to_owned()
 }
@@ -335,24 +338,28 @@ fn build_hourly_data_usage_query(
 ) -> SelectStatement {
     let mut query = Query::select()
         .columns([
-            GolemBaseTimeseries::Timestamp,
-            GolemBaseTimeseries::ActiveDataBytes,
+            GolemBaseTimeseriesDataUsage::Timestamp,
+            GolemBaseTimeseriesDataUsage::ActiveDataBytes,
         ])
-        .from(GolemBaseTimeseries::Table)
-        .order_by(GolemBaseTimeseries::Timestamp, sea_query::Order::Asc)
+        .from(GolemBaseTimeseriesDataUsage::Table)
+        .order_by(
+            GolemBaseTimeseriesDataUsage::Timestamp,
+            sea_query::Order::Asc,
+        )
         .to_owned();
 
     match (from, to) {
         (Some(from_datetime), Some(to_datetime)) => {
             query.and_where(
-                Expr::col(GolemBaseTimeseries::Timestamp).between(from_datetime, to_datetime),
+                Expr::col(GolemBaseTimeseriesDataUsage::Timestamp)
+                    .between(from_datetime, to_datetime),
             );
         }
         (Some(from_datetime), None) => {
-            query.and_where(Expr::col(GolemBaseTimeseries::Timestamp).gte(from_datetime));
+            query.and_where(Expr::col(GolemBaseTimeseriesDataUsage::Timestamp).gte(from_datetime));
         }
         (None, Some(to_datetime)) => {
-            query.and_where(Expr::col(GolemBaseTimeseries::Timestamp).lte(to_datetime));
+            query.and_where(Expr::col(GolemBaseTimeseriesDataUsage::Timestamp).lte(to_datetime));
         }
         (None, None) => {}
     }
