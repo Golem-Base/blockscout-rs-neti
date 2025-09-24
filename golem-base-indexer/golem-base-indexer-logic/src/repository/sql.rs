@@ -42,20 +42,25 @@ where
     and transactions.to_address_hash in ($1, $2) 
     and transactions.status = 1
     and transactions.block_hash is not null
+order by
+    pendings.block_number asc,
+    pendings.index asc
 "#;
 
 pub const GET_TX_BY_HASH: &str = r#"
 select 
-    from_address_hash,
-    to_address_hash,
-    hash,
-    block_number,
-    block_hash,
-    index,
-    input
-from transactions
+    t.from_address_hash,
+    t.to_address_hash,
+    t.hash,
+    t.block_number,
+    t.block_hash,
+    b.timestamp as block_timestamp,
+    t.index,
+    t.input
+from transactions t
+    inner join blocks b on t.block_hash = b.hash
 where
-    hash = $1
+    t.hash = $1
 "#;
 
 pub const FIND_ENTITIES_BY_TX_HASH: &str = r#"
@@ -186,32 +191,25 @@ group by key, value
 "#;
 
 pub const STORAGE_USAGE_BY_BLOCK: &str = r#"
-WITH latest_entities_per_block AS (
-  SELECT
+WITH current_state AS (
+  SELECT DISTINCT ON (entity_key)
     block_number,
-    data,
     status,
-    entity_key,
-    ROW_NUMBER() OVER (PARTITION BY entity_key ORDER BY block_number DESC) as rn
+    length(data) size
   FROM golem_base_entity_history
-  WHERE block_number <= $1
-),
-current_state AS (
-  SELECT
-    block_number,
-    data,
-    status,
-    entity_key
-  FROM latest_entities_per_block
-  WHERE rn = 1 AND status = 'active'
+  WHERE block_number <= $1 AND operation != 'extend'
+  ORDER BY entity_key, block_number DESC
 )
 SELECT
   $1 as block_number,
+
   -- Storage added in this specific block
-  COALESCE(SUM(CASE WHEN block_number = $1 THEN LENGTH(data) END), 0) as block_bytes,
+  COALESCE(SUM(size) FILTER (WHERE block_number = $1), 0) as block_bytes,
+
   -- Total storage up to and including this block
-  COALESCE(SUM(LENGTH(data)), 0) as total_bytes
+  COALESCE(SUM(size), 0) as total_bytes
 FROM current_state
+WHERE status = 'active'
 "#;
 
 pub const GET_ADDRESS_ACTIVITY: &str = r#"

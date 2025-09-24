@@ -45,6 +45,7 @@ pub async fn paginate_try_from<'a, C, S, D>(
 where
     C: ConnectionTrait,
     S: SelectorTrait,
+    S::Item: std::fmt::Debug,
     D: TryFrom<S::Item>,
     <D as TryFrom<S::Item>>::Error: Into<anyhow::Error>,
 {

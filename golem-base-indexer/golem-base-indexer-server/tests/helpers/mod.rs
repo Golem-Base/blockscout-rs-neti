@@ -56,6 +56,7 @@ where
 
     let (settings, base) = {
         let mut settings = Settings::default(db.db_url());
+        settings.database.connect_options.max_connections = Some(50);
         let (server_settings, base) = test_server::get_test_server_settings();
         settings.server = server_settings;
         settings.metrics.enabled = false;

@@ -4,7 +4,7 @@ use futures::{Stream, StreamExt};
 use golem_base_indexer_entity::{
     golem_base_pending_transaction_cleanups, golem_base_pending_transaction_operations,
 };
-use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement, StreamTrait};
+use sea_orm::{prelude::*, DbBackend, FromQueryResult, QuerySelect, Statement, StreamTrait};
 use tracing::instrument;
 
 use super::sql;
@@ -37,6 +37,7 @@ struct DbTx {
     pub to_address_hash: Vec<u8>,
     pub block_number: Option<i32>,
     pub block_hash: Option<Vec<u8>>,
+    pub block_timestamp: Option<chrono::NaiveDateTime>,
     pub input: Vec<u8>,
     pub index: Option<i32>,
 }
@@ -48,6 +49,7 @@ impl TryFrom<DbTx> for Tx {
             input: tx.input.into(),
             block_hash: tx.block_hash.map(|v| v.as_slice().try_into()).transpose()?,
             block_number: tx.block_number.map(|v| v.try_into()).transpose()?,
+            block_timestamp: tx.block_timestamp.map(|v| v.and_utc()),
             from_address_hash: tx.from_address_hash.as_slice().try_into()?,
             to_address_hash: tx.to_address_hash.as_slice().try_into()?,
             hash: tx.hash.as_slice().try_into()?,
@@ -112,6 +114,7 @@ pub async fn stream_tx_hashes_for_cleanup<T: StreamTrait + ConnectionTrait>(
     db: &T,
 ) -> Result<impl Stream<Item = TxHash> + '_> {
     Ok(golem_base_pending_transaction_cleanups::Entity::find()
+        .limit(500)
         .stream(db)
         .await
         .context("Failed to get tx hashes for cleanup")?

@@ -28,6 +28,8 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub index: i64,
     pub inserted_at: DateTime,
+    pub block_number: i64,
+    pub tx_index: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -40,15 +42,31 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Blocks,
+    #[sea_orm(has_one = "super::golem_base_entity_history::Entity")]
+    GolemBaseEntityHistory,
     #[sea_orm(has_many = "super::golem_base_numeric_annotations::Entity")]
     GolemBaseNumericAnnotations,
     #[sea_orm(has_many = "super::golem_base_string_annotations::Entity")]
     GolemBaseStringAnnotations,
+    #[sea_orm(
+        belongs_to = "super::transactions::Entity",
+        from = "Column::TransactionHash",
+        to = "super::transactions::Column::Hash",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    Transactions,
 }
 
 impl Related<super::blocks::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Blocks.def()
+    }
+}
+
+impl Related<super::golem_base_entity_history::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::GolemBaseEntityHistory.def()
     }
 }
 
@@ -61,6 +79,12 @@ impl Related<super::golem_base_numeric_annotations::Entity> for Entity {
 impl Related<super::golem_base_string_annotations::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::GolemBaseStringAnnotations.def()
+    }
+}
+
+impl Related<super::transactions::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Transactions.def()
     }
 }
 

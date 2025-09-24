@@ -141,7 +141,7 @@ message Entity {
 
   optional string created_at_tx_hash = 4;
   string last_updated_at_tx_hash = 5;
-  uint64 expires_at_block_number = 6;
+  optional uint64 expires_at_block_number = 6;
 }
 
 message EntityWithExpTimestamp {
@@ -150,7 +150,7 @@ message EntityWithExpTimestamp {
   EntityStatus status = 3;
   optional string created_at_tx_hash = 4;
   string last_updated_at_tx_hash = 5;
-  uint64 expires_at_block_number = 6;
+  optional uint64 expires_at_block_number = 6;
   optional string expires_at_timestamp = 7;
 }
 
@@ -190,7 +190,7 @@ message FullEntity {
   optional uint64 created_at_block_number = 9;
   optional string created_at_timestamp = 10;
 
-  uint64 expires_at_block_number = 11;
+  optional uint64 expires_at_block_number = 11;
   optional string expires_at_timestamp = 12;
 
   optional string owner = 13;
@@ -244,7 +244,7 @@ message EntityHistoryEntry {
   optional string prev_data = 12;
   EntityStatus status = 13;
   optional string prev_status = 14;
-  uint64 expires_at_block_number = 15;
+  optional uint64 expires_at_block_number = 15;
   optional uint64 prev_expires_at_block_number = 16;
   string gas_used = 17;
   string fees_paid = 18;
