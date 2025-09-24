@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::settings::Settings;
-use golem_base_indexer_logic::Indexer;
+use golem_base_indexer_logic::{updater_leaderboards::LeaderboardsUpdaterService, Indexer};
 use sea_orm::DatabaseConnection;
 use tokio::time::sleep;
 
@@ -11,6 +11,11 @@ pub async fn run(
 ) -> Result<(), anyhow::Error> {
     let db_conn = db_connection.clone();
     let sett = settings.indexer.clone();
+
+    // Spawn leaderboards updater
+    let leaderboards_updater = LeaderboardsUpdaterService::new(Arc::clone(&db_connection));
+    leaderboards_updater.spawn_periodic_task(1800); // 1800 seconds = 30 minutes
+
     tokio::spawn(async move {
         let indexer = Indexer::new(db_conn, sett);
         indexer.update_gauges().await;
@@ -36,5 +41,6 @@ pub async fn run(
             sleep(delay).await;
         }
     });
+
     Ok(())
 }

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bytes::Bytes;
-use golem_base_indexer_server::LeaderboardsUpdaterService;
+use golem_base_indexer_logic::updater_leaderboards::LeaderboardsUpdaterService;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
