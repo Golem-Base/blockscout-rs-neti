@@ -45,7 +45,6 @@ where
 order by
     pendings.block_number asc,
     pendings.index asc
-limit 500
 "#;
 
 pub const GET_TX_BY_HASH: &str = r#"
