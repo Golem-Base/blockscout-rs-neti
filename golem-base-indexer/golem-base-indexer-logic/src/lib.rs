@@ -130,7 +130,6 @@ impl Indexer {
 
     #[instrument(skip_all)]
     pub async fn tick(&self) -> Result<()> {
-        tracing::info!("Tick");
         repository::blockscout::stream_unprocessed_tx_hashes(&*self.db)
             .await?
             .for_each_concurrent(self.settings.concurrency, |tx| async move {
