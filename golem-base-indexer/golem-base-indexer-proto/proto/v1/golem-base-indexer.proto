@@ -9,23 +9,28 @@ service GolemBaseIndexerService {
   rpc GetEntity(GetEntityRequest) returns (FullEntity);
   rpc GetEntityHistory(GetEntityHistoryRequest) returns (GetEntityHistoryResponse);
   rpc GetOperation(GetOperationRequest) returns (EntityHistoryEntry);
-  
   rpc ListEntities(ListEntitiesRequest) returns (ListEntitiesResponse);
   rpc ListOperations(ListOperationsRequest) returns (ListOperationsResponse);
-
   rpc CountEntities(CountEntitiesRequest) returns (CountEntitiesResponse);
   rpc CountOperations(CountOperationsRequest) returns (CountOperationsResponse);
-
   rpc AddressStats(AddressStatsRequest) returns (AddressStatsResponse);
-  rpc ListBiggestSpenders(ListBiggestSpendersRequest) returns (ListBiggestSpendersResponse);
   rpc BlockStats(BlockStatsRequest) returns (BlockStatsResponse);
-  rpc ListEntitiesByBtl(ListEntitiesByBtlRequest) returns (ListEntitiesByBtlResponse);
-  rpc ListAddressByEntitiesOwned(ListAddressByEntitiesOwnedRequest) returns (ListAddressByEntitiesOwnedResponse);
-  rpc ListAddressByDataOwned(ListAddressByDataOwnedRequest) returns (ListAddressByDataOwnedResponse);
-  rpc ListLargestEntities(ListLargestEntitiesRequest) returns (ListLargestEntitiesResponse);
-  rpc ListEffectivelyLargestEntities(ListEffectivelyLargestEntitiesRequest) returns (ListEffectivelyLargestEntitiesResponse);
-  rpc ListAddressByEntitiesCreated(ListAddressByEntitiesCreatedRequest) returns (ListAddressByEntitiesCreatedResponse);
   rpc ListCustomContractTransactions(ListCustomContractTransactionsRequest) returns (ListCustomContractTransactionsResponse);
+  rpc AddressLeaderboardRanks(AddressLeaderboardRanksRequest) returns (AddressLeaderboardRanksResponse);
+
+  // Leaderboards
+  rpc LeaderboardBiggestSpenders(PaginationRequest) returns (LeaderboardBiggestSpendersResponse);
+  rpc LeaderboardEntitiesCreated(PaginationRequest) returns (LeaderboardEntitiesCreatedResponse);
+  rpc LeaderboardEntitiesOwned(PaginationRequest) returns (LeaderboardEntitiesOwnedResponse);
+  rpc LeaderboardDataOwned(PaginationRequest) returns (LeaderboardDataOwnedResponse);
+  rpc LeaderboardLargestEntities(PaginationRequest) returns (LeaderboardLargestEntitiesResponse);
+  rpc LeaderboardEffectivelyLargestEntities(PaginationRequest) returns (LeaderboardEffectivelyLargestEntitiesResponse);
+  rpc LeaderboardEntitiesByBtl(PaginationRequest) returns (LeaderboardEntitiesByBtlResponse);
+}
+
+message PaginationRequest {
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
 }
 
 message AddressStatsRequest {
@@ -247,22 +252,6 @@ message EntityHistoryEntry {
   optional string prev_expires_at_timestamp = 20;
 }
 
-message ListBiggestSpendersRequest {
-  optional uint64 page = 1;
-  optional uint64 page_size = 2;
-}
-
-message ListBiggestSpendersResponse {
-  repeated BiggestSpender items = 1;
-  Pagination pagination = 2;
-}
-
-message BiggestSpender {
-  uint64 rank = 1;
-  string address = 2;
-  string total_fees = 3;
-}
-
 message BlockStatsRequest {
   string block_number = 1;
 }
@@ -283,93 +272,6 @@ message BlockStatsCounts {
 message BlockStatsStorage {
   uint64 block_bytes = 1;
   uint64 total_bytes = 2;
-}
-
-message ListEntitiesByBtlRequest {
-  optional uint64 page = 1;
-  optional uint64 page_size = 2;
-}
-
-message ListEntitiesByBtlResponse {
-  repeated EntityWithExpTimestamp items = 1;
-  Pagination pagination = 2;
-}
-
-message ListAddressByEntitiesOwnedRequest {
-  optional uint64 page = 1;
-  optional uint64 page_size = 2;
-}
-
-message ListAddressByEntitiesOwnedResponse {
-  repeated AddressByEntitiesOwned items = 1;
-  Pagination pagination = 2;
-}
-
-message AddressByEntitiesOwned {
-  string address = 1;
-  uint64 entities_count = 2;
-}
-
-message ListAddressByDataOwnedRequest {
-  optional uint64 page = 1;
-  optional uint64 page_size = 2;
-}
-
-message ListAddressByDataOwnedResponse {
-  repeated AddressByDataOwned items = 1;
-  Pagination pagination = 2;
-}
-
-message AddressByDataOwned {
-  string address = 1;
-  uint64 data_size = 2;
-}
-
-message ListLargestEntitiesRequest {
-  optional uint64 page = 1;
-  optional uint64 page_size = 2;
-}
-
-message ListLargestEntitiesResponse {
-  repeated EntityDataSize items = 1;
-  Pagination pagination = 2;
-}
-
-message EntityDataSize {
-  string entity_key = 1;
-  uint64 data_size = 2;
-}
-
-message ListEffectivelyLargestEntitiesRequest {
-  optional uint64 page = 1;
-  optional uint64 page_size = 2;
-}
-
-message ListEffectivelyLargestEntitiesResponse {
-  repeated EntityEffectiveDataSize items = 1;
-  Pagination pagination = 2;
-}
-
-message EntityEffectiveDataSize {
-  string entity_key = 1;
-  uint64 data_size = 2;
-  uint64 lifespan = 3; // lifespan in blocks
-}
-
-message ListAddressByEntitiesCreatedRequest {
-  optional uint64 page = 1;
-  optional uint64 page_size = 2;
-}
-
-message ListAddressByEntitiesCreatedResponse {
-  repeated AddressByEntitiesCreated items = 1;
-  Pagination pagination = 2;
-}
-
-message AddressByEntitiesCreated {
-  uint64 rank = 1;
-  string address = 2;
-  uint64 entities_created_count = 3;
 }
 
 message ListCustomContractTransactionsRequest {
@@ -402,3 +304,88 @@ message Transaction {
   optional string l1_transaction_origin = 17;
   optional uint64 l1_block_number = 18;
 }
+
+message AddressLeaderboardRanksRequest {
+  string address = 1;
+}
+
+message AddressLeaderboardRanksResponse {
+  uint64 biggest_spenders = 1;
+  uint64 entities_created = 2;
+  uint64 entities_owned = 3;
+  uint64 data_owned = 4;
+}
+
+// Leaderboards
+message LeaderboardBiggestSpendersResponse {
+  repeated LeaderboardBiggestSpendersItem items = 1;
+  Pagination pagination = 2;
+}
+
+message LeaderboardBiggestSpendersItem {
+  uint64 rank = 1;
+  string address = 2;
+  string total_fees = 3;
+}
+
+message LeaderboardEntitiesCreatedResponse {
+  repeated LeaderboardEntitiesCreatedItem items = 1;
+  Pagination pagination = 2;
+}
+
+message LeaderboardEntitiesCreatedItem {
+  uint64 rank = 1;
+  string address = 2;
+  uint64 entities_created_count = 3;
+}
+
+message LeaderboardEntitiesOwnedResponse {
+  repeated LeaderboardEntitiesOwnedItem items = 1;
+  Pagination pagination = 2;
+}
+
+message LeaderboardEntitiesOwnedItem {
+  uint64 rank = 1;
+  string address = 2;
+  uint64 entities_count = 3;
+}
+
+message LeaderboardDataOwnedResponse {
+  repeated LeaderboardDataOwnedItem items = 1;
+  Pagination pagination = 2;
+}
+
+message LeaderboardDataOwnedItem {
+  uint64 rank = 1;
+  string address = 2;
+  uint64 data_size = 3;
+}
+
+message LeaderboardLargestEntitiesResponse {
+  repeated LeaderboardLargestEntitiesItem items = 1;
+  Pagination pagination = 2;
+}
+
+message LeaderboardLargestEntitiesItem {
+  uint64 rank = 1;
+  string entity_key = 2;
+  uint64 data_size = 3;
+}
+
+message LeaderboardEffectivelyLargestEntitiesResponse {
+  repeated LeaderboardEffectivelyLargestEntitiesItem items = 1;
+  Pagination pagination = 2;
+}
+
+message LeaderboardEffectivelyLargestEntitiesItem {
+  uint64 rank = 1;
+  string entity_key = 2;
+  uint64 data_size = 3;
+  uint64 lifespan = 4; // lifespan in blocks
+}
+
+message LeaderboardEntitiesByBtlResponse {
+  repeated EntityWithExpTimestamp items = 1;
+  Pagination pagination = 2;
+}
+

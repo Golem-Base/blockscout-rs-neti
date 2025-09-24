@@ -302,13 +302,6 @@ pub struct AddressTxsCount {
 }
 
 #[derive(Debug, Clone)]
-pub struct BiggestSpenders {
-    pub rank: u64,
-    pub address: Address,
-    pub total_fees: CurrencyAmount,
-}
-
-#[derive(Debug, Clone)]
 pub struct EntityHistoryEntry {
     pub entity_key: EntityKey,
     pub block_number: BlockNumber,
@@ -347,38 +340,6 @@ pub struct BlockStorageUsage {
 }
 
 #[derive(Debug, Clone)]
-pub struct AddressByEntitiesOwned {
-    pub address: Address,
-    pub entities_count: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct AddressByDataOwned {
-    pub address: Address,
-    pub data_size: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct EntityDataSize {
-    pub entity_key: EntityKey,
-    pub data_size: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct EntityEffectiveDataSize {
-    pub entity_key: EntityKey,
-    pub data_size: u64,
-    pub lifespan: BlockNumber,
-}
-
-#[derive(Debug, Clone)]
-pub struct AddressByEntitiesCreated {
-    pub rank: u64,
-    pub address: Address,
-    pub entities_created_count: u64,
-}
-
-#[derive(Debug, Clone)]
 pub struct AddressActivity {
     pub first_seen_timestamp: Option<DateTime<Utc>>,
     pub last_seen_timestamp: Option<DateTime<Utc>>,
@@ -413,4 +374,56 @@ pub struct FullOperationIndex {
     pub block_number: BlockNumber,
     pub tx_index: u64,
     pub op_index: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct AddressLeaderboardRanks {
+    pub biggest_spenders: u64,
+    pub entities_created: u64,
+    pub entities_owned: u64,
+    pub data_owned: u64,
+}
+
+// Leaderboards
+#[derive(Debug, Clone)]
+pub struct LeaderboardBiggestSpendersItem {
+    pub rank: u64,
+    pub address: Address,
+    pub total_fees: CurrencyAmount,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardEntitiesCreatedItem {
+    pub rank: u64,
+    pub address: Address,
+    pub entities_created_count: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardEntitiesOwnedItem {
+    pub rank: u64,
+    pub address: Address,
+    pub entities_count: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardDataOwnedItem {
+    pub rank: u64,
+    pub address: Address,
+    pub data_size: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardLargestEntitiesItem {
+    pub rank: u64,
+    pub entity_key: EntityKey,
+    pub data_size: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardEffectivelyLargestEntitiesItem {
+    pub rank: u64,
+    pub entity_key: EntityKey,
+    pub data_size: u64,
+    pub lifespan: BlockNumber,
 }

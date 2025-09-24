@@ -8,7 +8,7 @@ use sea_orm::{
     sea_query::OnConflict,
     sqlx::types::chrono::Utc,
     ActiveValue::{NotSet, Set},
-    Condition, DbBackend, FromQueryResult, Iterable, QueryOrder, Statement,
+    Condition, FromQueryResult, Iterable, QueryOrder, Statement,
 };
 use tracing::instrument;
 
@@ -17,11 +17,9 @@ use crate::{
     pagination::{paginate, paginate_try_from},
     repository::sql,
     types::{
-        Address, AddressByDataOwned, AddressByEntitiesOwned, Block, BlockNumber, Bytes,
-        EntitiesFilter, Entity, EntityDataSize, EntityEffectiveDataSize, EntityHistoryEntry,
+        Address, Block, BlockNumber, Bytes, EntitiesFilter, Entity, EntityHistoryEntry,
         EntityHistoryFilter, EntityKey, EntityStatus, EntityWithExpTimestamp, FullEntity,
-        FullOperationIndex, ListEntitiesFilter, OperationFilter, PaginationMetadata,
-        PaginationParams, TxHash,
+        FullOperationIndex, ListEntitiesFilter, OperationFilter, PaginationMetadata, TxHash,
     },
 };
 
@@ -60,31 +58,6 @@ pub struct GolemBaseEntityExtend {
     pub expires_at: BlockNumber,
 }
 
-#[derive(Debug, FromQueryResult)]
-struct DbAddressByEntitiesOwned {
-    pub address: Vec<u8>,
-    pub entities_count: i64,
-}
-
-#[derive(Debug, FromQueryResult)]
-struct DbAddressByDataOwned {
-    pub address: Vec<u8>,
-    pub data_size: i64,
-}
-
-#[derive(Debug, FromQueryResult)]
-struct DbEntityDataSize {
-    pub entity_key: Vec<u8>,
-    pub data_size: i32,
-}
-
-#[derive(Debug, FromQueryResult)]
-struct DbEntityEffectiveDataSize {
-    pub entity_key: Vec<u8>,
-    pub data_size: i32,
-    pub lifespan: i64,
-}
-
 impl From<EntityStatus> for GolemBaseEntityStatusType {
     fn from(value: EntityStatus) -> Self {
         match value {
@@ -102,51 +75,6 @@ impl From<GolemBaseEntityStatusType> for EntityStatus {
             GolemBaseEntityStatusType::Deleted => EntityStatus::Deleted,
             GolemBaseEntityStatusType::Expired => EntityStatus::Expired,
         }
-    }
-}
-
-impl TryFrom<DbAddressByEntitiesOwned> for AddressByEntitiesOwned {
-    type Error = anyhow::Error;
-
-    fn try_from(value: DbAddressByEntitiesOwned) -> Result<Self> {
-        Ok(Self {
-            address: value.address.as_slice().try_into()?,
-            entities_count: value.entities_count.try_into()?,
-        })
-    }
-}
-
-impl TryFrom<DbAddressByDataOwned> for AddressByDataOwned {
-    type Error = anyhow::Error;
-
-    fn try_from(value: DbAddressByDataOwned) -> Result<Self> {
-        Ok(Self {
-            address: value.address.as_slice().try_into()?,
-            data_size: value.data_size.try_into()?,
-        })
-    }
-}
-
-impl TryFrom<DbEntityDataSize> for EntityDataSize {
-    type Error = anyhow::Error;
-
-    fn try_from(value: DbEntityDataSize) -> Result<Self> {
-        Ok(Self {
-            entity_key: value.entity_key.as_slice().try_into()?,
-            data_size: value.data_size as u64,
-        })
-    }
-}
-
-impl TryFrom<DbEntityEffectiveDataSize> for EntityEffectiveDataSize {
-    type Error = anyhow::Error;
-
-    fn try_from(value: DbEntityEffectiveDataSize) -> Result<Self> {
-        Ok(Self {
-            entity_key: value.entity_key.as_slice().try_into()?,
-            data_size: value.data_size.try_into()?,
-            lifespan: value.lifespan.try_into()?,
-        })
     }
 }
 
@@ -173,7 +101,7 @@ impl TryFrom<golem_base_entities::Model> for Entity {
 }
 
 impl EntityWithExpTimestamp {
-    fn try_new(value: golem_base_entities::Model, reference_block: &Block) -> Result<Self> {
+    pub fn try_new(value: golem_base_entities::Model, reference_block: &Block) -> Result<Self> {
         let entity_base: Entity = value.try_into()?;
         let expires_at_timestamp = entity_base
             .expires_at_block_number
@@ -510,91 +438,6 @@ pub async fn get_entity_operation<T: ConnectionTrait>(
 }
 
 #[instrument(skip(db))]
-pub async fn list_entities_by_btl<T: ConnectionTrait>(
-    db: &T,
-    filter: PaginationParams,
-) -> Result<(Vec<EntityWithExpTimestamp>, PaginationMetadata)> {
-    let paginator = golem_base_entities::Entity::find()
-        .filter(golem_base_entities::Column::Status.eq(GolemBaseEntityStatusType::Active))
-        .order_by_desc(golem_base_entities::Column::ExpiresAtBlockNumber)
-        .paginate(db, filter.page_size);
-
-    let reference_block = super::blockscout::get_current_block(db)
-        .await?
-        .ok_or(anyhow!("No blocks indexed yet"))?;
-
-    let (entities, pagination_metadata) = paginate(paginator, filter).await?;
-
-    Ok((
-        entities
-            .into_iter()
-            .map(|v| EntityWithExpTimestamp::try_new(v, &reference_block))
-            .collect::<Result<Vec<_>>>()?,
-        pagination_metadata,
-    ))
-}
-
-#[instrument(skip(db))]
-pub async fn list_addresses_by_entities_owned<T: ConnectionTrait>(
-    db: &T,
-    filter: PaginationParams,
-) -> Result<(Vec<AddressByEntitiesOwned>, PaginationMetadata)> {
-    let paginator = DbAddressByEntitiesOwned::find_by_statement(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        sql::LIST_ADDRESS_BY_ENTITIES_OWNED,
-        [],
-    ))
-    .paginate(db, filter.page_size);
-
-    paginate_try_from(paginator, filter).await
-}
-
-#[instrument(skip(db))]
-pub async fn list_addresses_by_data_owned<T: ConnectionTrait>(
-    db: &T,
-    filter: PaginationParams,
-) -> Result<(Vec<AddressByDataOwned>, PaginationMetadata)> {
-    let paginator = DbAddressByDataOwned::find_by_statement(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        sql::LIST_ADDRESS_BY_DATA_OWNED,
-        [],
-    ))
-    .paginate(db, filter.page_size);
-
-    paginate_try_from(paginator, filter).await
-}
-
-#[instrument(skip(db))]
-pub async fn list_largest_entities<T: ConnectionTrait>(
-    db: &T,
-    filter: PaginationParams,
-) -> Result<(Vec<EntityDataSize>, PaginationMetadata)> {
-    let paginator = DbEntityDataSize::find_by_statement(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        sql::LIST_ENTITIES_BY_LARGEST_DATA_SIZE,
-        [],
-    ))
-    .paginate(db, filter.page_size);
-
-    paginate_try_from(paginator, filter).await
-}
-
-#[instrument(skip(db))]
-pub async fn list_effectively_largest_entities<T: ConnectionTrait>(
-    db: &T,
-    filter: PaginationParams,
-) -> Result<(Vec<EntityEffectiveDataSize>, PaginationMetadata)> {
-    let paginator = DbEntityEffectiveDataSize::find_by_statement(Statement::from_sql_and_values(
-        DbBackend::Postgres,
-        sql::LIST_ENTITIES_BY_EFFECTIVELY_LARGEST_DATA_SIZE,
-        [],
-    ))
-    .paginate(db, filter.page_size);
-
-    paginate_try_from(paginator, filter).await
-}
-
-#[instrument(skip(db))]
 pub async fn insert_history_entry<T: ConnectionTrait>(
     db: &T,
     entry: EntityHistoryEntry,
@@ -641,7 +484,6 @@ pub async fn delete_history<T: ConnectionTrait>(db: &T, entity: EntityKey) -> Re
         .context("Failed to delete entity history")?;
     Ok(())
 }
-
 #[instrument(skip(db))]
 pub async fn refresh_entity_based_on_history<T: ConnectionTrait>(
     db: &T,

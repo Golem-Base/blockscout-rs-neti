@@ -10,6 +10,25 @@ consumes:
 produces:
   - application/json
 paths:
+  /api/v1/address/{address}/leaderboard-ranks:
+    get:
+      operationId: GolemBaseIndexerService_AddressLeaderboardRanks
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1AddressLeaderboardRanksResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: address
+          in: path
+          required: true
+          type: string
+      tags:
+        - GolemBaseIndexerService
   /api/v1/address/{address}/stats:
     get:
       operationId: GolemBaseIndexerService_AddressStats
@@ -188,12 +207,13 @@ paths:
         - GolemBaseIndexerService
   /api/v1/leaderboard/biggest-spenders:
     get:
-      operationId: GolemBaseIndexerService_ListBiggestSpenders
+      summary: Leaderboards
+      operationId: GolemBaseIndexerService_LeaderboardBiggestSpenders
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ListBiggestSpendersResponse'
+            $ref: '#/definitions/v1LeaderboardBiggestSpendersResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -213,12 +233,12 @@ paths:
         - GolemBaseIndexerService
   /api/v1/leaderboard/data-owned:
     get:
-      operationId: GolemBaseIndexerService_ListAddressByDataOwned
+      operationId: GolemBaseIndexerService_LeaderboardDataOwned
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ListAddressByDataOwnedResponse'
+            $ref: '#/definitions/v1LeaderboardDataOwnedResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -238,12 +258,12 @@ paths:
         - GolemBaseIndexerService
   /api/v1/leaderboard/effectively-largest-entities:
     get:
-      operationId: GolemBaseIndexerService_ListEffectivelyLargestEntities
+      operationId: GolemBaseIndexerService_LeaderboardEffectivelyLargestEntities
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ListEffectivelyLargestEntitiesResponse'
+            $ref: '#/definitions/v1LeaderboardEffectivelyLargestEntitiesResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -263,12 +283,12 @@ paths:
         - GolemBaseIndexerService
   /api/v1/leaderboard/entities-by-btl:
     get:
-      operationId: GolemBaseIndexerService_ListEntitiesByBtl
+      operationId: GolemBaseIndexerService_LeaderboardEntitiesByBtl
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ListEntitiesByBtlResponse'
+            $ref: '#/definitions/v1LeaderboardEntitiesByBtlResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -288,12 +308,12 @@ paths:
         - GolemBaseIndexerService
   /api/v1/leaderboard/entities-created:
     get:
-      operationId: GolemBaseIndexerService_ListAddressByEntitiesCreated
+      operationId: GolemBaseIndexerService_LeaderboardEntitiesCreated
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ListAddressByEntitiesCreatedResponse'
+            $ref: '#/definitions/v1LeaderboardEntitiesCreatedResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -313,12 +333,12 @@ paths:
         - GolemBaseIndexerService
   /api/v1/leaderboard/entities-owned:
     get:
-      operationId: GolemBaseIndexerService_ListAddressByEntitiesOwned
+      operationId: GolemBaseIndexerService_LeaderboardEntitiesOwned
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ListAddressByEntitiesOwnedResponse'
+            $ref: '#/definitions/v1LeaderboardEntitiesOwnedResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -338,12 +358,12 @@ paths:
         - GolemBaseIndexerService
   /api/v1/leaderboard/largest-entities:
     get:
-      operationId: GolemBaseIndexerService_ListLargestEntities
+      operationId: GolemBaseIndexerService_LeaderboardLargestEntities
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ListLargestEntitiesResponse'
+            $ref: '#/definitions/v1LeaderboardLargestEntitiesResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -543,31 +563,19 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/protobufAny'
-  v1AddressByDataOwned:
+  v1AddressLeaderboardRanksResponse:
     type: object
     properties:
-      address:
-        type: string
-      data_size:
+      biggest_spenders:
         type: string
         format: uint64
-  v1AddressByEntitiesCreated:
-    type: object
-    properties:
-      rank:
+      entities_created:
         type: string
         format: uint64
-      address:
-        type: string
-      entities_created_count:
+      entities_owned:
         type: string
         format: uint64
-  v1AddressByEntitiesOwned:
-    type: object
-    properties:
-      address:
-        type: string
-      entities_count:
+      data_owned:
         type: string
         format: uint64
   v1AddressStatsResponse:
@@ -600,16 +608,6 @@ definitions:
       last_seen_block:
         type: string
         format: uint64
-  v1BiggestSpender:
-    type: object
-    properties:
-      rank:
-        type: string
-        format: uint64
-      address:
-        type: string
-      total_fees:
-        type: string
   v1BlockStatsCounts:
     type: object
     properties:
@@ -681,26 +679,6 @@ definitions:
       expires_at_block_number:
         type: string
         format: uint64
-  v1EntityDataSize:
-    type: object
-    properties:
-      entity_key:
-        type: string
-      data_size:
-        type: string
-        format: uint64
-  v1EntityEffectiveDataSize:
-    type: object
-    properties:
-      entity_key:
-        type: string
-      data_size:
-        type: string
-        format: uint64
-      lifespan:
-        type: string
-        format: uint64
-        title: lifespan in blocks
   v1EntityHistoryEntry:
     type: object
     properties:
@@ -840,44 +818,144 @@ definitions:
     properties:
       status:
         $ref: '#/definitions/HealthCheckResponseServingStatus'
-  v1ListAddressByDataOwnedResponse:
+  v1LeaderboardBiggestSpendersItem:
+    type: object
+    properties:
+      rank:
+        type: string
+        format: uint64
+      address:
+        type: string
+      total_fees:
+        type: string
+  v1LeaderboardBiggestSpendersResponse:
     type: object
     properties:
       items:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1AddressByDataOwned'
+          $ref: '#/definitions/v1LeaderboardBiggestSpendersItem'
       pagination:
         $ref: '#/definitions/v1Pagination'
-  v1ListAddressByEntitiesCreatedResponse:
+    title: Leaderboards
+  v1LeaderboardDataOwnedItem:
+    type: object
+    properties:
+      rank:
+        type: string
+        format: uint64
+      address:
+        type: string
+      data_size:
+        type: string
+        format: uint64
+  v1LeaderboardDataOwnedResponse:
     type: object
     properties:
       items:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1AddressByEntitiesCreated'
+          $ref: '#/definitions/v1LeaderboardDataOwnedItem'
       pagination:
         $ref: '#/definitions/v1Pagination'
-  v1ListAddressByEntitiesOwnedResponse:
+  v1LeaderboardEffectivelyLargestEntitiesItem:
+    type: object
+    properties:
+      rank:
+        type: string
+        format: uint64
+      entity_key:
+        type: string
+      data_size:
+        type: string
+        format: uint64
+      lifespan:
+        type: string
+        format: uint64
+        title: lifespan in blocks
+  v1LeaderboardEffectivelyLargestEntitiesResponse:
     type: object
     properties:
       items:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1AddressByEntitiesOwned'
+          $ref: '#/definitions/v1LeaderboardEffectivelyLargestEntitiesItem'
       pagination:
         $ref: '#/definitions/v1Pagination'
-  v1ListBiggestSpendersResponse:
+  v1LeaderboardEntitiesByBtlResponse:
     type: object
     properties:
       items:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1BiggestSpender'
+          $ref: '#/definitions/v1EntityWithExpTimestamp'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
+  v1LeaderboardEntitiesCreatedItem:
+    type: object
+    properties:
+      rank:
+        type: string
+        format: uint64
+      address:
+        type: string
+      entities_created_count:
+        type: string
+        format: uint64
+  v1LeaderboardEntitiesCreatedResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1LeaderboardEntitiesCreatedItem'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
+  v1LeaderboardEntitiesOwnedItem:
+    type: object
+    properties:
+      rank:
+        type: string
+        format: uint64
+      address:
+        type: string
+      entities_count:
+        type: string
+        format: uint64
+  v1LeaderboardEntitiesOwnedResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1LeaderboardEntitiesOwnedItem'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
+  v1LeaderboardLargestEntitiesItem:
+    type: object
+    properties:
+      rank:
+        type: string
+        format: uint64
+      entity_key:
+        type: string
+      data_size:
+        type: string
+        format: uint64
+  v1LeaderboardLargestEntitiesResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1LeaderboardLargestEntitiesItem'
       pagination:
         $ref: '#/definitions/v1Pagination'
   v1ListCustomContractTransactionsResponse:
@@ -890,26 +968,6 @@ definitions:
           $ref: '#/definitions/v1Transaction'
       pagination:
         $ref: '#/definitions/v1Pagination'
-  v1ListEffectivelyLargestEntitiesResponse:
-    type: object
-    properties:
-      items:
-        type: array
-        items:
-          type: object
-          $ref: '#/definitions/v1EntityEffectiveDataSize'
-      pagination:
-        $ref: '#/definitions/v1Pagination'
-  v1ListEntitiesByBtlResponse:
-    type: object
-    properties:
-      items:
-        type: array
-        items:
-          type: object
-          $ref: '#/definitions/v1EntityWithExpTimestamp'
-      pagination:
-        $ref: '#/definitions/v1Pagination'
   v1ListEntitiesResponse:
     type: object
     properties:
@@ -918,16 +976,6 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1Entity'
-      pagination:
-        $ref: '#/definitions/v1Pagination'
-  v1ListLargestEntitiesResponse:
-    type: object
-    properties:
-      items:
-        type: array
-        items:
-          type: object
-          $ref: '#/definitions/v1EntityDataSize'
       pagination:
         $ref: '#/definitions/v1Pagination'
   v1ListOperationsResponse:
