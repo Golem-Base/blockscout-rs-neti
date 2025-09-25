@@ -99,8 +99,24 @@ begin
     select to_address_hash into v_address_hash from transactions where hash = new.transaction_hash;
     if v_address_hash = '\x4200000000000000000000000000000000000015' then
         insert into golem_base_pending_logs_operations (transaction_hash, block_hash, index, block_number)
-            values (new.transaction_hash, new.block_hash, new.index, new.block_number);
+            values (new.transaction_hash, new.block_hash, new.index, new.block_number) on conflict do nothing;
     end if;
+    return new;
+end;
+$$
+"#,
+        );
+
+        let create_function_new_tx = Statement::from_string(
+            DatabaseBackend::Postgres,
+            r#"
+create or replace function golem_base_queue_transaction_processing()
+    returns trigger
+    language plpgsql
+as
+$$
+begin
+    insert into golem_base_pending_transaction_operations (hash, block_number, index) values (new.hash, new.block_number, new.index) on conflict do nothing;
     return new;
 end;
 $$
@@ -117,6 +133,7 @@ $$
             create_logs_update_trigger,
             create_tx_insert_trigger,
             create_tx_update_trigger,
+            create_function_new_tx,
         ]);
 
         let txn = manager.get_connection().begin().await?;
@@ -169,6 +186,22 @@ execute function golem_base_queue_transaction_processing();
 "#,
         );
 
+        let create_function_new_tx = Statement::from_string(
+            DatabaseBackend::Postgres,
+            r#"
+create or replace function golem_base_queue_transaction_processing()
+    returns trigger
+    language plpgsql
+as
+$$
+begin
+    insert into golem_base_pending_transaction_operations (hash, block_number, index) values (new.hash, new.block_number, new.index);
+    return new;
+end;
+$$
+"#,
+        );
+
         let mut stmts: Vec<_> = sql
             .split(';')
             .map(|s| Statement::from_string(DatabaseBackend::Postgres, s))
@@ -176,6 +209,7 @@ execute function golem_base_queue_transaction_processing();
         stmts.append(&mut vec![
             create_tx_insert_trigger,
             create_tx_update_trigger,
+            create_function_new_tx,
         ]);
 
         let txn = manager.get_connection().begin().await?;
