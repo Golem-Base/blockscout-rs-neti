@@ -73,6 +73,8 @@ pub enum Relation {
     GolemBasePendingTransactionCleanups,
     #[sea_orm(has_many = "super::golem_base_pending_transaction_operations::Entity")]
     GolemBasePendingTransactionOperations,
+    #[sea_orm(has_many = "super::logs::Entity")]
+    Logs,
 }
 
 impl Related<super::golem_base_entity_history::Entity> for Entity {
@@ -96,6 +98,12 @@ impl Related<super::golem_base_pending_transaction_cleanups::Entity> for Entity 
 impl Related<super::golem_base_pending_transaction_operations::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::GolemBasePendingTransactionOperations.def()
+    }
+}
+
+impl Related<super::logs::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Logs.def()
     }
 }
 

@@ -1,10 +1,11 @@
 use super::sql::{FIND_LATEST_LOG, GET_LOGS};
 use crate::{
-    types::{EntityKey, Log, TxHash},
+    types::{EntityKey, Log, LogIndex, TxHash},
     well_known,
 };
 use alloy_primitives::B256;
 use anyhow::{Context, Result};
+use golem_base_indexer_entity::logs as EntityLogs;
 use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement};
 use tracing::instrument;
 
@@ -18,6 +19,18 @@ struct DbLog {
     pub third_topic: Option<Vec<u8>>,
     pub fourth_topic: Option<Vec<u8>>,
     pub transaction_hash: Vec<u8>,
+}
+
+impl TryFrom<LogIndex> for (i32, Vec<u8>, Vec<u8>) {
+    type Error = anyhow::Error;
+
+    fn try_from(value: LogIndex) -> Result<Self> {
+        Ok((
+            value.index.try_into()?,
+            value.transaction_hash.as_slice().into(),
+            value.block_hash.as_slice().into(),
+        ))
+    }
 }
 
 impl TryFrom<DbLog> for Log {
@@ -38,6 +51,34 @@ impl TryFrom<DbLog> for Log {
                 .map(|v| v.as_slice().try_into())
                 .transpose()?,
             tx_hash: v.transaction_hash.as_slice().try_into()?,
+        })
+    }
+}
+
+impl TryFrom<EntityLogs::Model> for Log {
+    type Error = anyhow::Error;
+
+    fn try_from(value: EntityLogs::Model) -> Result<Self> {
+        Ok(Self {
+            data: value.data.into(),
+            index: value.index.try_into()?,
+            first_topic: value
+                .first_topic
+                .map(|v| v.as_slice().try_into())
+                .transpose()?,
+            second_topic: value
+                .second_topic
+                .map(|v| v.as_slice().try_into())
+                .transpose()?,
+            third_topic: value
+                .third_topic
+                .map(|v| v.as_slice().try_into())
+                .transpose()?,
+            fourth_topic: value
+                .fourth_topic
+                .map(|v| v.as_slice().try_into())
+                .transpose()?,
+            tx_hash: value.transaction_hash.as_slice().try_into()?,
         })
     }
 }
@@ -76,4 +117,14 @@ pub async fn find_latest_extend_log<T: ConnectionTrait>(
     .await?
     .map(TryInto::try_into)
     .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn get_log<T: ConnectionTrait>(db: &T, log: LogIndex) -> Result<Option<Log>> {
+    let id: (i32, Vec<u8>, Vec<u8>) = log.try_into()?;
+    EntityLogs::Entity::find_by_id(id)
+        .one(db)
+        .await?
+        .map(TryInto::try_into)
+        .transpose()
 }
