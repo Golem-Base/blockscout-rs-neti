@@ -441,3 +441,11 @@ pub struct LeaderboardEffectivelyLargestEntitiesItem {
     pub data_size: u64,
     pub lifespan: BlockNumber,
 }
+
+#[derive(Clone, Debug)]
+pub struct EntityDataHistogram {
+    pub bucket: u64,
+    pub bin_start: u64,
+    pub bin_end: u64,
+    pub count: u64,
+}
