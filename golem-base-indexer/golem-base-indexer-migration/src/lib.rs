@@ -24,6 +24,7 @@ mod m20250925_082126_process_expiration_logs_separately;
 mod m20250926_121733_create_mview_leaderboard_top_accounts;
 mod m20250923_081124_create_entity_data_size_histogram_matview;
 mod m20250923_150237_process_txs_in_order;
+mod m20250923_081124_create_entity_data_size_histogram_matview;
 
 pub struct Migrator;
 
