@@ -18,6 +18,7 @@ service GolemBaseIndexerService {
   rpc ListCustomContractTransactions(ListCustomContractTransactionsRequest) returns (ListCustomContractTransactionsResponse);
   rpc AddressLeaderboardRanks(AddressLeaderboardRanksRequest) returns (AddressLeaderboardRanksResponse);
   rpc ChartDataUsage(ChartDataUsageRequest) returns (ChartDataUsageResponse);
+  rpc GetEntityDataHistogram(Empty) returns (GetEntityDataHistogramResponse);
 
   // Leaderboards
   rpc LeaderboardBiggestSpenders(PaginationRequest) returns (LeaderboardBiggestSpendersResponse);
@@ -33,6 +34,8 @@ message PaginationRequest {
   optional uint64 page = 1;
   optional uint64 page_size = 2;
 }
+
+message Empty {}
 
 message AddressStatsRequest {
   string address = 1;
@@ -416,4 +419,16 @@ message LeaderboardEffectivelyLargestEntitiesItem {
 message LeaderboardEntitiesByBtlResponse {
   repeated EntityWithExpTimestamp items = 1;
   Pagination pagination = 2;
+}
+
+
+message GetEntityDataHistogramResponse {
+  repeated EntityDataHistogram items = 1;
+}
+
+message EntityDataHistogram {
+  uint64 bucket = 1;
+  uint64 bin_start = 2;
+  uint64 bin_end = 3;
+  uint64 count = 4;
 }
