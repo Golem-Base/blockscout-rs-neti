@@ -545,4 +545,24 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             info: Some(info.into()),
         }))
     }
+
+    async fn get_entity_data_histogram(
+        &self,
+        _request: Request<Empty>,
+    ) -> Result<Response<GetEntityDataHistogramResponse>, Status> {
+        let entity_data_size_histogram =
+            repository::entities::get_entity_size_data_histogram(&*self.db)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query entity data histogram");
+                    Status::internal("failed to query entity data histogram")
+                })?;
+
+        Ok(Response::new(GetEntityDataHistogramResponse {
+            items: entity_data_size_histogram
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        }))
+    }
 }

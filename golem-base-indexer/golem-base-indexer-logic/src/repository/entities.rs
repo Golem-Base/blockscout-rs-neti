@@ -14,12 +14,14 @@ use tracing::instrument;
 
 use crate::{
     golem_base::block_timestamp,
+    model::entity_data_size_histogram,
     pagination::{paginate, paginate_try_from},
     repository::sql,
     types::{
-        Address, Block, BlockNumber, Bytes, EntitiesFilter, Entity, EntityHistoryEntry,
-        EntityHistoryFilter, EntityKey, EntityStatus, EntityWithExpTimestamp, FullEntity,
-        FullOperationIndex, ListEntitiesFilter, OperationFilter, PaginationMetadata, TxHash,
+        Address, Block, BlockNumber, Bytes, EntitiesFilter, Entity, EntityDataHistogram,
+        EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus, EntityWithExpTimestamp,
+        FullEntity, FullOperationIndex, ListEntitiesFilter, OperationFilter, PaginationMetadata,
+        TxHash,
     },
 };
 
@@ -527,4 +529,18 @@ pub async fn refresh_entity_based_on_history<T: ConnectionTrait>(
     }
 
     Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn get_entity_size_data_histogram<T: ConnectionTrait>(
+    db: &T,
+) -> Result<Vec<EntityDataHistogram>> {
+    entity_data_size_histogram::Entity::find()
+        .order_by_asc(entity_data_size_histogram::Column::Bucket)
+        .all(db)
+        .await
+        .context("Failed to get entity size data histogram")?
+        .into_iter()
+        .map(EntityDataHistogram::try_from)
+        .collect::<Result<Vec<_>>>()
 }
