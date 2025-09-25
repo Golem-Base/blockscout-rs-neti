@@ -10,12 +10,23 @@ async fn test_single_logic_tick_works() {
     let db = helpers::init_db("test", "single_logic_tick_works").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
-    helpers::load_data(&*client, include_str!("../fixtures/sample_data.sql")).await;
 
-    Indexer::new(client, Default::default())
-        .tick()
-        .await
-        .unwrap();
+    let indexer = Indexer::new(client.clone(), Default::default());
+
+    // load txs first, then logs, to simulate how it really happens in blockscout and to test we
+    // handle such race condition correctly
+    helpers::load_data(
+        &*client,
+        include_str!("../fixtures/sample_data_no_logs.sql"),
+    )
+    .await;
+    indexer.tick().await.unwrap();
+    helpers::load_data(
+        &*client,
+        include_str!("../fixtures/sample_data_logs_only.sql"),
+    )
+    .await;
+    indexer.tick().await.unwrap();
 
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/entities?status=ACTIVE").await;
