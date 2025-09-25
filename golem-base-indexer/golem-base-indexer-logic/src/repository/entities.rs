@@ -102,6 +102,19 @@ impl TryFrom<golem_base_entities::Model> for Entity {
     }
 }
 
+impl TryFrom<entity_data_size_histogram::Model> for EntityDataHistogram {
+    type Error = anyhow::Error;
+
+    fn try_from(value: entity_data_size_histogram::Model) -> Result<Self> {
+        Ok(Self {
+            bucket: value.bucket.try_into()?,
+            bin_start: value.bin_start.try_into()?,
+            bin_end: value.bin_end.try_into()?,
+            count: value.count.try_into()?,
+        })
+    }
+}
+
 impl EntityWithExpTimestamp {
     pub fn try_new(value: golem_base_entities::Model, reference_block: &Block) -> Result<Self> {
         let entity_base: Entity = value.try_into()?;
