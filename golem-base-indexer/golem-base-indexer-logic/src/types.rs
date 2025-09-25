@@ -442,3 +442,10 @@ pub struct LeaderboardEffectivelyLargestEntitiesItem {
     pub data_size: u64,
     pub lifespan: BlockNumber,
 }
+
+#[derive(Debug, Clone)]
+pub struct LogIndex {
+    pub transaction_hash: TxHash,
+    pub block_hash: BlockHash,
+    pub index: u64,
+}
