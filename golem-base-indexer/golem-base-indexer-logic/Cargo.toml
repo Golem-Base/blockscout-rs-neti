@@ -14,6 +14,7 @@ chrono.workspace = true
 futures.workspace = true
 golem-base-indexer-entity = { path = "../golem-base-indexer-entity" }
 golem-base-sdk.workspace = true
+key-mutex.workspace = true
 lazy_static.workspace = true
 prometheus.workspace = true
 sea-orm = { workspace = true, features = [
