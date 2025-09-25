@@ -31,6 +31,8 @@ use crate::{
 mod annotations;
 mod consensus_tx;
 pub mod golem_base;
+pub mod mat_view_scheduler;
+pub mod model;
 pub mod pagination;
 pub mod repository;
 pub mod types;

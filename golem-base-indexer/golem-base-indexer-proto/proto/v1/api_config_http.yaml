@@ -65,6 +65,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartDataUsage
       get: /api/v1/chart/data-usage
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntityDataHistogram
+      get: /api/v1/chart/entity-data-histogram
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check
