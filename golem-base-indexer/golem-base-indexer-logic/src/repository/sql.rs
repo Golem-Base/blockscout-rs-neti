@@ -32,6 +32,22 @@ order by
 limit 1
 "#;
 
+pub const GET_UNPROCESSED_LOGS: &str = r#"
+select
+    pendings.transaction_hash,
+    pendings.block_hash,
+    pendings.index
+from golem_base_pending_logs_operations as pendings
+    inner join transactions on transactions.hash = pendings.transaction_hash
+    left join golem_base_pending_transaction_cleanups on transactions.hash = pendings.transaction_hash
+where
+    golem_base_pending_transaction_cleanups is null
+    and transactions.status = 1
+order by
+    pendings.block_number asc,
+    pendings.index asc
+"#;
+
 pub const GET_UNPROCESSED_TX_HASHES: &str = r#"
 select hash
 from golem_base_pending_transaction_operations as pendings

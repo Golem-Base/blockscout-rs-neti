@@ -22,9 +22,9 @@ use crate::{
     repository::locks::Guard,
     types::{
         Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAnnotation,
-        FullOperationIndex, FullStringAnnotation, ListOperationsFilter, Log, NumericAnnotation,
-        Operation, OperationData, OperationMetadata, OperationsFilter, PaginationParams,
-        StringAnnotation, TxHash,
+        FullOperationIndex, FullStringAnnotation, ListOperationsFilter, LogIndex,
+        NumericAnnotation, Operation, OperationData, OperationMetadata, OperationsFilter,
+        PaginationParams, StringAnnotation, TxHash,
     },
 };
 
@@ -140,6 +140,16 @@ impl Indexer {
                     .handle_tx(tx)
                     .await
                     .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx failed"));
+            })
+            .await;
+
+        repository::blockscout::stream_unprocessed_logs(&*self.db)
+            .await?
+            .for_each_concurrent(self.settings.concurrency, |log| async move {
+                let _ = self
+                    .handle_log(log.clone())
+                    .await
+                    .inspect_err(|e| tracing::warn!(?e, ?log, "Handling log failed"));
             })
             .await;
 
@@ -335,64 +345,39 @@ impl Indexer {
 
         let mut op_idx = 0;
         let mut guards = HashMap::<_, _>::new();
-        if tx.to_address_hash == well_known::GOLEM_BASE_STORAGE_PROCESSOR_ADDRESS {
-            let storagetx = match EncodableGolemBaseTransaction::decode(&mut &*tx.input) {
-                Ok(storagetx) => storagetx,
-                Err(e) => {
-                    tracing::warn!(?e, "Storage tx with undecodable data");
-                    return Ok(());
-                }
-            };
+        let storagetx = match EncodableGolemBaseTransaction::decode(&mut &*tx.input) {
+            Ok(storagetx) => storagetx,
+            Err(e) => {
+                tracing::warn!(?e, "Storage tx with undecodable data");
+                return Ok(());
+            }
+        };
 
-            // following operations are a good candidate for optimization when needed
-            // possible improvements include parallelization and batching
-            for create in storagetx.creates {
-                self.handle_create(&txn, &mut guards, &tx, create, op_idx)
-                    .await
-                    .with_context(|| {
-                        format!("Handling create op tx_hash={tx_hash} op_idx={op_idx}")
-                    })?;
-                op_idx += 1;
-            }
-            for delete in storagetx.deletes {
-                self.handle_delete(&txn, &mut guards, &tx, delete, op_idx)
-                    .await
-                    .with_context(|| {
-                        format!("Handling delete op tx_hash={tx_hash} op_idx={op_idx}")
-                    })?;
-                op_idx += 1;
-            }
-            for update in storagetx.updates {
-                self.handle_update(&txn, &mut guards, &tx, update, op_idx)
-                    .await
-                    .with_context(|| {
-                        format!("Handling update op tx_hash={tx_hash} op_idx={op_idx}")
-                    })?;
-                op_idx += 1;
-            }
-            for extend in storagetx.extensions {
-                self.handle_extend(&txn, &mut guards, &tx, extend, op_idx)
-                    .await
-                    .with_context(|| {
-                        format!("Handling extend op tx_hash={tx_hash} op_idx={op_idx}")
-                    })?;
-                op_idx += 1;
-            }
+        // following operations are a good candidate for optimization when needed
+        // possible improvements include parallelization and batching
+        for create in storagetx.creates {
+            self.handle_create(&txn, &mut guards, &tx, create, op_idx)
+                .await
+                .with_context(|| format!("Handling create op tx_hash={tx_hash} op_idx={op_idx}"))?;
+            op_idx += 1;
         }
-
-        if tx.to_address_hash == well_known::L1_BLOCK_CONTRACT_ADDRESS {
-            // FIXME what if blockscout lags with populating logs?
-            let logs = repository::logs::get_tx_logs(
-                &txn,
-                tx_hash,
-                well_known::GOLEM_BASE_STORAGE_ENTITY_DELETED,
-            )
-            .await?;
-
-            for delete_log in logs {
-                self.handle_expire_log(&txn, &mut guards, &tx, delete_log)
-                    .await?;
-            }
+        for delete in storagetx.deletes {
+            self.handle_delete(&txn, &mut guards, &tx, delete, op_idx)
+                .await
+                .with_context(|| format!("Handling delete op tx_hash={tx_hash} op_idx={op_idx}"))?;
+            op_idx += 1;
+        }
+        for update in storagetx.updates {
+            self.handle_update(&txn, &mut guards, &tx, update, op_idx)
+                .await
+                .with_context(|| format!("Handling update op tx_hash={tx_hash} op_idx={op_idx}"))?;
+            op_idx += 1;
+        }
+        for extend in storagetx.extensions {
+            self.handle_extend(&txn, &mut guards, &tx, extend, op_idx)
+                .await
+                .with_context(|| format!("Handling extend op tx_hash={tx_hash} op_idx={op_idx}"))?;
+            op_idx += 1;
         }
 
         repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
@@ -742,22 +727,23 @@ impl Indexer {
     }
 
     #[instrument(skip_all, fields(log))]
-    async fn handle_expire_log(
-        &self,
-        txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
-        tx: &ConsensusTx,
-        log: Log,
-    ) -> Result<()> {
+    async fn handle_log(&self, log: LogIndex) -> Result<()> {
+        tracing::info!("Processing log");
+        let txn = self.db.begin().await?;
+        let tx = repository::blockscout::get_tx(&txn, log.transaction_hash)
+            .await?
+            .ok_or(anyhow!("Log with no tx!"))?;
+        let tx: ConsensusTx = tx.try_into()?;
+        let log = repository::logs::get_log(&txn, log)
+            .await?
+            .ok_or(anyhow!("Log disappeared from the DB?!"))?;
         let entity_key = if let Some(k) = log.second_topic {
             k
         } else {
             tracing::warn!("Delete Log event with no second topic?");
             return Ok(());
         };
-        if let Entry::Vacant(e) = guards.entry(entity_key) {
-            e.insert(repository::locks::lock(txn, entity_key).await?);
-        }
+        let guard = repository::locks::lock(&txn, entity_key).await?;
         tracing::info!("Processing delete log for entity {entity_key}");
 
         let op = Operation {
@@ -769,17 +755,19 @@ impl Indexer {
                 block_hash: tx.block_hash,
                 block_number: tx.block_number,
                 tx_index: tx.index,
-                index: log.index, // FIXME this should be an operation index, not log index,
-                                  // but we don't really have an operation in this case...
+                index: log.index,
             },
             operation: OperationData::delete(),
         };
-        repository::operations::insert_operation(txn, op.clone()).await?;
+        repository::operations::insert_operation(&txn, op.clone()).await?;
 
-        self.insert_history_entry(txn, entity_key, tx, op).await?;
-        repository::entities::refresh_entity_based_on_history(txn, entity_key).await?;
+        self.insert_history_entry(&txn, entity_key, &tx, op).await?;
+        repository::entities::refresh_entity_based_on_history(&txn, entity_key).await?;
 
-        repository::annotations::deactivate_annotations(txn, entity_key).await?;
+        repository::annotations::deactivate_annotations(&txn, entity_key).await?;
+        guard.unlock(&txn).await?;
+        txn.commit().await?;
+        OP_COUNTER.inc();
 
         Ok(())
     }

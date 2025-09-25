@@ -6,8 +6,9 @@ pub use super::{
     golem_base_entity_locks::Entity as GolemBaseEntityLocks,
     golem_base_numeric_annotations::Entity as GolemBaseNumericAnnotations,
     golem_base_operations::Entity as GolemBaseOperations,
+    golem_base_pending_logs_operations::Entity as GolemBasePendingLogsOperations,
     golem_base_pending_transaction_cleanups::Entity as GolemBasePendingTransactionCleanups,
     golem_base_pending_transaction_operations::Entity as GolemBasePendingTransactionOperations,
-    golem_base_string_annotations::Entity as GolemBaseStringAnnotations,
+    golem_base_string_annotations::Entity as GolemBaseStringAnnotations, logs::Entity as Logs,
     transactions::Entity as Transactions,
 };
