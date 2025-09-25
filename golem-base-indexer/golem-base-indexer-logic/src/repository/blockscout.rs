@@ -9,7 +9,7 @@ use tracing::instrument;
 
 use super::sql;
 use crate::{
-    types::{BlockHash, BlockNumber, Tx, TxHash},
+    types::{BlockHash, BlockNumber, LogIndex, Tx, TxHash},
     well_known,
 };
 
@@ -58,6 +58,13 @@ impl TryFrom<DbTx> for Tx {
     }
 }
 
+#[derive(FromQueryResult)]
+struct DbLogIndex {
+    pub transaction_hash: Vec<u8>,
+    pub block_hash: Vec<u8>,
+    pub index: i32,
+}
+
 impl TryFrom<DbBlockNumber> for BlockNumber {
     type Error = anyhow::Error;
 
@@ -79,6 +86,43 @@ impl TryFrom<DbBlock> for Block {
             timestamp: value.timestamp.and_utc(),
         })
     }
+}
+
+impl TryFrom<DbLogIndex> for LogIndex {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbLogIndex) -> Result<Self> {
+        Ok(Self {
+            transaction_hash: value.transaction_hash.as_slice().try_into()?,
+            block_hash: value.block_hash.as_slice().try_into()?,
+            index: value.index.try_into()?,
+        })
+    }
+}
+
+#[instrument(skip(db))]
+pub async fn stream_unprocessed_logs<T: StreamTrait + ConnectionTrait>(
+    db: &T,
+) -> Result<impl Stream<Item = LogIndex> + '_> {
+    Ok(
+        DbLogIndex::find_by_statement(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            sql::GET_UNPROCESSED_LOGS,
+            [],
+        ))
+        .stream(db)
+        .await
+        .context("Failed to get unprocessed logs")?
+        .filter_map(|log| async {
+            match log {
+                Ok(log) => Some(log.try_into().ok()?),
+                Err(err) => {
+                    tracing::error!(error = ?err, "error during unprocessed log retrieval");
+                    None
+                }
+            }
+        }),
+    )
 }
 
 #[instrument(skip(db))]
