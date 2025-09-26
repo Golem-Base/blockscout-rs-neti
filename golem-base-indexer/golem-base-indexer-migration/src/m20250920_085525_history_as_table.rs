@@ -7,7 +7,7 @@ pub struct Migration;
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"
-        drop view golem_base_entity_history;
+        drop view if exists golem_base_entity_history cascade;
         alter table golem_base_operations
             add column block_number bigint not null,
             add column tx_index integer not null;

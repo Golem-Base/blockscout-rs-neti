@@ -22,6 +22,7 @@ mod m20250922_113500_create_mview_leaderboard_effectively_largest_entities;
 mod m20250922_113754_create_mview_leaderboard_entities_created;
 mod m20250923_081124_create_entity_data_size_histogram_matview;
 mod m20250923_150237_process_txs_in_order;
+mod m20250926_110921_create_matview_output_indexes;
 
 pub struct Migrator;
 
@@ -38,20 +39,19 @@ impl MigratorTrait for Migrator {
             Box::new(m20250818_181205_nullable_entity_owner::Migration),
             Box::new(m20250827_115015_fix_tracking_expirations_in_view::Migration),
             Box::new(m20250904_082310_add_golem_base_events_abi::Migration),
+            Box::new(m20250909_062255_create_mview_timeseries_data_usage::Migration),
             Box::new(m20250915_140948_optimize_history_view::Migration),
             Box::new(m20250919_080000_update_indexer_queue_trigger::Migration),
             Box::new(m20250920_085525_history_as_table::Migration),
-            Box::new(m20250923_150237_process_txs_in_order::Migration),
-            Box::new(m20250909_062255_create_mview_timeseries_data_usage::Migration),
             Box::new(m20250922_081148_create_mview_leaderboard_biggest_spenders::Migration),
             Box::new(m20250922_110337_create_mview_leaderboard_entities_owned::Migration),
             Box::new(m20250922_112804_create_mview_leaderboard_data_owned::Migration),
             Box::new(m20250922_112933_create_mview_leaderboard_largest_entities::Migration),
-            Box::new(
-                m20250922_113500_create_mview_leaderboard_effectively_largest_entities::Migration,
-            ),
+            Box::new(m20250922_113500_create_mview_leaderboard_effectively_largest_entities::Migration),
             Box::new(m20250922_113754_create_mview_leaderboard_entities_created::Migration),
             Box::new(m20250923_081124_create_entity_data_size_histogram_matview::Migration),
+            Box::new(m20250923_150237_process_txs_in_order::Migration),
+            Box::new(m20250926_110921_create_matview_output_indexes::Migration),
         ]
     }
 
