@@ -168,3 +168,19 @@ CREATE TABLE internal_transactions (
     CONSTRAINT internal_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES blocks(hash),
     CONSTRAINT internal_transactions_transaction_hash_fkey FOREIGN KEY (transaction_hash) REFERENCES transactions(hash) ON DELETE CASCADE
 );
+
+CREATE TABLE public.addresses (
+    fetched_coin_balance numeric(100,0),
+    fetched_coin_balance_block_number bigint,
+    hash bytea NOT NULL primary key,
+    contract_code bytea,
+    inserted_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL,
+    nonce integer,
+    decompiled boolean,
+    verified boolean,
+    gas_used bigint,
+    transactions_count integer,
+    token_transfers_count integer
+);
+

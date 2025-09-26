@@ -41,6 +41,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardBiggestSpenders
       get: /api/v1/leaderboard/biggest-spenders
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardTopAccounts
+      get: /api/v1/leaderboard/top-accounts
+
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardEntitiesCreated
       get: /api/v1/leaderboard/entities-created
 

@@ -8,10 +8,11 @@ use golem_base_indexer_logic::types::{
     EntitiesFilter, Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
     EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
-    LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, ListEntitiesFilter,
-    ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations, OperationData,
-    OperationFilter, OperationView, OperationsCount, OperationsFilter, PaginationMetadata,
-    PaginationParams, StringAnnotation, StringAnnotationWithRelations, Transaction,
+    LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
+    ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
+    OperationData, OperationFilter, OperationView, OperationsCount, OperationsFilter,
+    PaginationMetadata, PaginationParams, StringAnnotation, StringAnnotationWithRelations,
+    Transaction,
 };
 
 pub mod blockscout {
@@ -536,6 +537,17 @@ impl From<Transaction> for v1::Transaction {
     }
 }
 
+impl From<LeaderboardTopAccountsItem> for v1::LeaderboardTopAccountsItem {
+    fn from(v: LeaderboardTopAccountsItem) -> Self {
+        Self {
+            rank: v.rank,
+            address: v.address.to_checksum(None),
+            balance: v.balance.to_string(),
+            tx_count: v.tx_count.to_string(),
+        }
+    }
+}
+
 impl From<AddressLeaderboardRanks> for v1::AddressLeaderboardRanksResponse {
     fn from(ranks: AddressLeaderboardRanks) -> Self {
         Self {
@@ -543,6 +555,7 @@ impl From<AddressLeaderboardRanks> for v1::AddressLeaderboardRanksResponse {
             entities_created: ranks.entities_created,
             entities_owned: ranks.entities_owned,
             data_owned: ranks.data_owned,
+            top_accounts: ranks.top_accounts,
         }
     }
 }

@@ -246,7 +246,6 @@ paths:
         - GolemBaseIndexerService
   /api/v1/leaderboard/biggest-spenders:
     get:
-      summary: Leaderboards
       operationId: GolemBaseIndexerService_LeaderboardBiggestSpenders
       responses:
         "200":
@@ -403,6 +402,32 @@ paths:
           description: A successful response.
           schema:
             $ref: '#/definitions/v1LeaderboardLargestEntitiesResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - GolemBaseIndexerService
+  /api/v1/leaderboard/top-accounts:
+    get:
+      summary: Leaderboards
+      operationId: GolemBaseIndexerService_LeaderboardTopAccounts
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1LeaderboardTopAccountsResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -615,6 +640,9 @@ definitions:
         type: string
         format: uint64
       data_owned:
+        type: string
+        format: uint64
+      top_accounts:
         type: string
         format: uint64
   v1AddressStatsResponse:
@@ -1029,6 +1057,28 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1LeaderboardLargestEntitiesItem'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
+  v1LeaderboardTopAccountsItem:
+    type: object
+    properties:
+      rank:
+        type: string
+        format: uint64
+      address:
+        type: string
+      balance:
+        type: string
+      tx_count:
+        type: string
+  v1LeaderboardTopAccountsResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1LeaderboardTopAccountsItem'
       pagination:
         $ref: '#/definitions/v1Pagination'
   v1ListCustomContractTransactionsResponse:

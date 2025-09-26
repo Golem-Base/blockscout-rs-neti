@@ -357,6 +357,29 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
+    async fn leaderboard_top_accounts(
+        &self,
+        request: Request<PaginationRequest>,
+    ) -> Result<Response<LeaderboardTopAccountsResponse>, Status> {
+        let inner = request.into_inner();
+        let filter = inner.try_into().map_err(|err| {
+            Status::invalid_argument(format!("Invalid top accounts filter: {err}"))
+        })?;
+
+        let (top_accounts, pagination) =
+            repository::leaderboards::leaderboard_top_accounts(&*self.db, filter)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query addresses by top accounts");
+                    Status::internal("failed to query addresses by top accounts")
+                })?;
+
+        Ok(Response::new(LeaderboardTopAccountsResponse {
+            items: top_accounts.into_iter().map(Into::into).collect(),
+            pagination: Some(pagination.into()),
+        }))
+    }
+
     async fn leaderboard_entities_created(
         &self,
         request: Request<PaginationRequest>,

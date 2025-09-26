@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod addresses;
 pub mod blocks;
 pub mod golem_base_entities;
 pub mod golem_base_entity_history;

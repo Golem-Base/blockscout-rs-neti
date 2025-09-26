@@ -20,6 +20,7 @@ service GolemBaseIndexerService {
   rpc ChartDataUsage(ChartDataUsageRequest) returns (ChartDataUsageResponse);
 
   // Leaderboards
+  rpc LeaderboardTopAccounts(PaginationRequest) returns (LeaderboardTopAccountsResponse);
   rpc LeaderboardBiggestSpenders(PaginationRequest) returns (LeaderboardBiggestSpendersResponse);
   rpc LeaderboardEntitiesCreated(PaginationRequest) returns (LeaderboardEntitiesCreatedResponse);
   rpc LeaderboardEntitiesOwned(PaginationRequest) returns (LeaderboardEntitiesOwnedResponse);
@@ -317,6 +318,7 @@ message AddressLeaderboardRanksResponse {
   uint64 entities_created = 2;
   uint64 entities_owned = 3;
   uint64 data_owned = 4;
+  uint64 top_accounts = 5;
 }
 
 enum ChartResolution {
@@ -357,6 +359,18 @@ message LeaderboardBiggestSpendersItem {
   uint64 rank = 1;
   string address = 2;
   string total_fees = 3;
+}
+
+message LeaderboardTopAccountsResponse {
+  repeated LeaderboardTopAccountsItem items = 1;
+  Pagination pagination = 2;
+}
+
+message LeaderboardTopAccountsItem {
+  uint64 rank = 1;
+  string address = 2;
+  string balance = 3;
+  string tx_count = 4;
 }
 
 message LeaderboardEntitiesCreatedResponse {
