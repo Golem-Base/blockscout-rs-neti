@@ -4,7 +4,7 @@ use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
 use golem_base_sdk::{
     entity::{Create, EncodableGolemBaseTransaction},
-    NumericAnnotation, StringAnnotation,
+    Address, NumericAnnotation, StringAnnotation,
 };
 use pretty_assertions::assert_eq;
 
@@ -17,54 +17,73 @@ async fn test_list_entities_endpoint_works() {
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
 
+    let owner = Address::random();
+
     helpers::sample::insert_data(
         &*client,
         Block {
             number: 1,
-            transactions: vec![Transaction {
-                operations: EncodableGolemBaseTransaction {
-                    creates: vec![
-                        Create {
-                            string_annotations: vec![StringAnnotation {
-                                key: "foo".into(),
-                                value: "bar".into(),
-                            }],
-                            numeric_annotations: vec![NumericAnnotation {
-                                key: "foo".into(),
-                                value: 123,
-                            }],
-                            ..Default::default()
-                        },
-                        Create {
-                            string_annotations: vec![StringAnnotation {
-                                key: "foo".into(),
-                                value: "bar".into(),
-                            }],
-                            numeric_annotations: vec![NumericAnnotation {
-                                key: "foo".into(),
-                                value: 123,
-                            }],
-                            ..Default::default()
-                        },
-                        Create {
-                            string_annotations: vec![StringAnnotation {
-                                key: "foo".into(),
-                                value: "rab".into(),
-                            }],
-                            numeric_annotations: vec![NumericAnnotation {
-                                key: "foo".into(),
-                                value: 321,
-                            }],
-                            ..Default::default()
-                        },
-                        Create {
-                            ..Default::default()
-                        },
-                    ],
+            transactions: vec![
+                Transaction {
+                    operations: EncodableGolemBaseTransaction {
+                        creates: vec![
+                            Create {
+                                string_annotations: vec![StringAnnotation {
+                                    key: "foo".into(),
+                                    value: "bar".into(),
+                                }],
+                                numeric_annotations: vec![NumericAnnotation {
+                                    key: "foo".into(),
+                                    value: 123,
+                                }],
+                                ..Default::default()
+                            },
+                            Create {
+                                string_annotations: vec![StringAnnotation {
+                                    key: "foo".into(),
+                                    value: "bar".into(),
+                                }],
+                                numeric_annotations: vec![NumericAnnotation {
+                                    key: "foo".into(),
+                                    value: 123,
+                                }],
+                                ..Default::default()
+                            },
+                            Create {
+                                string_annotations: vec![StringAnnotation {
+                                    key: "foo".into(),
+                                    value: "rab".into(),
+                                }],
+                                numeric_annotations: vec![NumericAnnotation {
+                                    key: "foo".into(),
+                                    value: 321,
+                                }],
+                                ..Default::default()
+                            },
+                            Create {
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    },
                     ..Default::default()
                 },
-                ..Default::default()
-            }],
+                Transaction {
+                    sender: owner,
+                    operations: EncodableGolemBaseTransaction {
+                        creates: vec![
+                            Create {
+                                ..Default::default()
+                            },
+                            Create {
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            ],
             ..Default::default()
         },
     )
@@ -117,4 +136,18 @@ async fn test_list_entities_endpoint_works() {
     )
     .await;
     assert_eq!(response["count"].as_str().unwrap(), "1");
+
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        &format!("/api/v1/entities?status=ACTIVE&owner={owner}"),
+    )
+    .await;
+    assert_eq!(response["items"].as_array().unwrap().len(), 2);
+
+    let response: serde_json::Value = test_server::send_get_request(
+        &base,
+        &format!("/api/v1/entities/count?status=ACTIVE&owner={owner}"),
+    )
+    .await;
+    assert_eq!(response["count"].as_str().unwrap(), "2");
 }
