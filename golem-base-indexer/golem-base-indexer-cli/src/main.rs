@@ -36,6 +36,7 @@ async fn list_entity_keys(db: DatabaseConnection) -> Result<()> {
                 status: None,
                 string_annotation: None,
                 numeric_annotation: None,
+                owner: None,
             },
         },
     )

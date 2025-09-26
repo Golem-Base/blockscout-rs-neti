@@ -201,6 +201,11 @@ fn filtered_entities(filter: EntitiesFilter) -> Select<golem_base_entities::Enti
             .filter(golem_base_numeric_annotations::Column::Value.eq(ann.value));
     }
 
+    if let Some(owner) = filter.owner {
+        let owner: Vec<u8> = owner.as_slice().into();
+        q = q.filter(golem_base_entities::Column::Owner.eq(owner));
+    }
+
     q
 }
 

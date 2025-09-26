@@ -427,6 +427,7 @@ impl TryFrom<v1::ListEntitiesRequest> for ListEntitiesFilter {
                 status: Some(status.into()),
                 string_annotation,
                 numeric_annotation,
+                owner: request.owner.map(|v| v.parse()).transpose()?,
             },
         })
     }
@@ -460,6 +461,7 @@ impl TryFrom<v1::CountEntitiesRequest> for EntitiesFilter {
             status: Some(status.into()),
             string_annotation,
             numeric_annotation,
+            owner: request.owner.map(|v| v.parse()).transpose()?,
         })
     }
 }

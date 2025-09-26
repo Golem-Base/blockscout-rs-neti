@@ -123,6 +123,7 @@ async fn test_related_annotations_work() {
                     value: "val1".into(),
                 }),
                 numeric_annotation: None,
+                owner: None,
             },
             pagination: PaginationParams {
                 page: 0,

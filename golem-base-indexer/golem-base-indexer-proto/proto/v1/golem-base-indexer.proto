@@ -74,6 +74,7 @@ message ListEntitiesRequest {
   optional string string_annotation_value = 5;
   optional string numeric_annotation_key = 6;
   optional string numeric_annotation_value = 7;
+  optional string owner = 8;
 }
 
 message ListEntitiesResponse {
@@ -123,6 +124,7 @@ message CountEntitiesRequest {
   optional string string_annotation_value = 3;
   optional string numeric_annotation_key = 4;
   optional string numeric_annotation_value = 5;
+  optional string owner = 6;
 }
 
 message CountEntitiesResponse {

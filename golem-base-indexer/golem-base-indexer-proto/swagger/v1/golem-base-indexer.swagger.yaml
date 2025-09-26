@@ -146,6 +146,10 @@ paths:
           in: query
           required: false
           type: string
+        - name: owner
+          in: query
+          required: false
+          type: string
       tags:
         - GolemBaseIndexerService
   /api/v1/entities/count:
@@ -183,6 +187,10 @@ paths:
           required: false
           type: string
         - name: numeric_annotation_value
+          in: query
+          required: false
+          type: string
+        - name: owner
           in: query
           required: false
           type: string
