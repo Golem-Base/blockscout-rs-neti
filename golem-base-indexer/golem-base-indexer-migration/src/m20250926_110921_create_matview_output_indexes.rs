@@ -26,13 +26,13 @@ impl MigrationTrait for Migration {
             stmts.push(stmt);
         }
 
-        stmts.push(Statement::from_string(
-            DatabaseBackend::Postgres,
-            r#"
-CREATE UNIQUE INDEX golem_base_timeseries_data_usage_output_index
-ON golem_base_timeseries_data_usage (timestamp)
-"#,
-        ));
+//         stmts.push(Statement::from_string(
+//             DatabaseBackend::Postgres,
+//             r#"
+// CREATE UNIQUE INDEX golem_base_timeseries_data_usage_output_index
+// ON golem_base_timeseries_data_usage (timestamp)
+// "#,
+//         ));
 
         let txn = manager.get_connection().begin().await?;
 
