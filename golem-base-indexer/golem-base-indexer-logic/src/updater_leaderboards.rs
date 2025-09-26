@@ -11,6 +11,7 @@ const LEADERBOARDS_MATERIALIZED_VIEWS: &[&str] = &[
     "golem_base_leaderboard_entities_created",
     "golem_base_leaderboard_entities_owned",
     "golem_base_leaderboard_largest_entities",
+    "golem_base_leaderboard_top_accounts",
 ];
 
 #[derive(Clone)]

@@ -35,6 +35,7 @@ struct DbAddressLeaderboardRanks {
     pub entities_created: Option<i64>,
     pub entities_owned: Option<i64>,
     pub data_owned: Option<i64>,
+    pub top_accounts: Option<i64>,
 }
 
 impl From<DbAddressActivity> for AddressActivity {
@@ -80,6 +81,7 @@ impl TryFrom<DbAddressLeaderboardRanks> for AddressLeaderboardRanks {
             entities_created: value.entities_created.unwrap_or(0).try_into()?,
             entities_owned: value.entities_owned.unwrap_or(0).try_into()?,
             data_owned: value.data_owned.unwrap_or(0).try_into()?,
+            top_accounts: value.top_accounts.unwrap_or(0).try_into()?,
         })
     }
 }

@@ -29,6 +29,7 @@ async fn address_leaderboard_ranks_should_work() {
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
     let indexer = Indexer::new(Arc::clone(&client), Default::default());
+    helpers::load_data(&*client, include_str!("../fixtures/addresses.sql")).await;
     let address1 = Address::random();
     let address2 = Address::random();
     let address3 = Address::random();
@@ -125,6 +126,7 @@ async fn address_leaderboard_ranks_should_work() {
         "entities_created": "4",
         "entities_owned": "4",
         "data_owned": "4",
+        "top_accounts": "0",
     });
     let response: Value = send_get_request(&base, &endpoint_for_address(&address1)).await;
     assert_eq!(response, expected);
@@ -135,6 +137,7 @@ async fn address_leaderboard_ranks_should_work() {
         "entities_created": "1",
         "entities_owned": "1",
         "data_owned": "2",
+        "top_accounts": "0",
     });
     let response: Value = send_get_request(&base, &endpoint_for_address(&address2)).await;
     assert_eq!(response, expected);
@@ -145,6 +148,7 @@ async fn address_leaderboard_ranks_should_work() {
         "entities_created": "2",
         "entities_owned": "2",
         "data_owned": "3",
+        "top_accounts": "0",
     });
     let response: Value = send_get_request(&base, &endpoint_for_address(&address3)).await;
     assert_eq!(response, expected);
@@ -155,8 +159,24 @@ async fn address_leaderboard_ranks_should_work() {
         "entities_created": "3",
         "entities_owned": "3",
         "data_owned": "1",
+        "top_accounts": "0",
     });
     let response: Value = send_get_request(&base, &endpoint_for_address(&address4)).await;
+    assert_eq!(response, expected);
+
+    // Check prefilled address ranks
+    let expected = json!({
+        "biggest_spenders": "0",
+        "entities_created": "0",
+        "entities_owned": "0",
+        "data_owned": "0",
+        "top_accounts": "1",
+    });
+    let response: Value = send_get_request(
+        &base,
+        "/api/v1/address/0x009596456753150e12e4eaf98e1a46b2c16c1d22/leaderboard-ranks",
+    )
+    .await;
     assert_eq!(response, expected);
 }
 
@@ -184,6 +204,7 @@ async fn address_leaderboard_ranks_should_return_zeros_for_non_indexed_address()
         "entities_created": "0",
         "entities_owned": "0",
         "data_owned": "0",
+        "top_accounts": "0",
     });
 
     // Non-indexed address should return zeros
