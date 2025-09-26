@@ -47,7 +47,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20250922_110337_create_mview_leaderboard_entities_owned::Migration),
             Box::new(m20250922_112804_create_mview_leaderboard_data_owned::Migration),
             Box::new(m20250922_112933_create_mview_leaderboard_largest_entities::Migration),
-            Box::new(m20250922_113500_create_mview_leaderboard_effectively_largest_entities::Migration),
+            Box::new(
+                m20250922_113500_create_mview_leaderboard_effectively_largest_entities::Migration,
+            ),
             Box::new(m20250922_113754_create_mview_leaderboard_entities_created::Migration),
             Box::new(m20250923_081124_create_entity_data_size_histogram_matview::Migration),
             Box::new(m20250923_150237_process_txs_in_order::Migration),
