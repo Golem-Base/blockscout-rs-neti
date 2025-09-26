@@ -16,6 +16,7 @@ mod leaderboard_entities_by_btl;
 mod leaderboard_entities_created;
 mod leaderboard_entities_owned;
 mod leaderboard_largest_entities;
+mod leaderboard_top_accounts;
 mod list_custom_contract_transactions;
 mod list_entities_endpoint_works;
 mod list_operations_endpoint_works;

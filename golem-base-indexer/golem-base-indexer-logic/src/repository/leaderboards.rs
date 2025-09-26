@@ -5,7 +5,8 @@ use crate::{
         CurrencyAmount, EntityWithExpTimestamp, LeaderboardBiggestSpendersItem,
         LeaderboardDataOwnedItem, LeaderboardEffectivelyLargestEntitiesItem,
         LeaderboardEntitiesCreatedItem, LeaderboardEntitiesOwnedItem,
-        LeaderboardLargestEntitiesItem, PaginationMetadata, PaginationParams,
+        LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem, PaginationMetadata,
+        PaginationParams,
     },
 };
 use anyhow::{anyhow, Context, Result};
@@ -34,6 +35,27 @@ impl TryFrom<DbBiggestSpendersItem> for LeaderboardBiggestSpendersItem {
                 .total_fees
                 .parse::<CurrencyAmount>()
                 .context("Failed to convert transaction_fees to CurrencyAmount")?,
+        })
+    }
+}
+
+#[derive(Debug, FromQueryResult)]
+struct DbLeaderboardTopAccountsItem {
+    pub rank: i64,
+    pub address: Vec<u8>,
+    pub balance: Decimal,
+    pub tx_count: i32,
+}
+
+impl TryFrom<DbLeaderboardTopAccountsItem> for LeaderboardTopAccountsItem {
+    type Error = anyhow::Error;
+
+    fn try_from(v: DbLeaderboardTopAccountsItem) -> Result<Self> {
+        Ok(Self {
+            rank: v.rank.try_into()?,
+            address: v.address.as_slice().try_into()?,
+            balance: v.balance.to_string().parse()?,
+            tx_count: v.tx_count.try_into()?,
         })
     }
 }
@@ -150,6 +172,22 @@ pub async fn leaderboard_biggest_spenders<T: ConnectionTrait>(
     paginate_try_from(paginator, pagination)
         .await
         .context("Failed to fetch biggest spenders")
+}
+
+#[instrument(skip(db))]
+pub async fn leaderboard_top_accounts<T: ConnectionTrait>(
+    db: &T,
+    filter: PaginationParams,
+) -> Result<(Vec<LeaderboardTopAccountsItem>, PaginationMetadata)> {
+    let paginator =
+        DbLeaderboardTopAccountsItem::find_by_statement(Statement::from_sql_and_values(
+            db.get_database_backend(),
+            sql::LEADERBOARD_TOP_ACCOUNTS,
+            [],
+        ))
+        .paginate(db, filter.page_size);
+
+    paginate_try_from(paginator, filter).await
 }
 
 #[instrument(skip(db))]
