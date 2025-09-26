@@ -382,6 +382,7 @@ pub struct AddressLeaderboardRanks {
     pub entities_created: u64,
     pub entities_owned: u64,
     pub data_owned: u64,
+    pub top_accounts: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -418,6 +419,14 @@ pub struct LeaderboardEntitiesOwnedItem {
     pub rank: u64,
     pub address: Address,
     pub entities_count: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LeaderboardTopAccountsItem {
+    pub rank: u64,
+    pub address: Address,
+    pub balance: CurrencyAmount,
+    pub tx_count: u64,
 }
 
 #[derive(Debug, Clone)]

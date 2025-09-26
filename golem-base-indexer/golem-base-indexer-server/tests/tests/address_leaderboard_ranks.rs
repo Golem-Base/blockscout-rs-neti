@@ -125,6 +125,7 @@ async fn address_leaderboard_ranks_should_work() {
         "entities_created": "4",
         "entities_owned": "4",
         "data_owned": "4",
+        "top_accounts": "0",
     });
     let response: Value = send_get_request(&base, &endpoint_for_address(&address1)).await;
     assert_eq!(response, expected);
@@ -135,6 +136,7 @@ async fn address_leaderboard_ranks_should_work() {
         "entities_created": "1",
         "entities_owned": "1",
         "data_owned": "2",
+        "top_accounts": "0",
     });
     let response: Value = send_get_request(&base, &endpoint_for_address(&address2)).await;
     assert_eq!(response, expected);
@@ -145,6 +147,7 @@ async fn address_leaderboard_ranks_should_work() {
         "entities_created": "2",
         "entities_owned": "2",
         "data_owned": "3",
+        "top_accounts": "0",
     });
     let response: Value = send_get_request(&base, &endpoint_for_address(&address3)).await;
     assert_eq!(response, expected);
@@ -155,6 +158,7 @@ async fn address_leaderboard_ranks_should_work() {
         "entities_created": "3",
         "entities_owned": "3",
         "data_owned": "1",
+        "top_accounts": "0",
     });
     let response: Value = send_get_request(&base, &endpoint_for_address(&address4)).await;
     assert_eq!(response, expected);
@@ -184,6 +188,7 @@ async fn address_leaderboard_ranks_should_return_zeros_for_non_indexed_address()
         "entities_created": "0",
         "entities_owned": "0",
         "data_owned": "0",
+        "top_accounts": "0",
     });
 
     // Non-indexed address should return zeros
