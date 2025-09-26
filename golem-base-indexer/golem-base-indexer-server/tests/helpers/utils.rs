@@ -1,8 +1,6 @@
 use anyhow::Result;
 use bytes::Bytes;
-use golem_base_indexer_logic::{
-    updater_leaderboards::LeaderboardsUpdaterService, updater_timeseries::TimeseriesUpdaterService,
-};
+use golem_base_indexer_logic::mat_view_scheduler::MatViewScheduler;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 
@@ -13,11 +11,25 @@ pub fn bytes_to_hex(bytes: &Bytes) -> String {
 }
 
 pub async fn refresh_leaderboards(db: Arc<DatabaseConnection>) -> Result<()> {
-    let update_service = LeaderboardsUpdaterService::new(db);
-    update_service.refresh_views().await
+    let scheduler = MatViewScheduler::new(db);
+    let views = scheduler
+        .get_mat_view_settings()
+        .into_iter()
+        .filter(|v| v.name.contains("leaderboard"));
+    for view in views {
+        scheduler.refresh_named_view(&view.name).await;
+    }
+    Ok(())
 }
 
 pub async fn refresh_timeseries(db: Arc<DatabaseConnection>) -> Result<()> {
-    let update_service = TimeseriesUpdaterService::new(db);
-    update_service.refresh_views().await
+    let scheduler = MatViewScheduler::new(db);
+    let views = scheduler
+        .get_mat_view_settings()
+        .into_iter()
+        .filter(|v| v.name.contains("timeseries"));
+    for view in views {
+        scheduler.refresh_named_view(&view.name).await;
+    }
+    Ok(())
 }

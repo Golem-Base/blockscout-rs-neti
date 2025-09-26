@@ -1,4 +1,4 @@
-mod helpers;
+use crate::helpers;
 
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
@@ -13,7 +13,7 @@ async fn chart_data_usage_should_work() {
     let db = helpers::init_db("test", "chart_data_usage_should_work").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
-    helpers::load_data(&*client, include_str!("fixtures/sample_data.sql")).await;
+    helpers::load_data(&*client, include_str!("../fixtures/sample_data.sql")).await;
 
     Indexer::new(client.clone(), Default::default())
         .tick()

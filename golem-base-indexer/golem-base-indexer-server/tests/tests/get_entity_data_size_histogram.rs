@@ -1,4 +1,4 @@
-mod helpers;
+use crate::helpers;
 
 use alloy_primitives::Address;
 use blockscout_service_launcher::test_server;
