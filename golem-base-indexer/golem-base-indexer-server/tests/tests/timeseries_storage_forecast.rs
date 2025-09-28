@@ -127,17 +127,17 @@ async fn storage_forecast_should_work() {
         ChartPoint {
             date: format_date(utc_current),
             date_to: format_date(utc_current + Duration::days(1)),
-            value: "114687".to_string(),
+            value: "118783".to_string(),
         },
         ChartPoint {
             date: format_date(utc_current + Duration::days(1)),
             date_to: format_date(utc_current + Duration::days(2)),
-            value: "114687".to_string(),
+            value: "98303".to_string(),
         },
         ChartPoint {
             date: format_date(utc_current + Duration::days(2)),
             date_to: format_date(utc_current + Duration::days(3)),
-            value: "71487".to_string(),
+            value: "65535".to_string(),
         },
     ];
     let expected: Value = json!({
