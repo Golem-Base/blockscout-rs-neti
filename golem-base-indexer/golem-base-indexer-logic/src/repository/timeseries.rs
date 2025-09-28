@@ -149,8 +149,10 @@ pub async fn timeseries_storage_forecast<T: ConnectionTrait>(
     let chart = match resolution {
         ChartResolution::Day => {
             let (_, to_date) = parse_date_range(None, Some(to.to_string()))?;
-            let query = build_query_storage_forecast_daily(to_date.unwrap());
-            let results = DbChartStorageForecastDaily::find_by_statement(Statement::from_string(
+            let query = build_query_storage_forecast_hourly(
+                to_date.unwrap().and_hms_opt(23, 59, 59).unwrap(),
+            );
+            let results = DbChartStorageForecastHourly::find_by_statement(Statement::from_string(
                 DbBackend::Postgres,
                 query.to_string(PostgresQueryBuilder),
             ))
@@ -160,7 +162,7 @@ pub async fn timeseries_storage_forecast<T: ConnectionTrait>(
 
             tracing::warn!("results = {:#?}", results);
 
-            generate_points_storage_forecast_daily(results, to_date.unwrap())?
+            generate_points_storage_forecast(results, to_date.unwrap(), Duration::days(1))?
         }
         ChartResolution::Hour => {
             let (_, to_datetime) = parse_datetime_range(None, Some(to.to_string()))?;
@@ -378,27 +380,6 @@ fn build_query_data_usage_hourly(
     query
 }
 
-fn build_query_storage_forecast_daily(to_date: NaiveDate) -> SelectStatement {
-    Query::select()
-        .expr_as(
-            Expr::col(GolemBaseTimeseriesStorageForecast::Timestamp).cast_as("date"),
-            "timestamp",
-        )
-        .expr_as(
-            Expr::max(Expr::col(GolemBaseTimeseriesStorageForecast::TotalStorage)),
-            GolemBaseTimeseriesStorageForecast::TotalStorage,
-        )
-        .from(GolemBaseTimeseriesStorageForecast::Table)
-        .and_where(
-            Expr::col(GolemBaseTimeseriesStorageForecast::Timestamp)
-                .cast_as("date")
-                .lte(to_date),
-        )
-        .group_by_col("timestamp")
-        .order_by("timestamp", sea_query::Order::Desc)
-        .to_owned()
-}
-
 fn build_query_storage_forecast_hourly(to_datetime: NaiveDateTime) -> SelectStatement {
     Query::select()
         .columns([
@@ -571,46 +552,69 @@ fn generate_points_storage_forecast_hourly(
     Ok(points)
 }
 
-fn generate_points_storage_forecast_daily(
-    db_results: Vec<DbChartStorageForecastDaily>,
-    to_datetime: NaiveDate,
+fn generate_points_storage_forecast(
+    db_results: Vec<DbChartStorageForecastHourly>,
+    to_date: NaiveDate,
+    interval: Duration,
 ) -> Result<Vec<ChartPoint>> {
     if db_results.is_empty() {
         return Err(anyhow!("No data usage available"));
     }
 
+    // Find the initial value and start date
     let first_entry = &db_results[0];
     let initial_value = first_entry.total_storage;
-    let start_time = first_entry.timestamp;
+    let start_date = first_entry.timestamp.date();
 
-    let data_map: HashMap<NaiveDate, i64> = db_results
-        .into_iter()
-        .skip(1)
-        .map(|row| (row.timestamp, row.total_storage))
-        .collect();
+    let mut data_map: HashMap<NaiveDate, i64> = HashMap::new();
+
+    for row in &db_results {
+        let row_date = row.timestamp.date();
+        data_map.insert(row_date, row.total_storage);
+    }
 
     let mut points = Vec::new();
-    let mut current_time = start_time;
+    let mut current_date = start_date;
     let mut last_known_value = initial_value;
 
-    while current_time < to_datetime {
-        let next_day = current_time + Duration::days(1);
+    let date_format = "%Y-%m-%d";
 
-        let value = match data_map.get(&current_time) {
-            Some(&actual_value) => {
-                last_known_value = actual_value;
-                actual_value
+    while current_date < to_date {
+        let next_date = current_date + interval;
+
+        // Find the latest value within the current interval
+        let mut value_for_period = last_known_value;
+
+        // Look for the latest data point within this period
+        let mut latest_date_in_period = None;
+        for date in data_map.keys() {
+            if *date >= current_date && *date < next_date {
+                match latest_date_in_period {
+                    None => latest_date_in_period = Some(*date),
+                    Some(existing_date) => {
+                        if *date > existing_date {
+                            latest_date_in_period = Some(*date);
+                        }
+                    }
+                }
             }
-            None => last_known_value,
-        };
+        }
+
+        // Use the value from the latest date in this period, if any
+        if let Some(latest_date) = latest_date_in_period {
+            if let Some(&latest_value) = data_map.get(&latest_date) {
+                value_for_period = latest_value;
+                last_known_value = latest_value;
+            }
+        }
 
         points.push(ChartPoint {
-            date: current_time.format("%Y-%m-%d").to_string(),
-            date_to: next_day.format("%Y-%m-%d").to_string(),
-            value: value.to_string(),
+            date: current_date.format(date_format).to_string(),
+            date_to: next_date.format(date_format).to_string(),
+            value: value_for_period.to_string(),
         });
 
-        current_time = next_day;
+        current_date = next_date;
     }
 
     Ok(points)
