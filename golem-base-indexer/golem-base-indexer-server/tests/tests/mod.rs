@@ -30,3 +30,5 @@ mod reorg_handled_correctly_delete_extend;
 mod reorg_handled_correctly_extend_delete;
 mod reorg_handled_correctly_update;
 mod startup_works;
+mod timeseries_data_usage;
+mod timeseries_storage_forecast;
