@@ -4,7 +4,10 @@ use std::{sync::Arc, time::Duration};
 use tokio::time;
 use tracing::error;
 
-const TIMESERIES_MATERIALIZED_VIEWS: &[&str] = &["golem_base_timeseries_data_usage"];
+const TIMESERIES_MATERIALIZED_VIEWS: &[&str] = &[
+    "golem_base_timeseries_data_usage",
+    "golem_base_timeseries_storage_forecast",
+];
 
 #[derive(Clone)]
 pub struct TimeseriesUpdaterService {
