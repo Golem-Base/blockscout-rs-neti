@@ -6,10 +6,14 @@ use golem_base_indexer_logic::{
     types::{ChartInfo, ChartPoint, TxHash},
     Indexer,
 };
-use golem_base_sdk::entity::{Create, EncodableGolemBaseTransaction};
-use golem_base_sdk::Address;
-use helpers::sample::{insert_data, Block, Transaction};
-use helpers::utils::refresh_timeseries;
+use golem_base_sdk::{
+    entity::{Create, EncodableGolemBaseTransaction},
+    Address,
+};
+use helpers::{
+    sample::{insert_data, Block, Transaction},
+    utils::refresh_timeseries,
+};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
