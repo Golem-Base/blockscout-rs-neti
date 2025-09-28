@@ -59,6 +59,7 @@ async fn test_list_largest_entities_endpoint() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await

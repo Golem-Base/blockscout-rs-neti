@@ -73,6 +73,7 @@ async fn test_list_entities_by_btl_endpoint() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
@@ -93,6 +94,7 @@ async fn test_list_entities_by_btl_endpoint() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
