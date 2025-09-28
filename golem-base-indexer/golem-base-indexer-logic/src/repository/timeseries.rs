@@ -52,12 +52,6 @@ pub enum GolemBaseTimeseriesStorageForecast {
 }
 
 #[derive(Debug, FromQueryResult)]
-struct DbChartStorageForecastDaily {
-    pub timestamp: NaiveDate,
-    pub total_storage: i64,
-}
-
-#[derive(Debug, FromQueryResult)]
 struct DbChartStorageForecastHourly {
     pub timestamp: NaiveDateTime,
     pub total_storage: i64,
