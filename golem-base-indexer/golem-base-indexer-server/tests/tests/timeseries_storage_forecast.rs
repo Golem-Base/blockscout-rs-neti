@@ -30,9 +30,9 @@ fn format_date(dt: DateTime<Utc>) -> String {
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
-async fn storage_forecast_should_work() {
+async fn storage_forecast_hourly_should_work() {
     // Setup
-    let db = helpers::init_db("test", "storage_forecast_should_work").await;
+    let db = helpers::init_db("test", "storage_forecast_hourly_should_work").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
     let indexer = Indexer::new(client.clone(), Default::default());
@@ -41,11 +41,8 @@ async fn storage_forecast_should_work() {
     let utc_current = Utc::now();
     let creates = vec![
         Create::new(vec![0xff; 1024], 1800), // 1k, will expire in one hour
-        Create::new(vec![0xff; 2048], 3600), // 2k, will expire in two hours
-        Create::new(vec![0xff; 4096], 5400), // 4k, will expire in three hours
-        Create::new(vec![0xee; 16384], 43200), // 16k, will expire in one day
-        Create::new(vec![0xee; 32768], 86400), // 32k, will expire in two days
-        Create::new(vec![0xdd; 65535], 1944000), // 64k, will expire in 45 days
+        Create::new(vec![0xff; 1024], 3600), // 1k, will expire in two hours
+        Create::new(vec![0xff; 1024], 5400), // 1k, will expire in three hours
     ];
     let block = Block {
         number: 1,
@@ -85,27 +82,27 @@ async fn storage_forecast_should_work() {
         ChartPoint {
             date: format_datetime(utc_current),
             date_to: format_datetime(utc_current + Duration::hours(1)),
-            value: "121855".to_string(),
+            value: "3072".to_string(),
         },
         ChartPoint {
             date: format_datetime(utc_current + Duration::hours(1)),
             date_to: format_datetime(utc_current + Duration::hours(2)),
-            value: "121855".to_string(),
+            value: "3072".to_string(),
         },
         ChartPoint {
             date: format_datetime(utc_current + Duration::hours(2)),
             date_to: format_datetime(utc_current + Duration::hours(3)),
-            value: "120831".to_string(),
+            value: "2048".to_string(),
         },
         ChartPoint {
             date: format_datetime(utc_current + Duration::hours(3)),
             date_to: format_datetime(utc_current + Duration::hours(4)),
-            value: "118783".to_string(),
+            value: "1024".to_string(),
         },
         ChartPoint {
             date: format_datetime(utc_current + Duration::hours(4)),
             date_to: format_datetime(utc_current + Duration::hours(5)),
-            value: "114687".to_string(),
+            value: "0".to_string(),
         },
     ];
     let expected: Value = json!({
@@ -114,6 +111,43 @@ async fn storage_forecast_should_work() {
     });
 
     assert_eq!(response, expected);
+}
+
+#[tokio::test]
+#[ignore = "Needs database to run"]
+async fn storage_forecast_daily_should_work() {
+    // Setup
+    let db = helpers::init_db("test", "storage_forecast_daily_should_work").await;
+    let client = db.client();
+    let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
+    let indexer = Indexer::new(client.clone(), Default::default());
+
+    // Insert test entities
+    let utc_current = Utc::now();
+    let creates = vec![
+        Create::new(vec![0xee; 4096], 43200), // 4k, will expire in one day
+        Create::new(vec![0xee; 4096], 86400), // 4k, will expire in two days
+        Create::new(vec![0xdd; 4096], 1944000), // 4k, will expire in 45 days
+    ];
+    let block = Block {
+        number: 1,
+        timestamp: Some(utc_current),
+        transactions: vec![Transaction {
+            sender: Address::random(),
+            hash: Some(TxHash::random()),
+            operations: EncodableGolemBaseTransaction {
+                creates,
+                ..Default::default()
+            },
+            ..Default::default()
+        }],
+        ..Default::default()
+    };
+    insert_data(&*client, block).await.unwrap();
+
+    // Process and refresh timeseries
+    indexer.tick().await.unwrap();
+    refresh_timeseries(Arc::clone(&client)).await.unwrap();
 
     // Check daily resolution
     let three_days_from_now = utc_current + Duration::days(3);
@@ -123,21 +157,27 @@ async fn storage_forecast_should_work() {
     )
     .await;
 
+    let info = json!(ChartInfo {
+        id: "golemBaseStorageForecast".to_string(),
+        title: "Storage forecast".to_string(),
+        description: "Chain storage forecast".to_string(),
+    });
+
     let points = vec![
         ChartPoint {
             date: format_date(utc_current),
             date_to: format_date(utc_current + Duration::days(1)),
-            value: "118783".to_string(),
+            value: "12288".to_string(),
         },
         ChartPoint {
             date: format_date(utc_current + Duration::days(1)),
             date_to: format_date(utc_current + Duration::days(2)),
-            value: "98303".to_string(),
+            value: "8192".to_string(),
         },
         ChartPoint {
             date: format_date(utc_current + Duration::days(2)),
             date_to: format_date(utc_current + Duration::days(3)),
-            value: "65535".to_string(),
+            value: "4096".to_string(),
         },
     ];
     let expected: Value = json!({

@@ -11,6 +11,8 @@ use crate::types::{ChartInfo, ChartPoint};
 pub enum ChartResolution {
     Day,
     Hour,
+    Week,
+    Month,
 }
 
 impl TryFrom<i32> for ChartResolution {
@@ -20,6 +22,8 @@ impl TryFrom<i32> for ChartResolution {
         match value {
             0 => Ok(ChartResolution::Day),
             1 => Ok(ChartResolution::Hour),
+            2 => Ok(ChartResolution::Week),
+            3 => Ok(ChartResolution::Month),
             _ => Err(anyhow!("Error converting chart resolution")),
         }
     }
@@ -123,6 +127,7 @@ pub async fn timeseries_data_usage<T: ConnectionTrait>(
 
             generate_points_data_usage_hourly(results, from_datetime, to_datetime, initial_value)?
         }
+        _ => return Err(anyhow!("Unsupported chart resolution")),
     };
 
     let info = ChartInfo {
@@ -141,7 +146,7 @@ pub async fn timeseries_storage_forecast<T: ConnectionTrait>(
     resolution: ChartResolution,
 ) -> Result<(Vec<ChartPoint>, ChartInfo)> {
     let chart = match resolution {
-        ChartResolution::Day => {
+        ChartResolution::Day | ChartResolution::Week | ChartResolution::Month => {
             let (_, to_date) = parse_date_range(None, Some(to.to_string()))?;
             let query = build_query_storage_forecast_hourly(
                 to_date.unwrap().and_hms_opt(23, 59, 59).unwrap(),
@@ -154,9 +159,13 @@ pub async fn timeseries_storage_forecast<T: ConnectionTrait>(
             .await
             .context("Failed to get storage forecast timeseries")?;
 
-            tracing::warn!("results = {:#?}", results);
+            let interval = match resolution {
+                ChartResolution::Week => Duration::days(7),
+                ChartResolution::Month => Duration::days(30),
+                _ => Duration::days(1),
+            };
 
-            generate_points_storage_forecast(results, to_date.unwrap(), Duration::days(1))?
+            generate_points_storage_forecast(results, to_date.unwrap(), interval)?
         }
         ChartResolution::Hour => {
             let (_, to_datetime) = parse_datetime_range(None, Some(to.to_string()))?;
@@ -168,8 +177,6 @@ pub async fn timeseries_storage_forecast<T: ConnectionTrait>(
             .all(db)
             .await
             .context("Failed to get storage forecast timeseries")?;
-
-            tracing::warn!("results = {:#?}", results);
 
             generate_points_storage_forecast_hourly(results, to_datetime.unwrap())?
         }

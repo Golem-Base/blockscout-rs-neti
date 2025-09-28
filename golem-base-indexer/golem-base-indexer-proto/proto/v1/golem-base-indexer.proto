@@ -328,6 +328,8 @@ message AddressLeaderboardRanksResponse {
 enum ChartResolution {
   DAY = 0;
   HOUR = 1;
+  WEEK = 2;
+  MONTH = 3;
 }
 
 message ChartInfo {

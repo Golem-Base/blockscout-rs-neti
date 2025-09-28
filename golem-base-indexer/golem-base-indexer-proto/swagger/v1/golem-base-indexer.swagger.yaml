@@ -96,6 +96,8 @@ paths:
           enum:
             - DAY
             - HOUR
+            - WEEK
+            - MONTH
           default: DAY
       tags:
         - GolemBaseIndexerService
@@ -123,6 +125,8 @@ paths:
           enum:
             - DAY
             - HOUR
+            - WEEK
+            - MONTH
           default: DAY
       tags:
         - GolemBaseIndexerService
@@ -760,6 +764,8 @@ definitions:
     enum:
       - DAY
       - HOUR
+      - WEEK
+      - MONTH
     default: DAY
     title: Charts
   v1ChartResponse:
