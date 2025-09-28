@@ -36,6 +36,14 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.AddressLeaderboardRanks
       get: /api/v1/address/{address}/leaderboard-ranks
 
+    # Charts
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartDataUsage
+      get: /api/v1/chart/data-usage
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartStorageForecast
+      get: /api/v1/chart/storage-forecast
+
     # Leaderboards
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardBiggestSpenders
@@ -61,9 +69,6 @@ http:
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardEntitiesByBtl
       get: /api/v1/leaderboard/entities-by-btl
-
-    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartDataUsage
-      get: /api/v1/chart/data-usage
 
     #################### Health ####################
 
