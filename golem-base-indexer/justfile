@@ -46,6 +46,7 @@ generate-entities:
 
 new-migration name:
     sea-orm-cli migrate generate -d golem-base-indexer-migration {{name}}
+    ./fix-migrations.sh
 
 migrate-up:
     sea-orm-cli migrate -d golem-base-indexer-migration up
