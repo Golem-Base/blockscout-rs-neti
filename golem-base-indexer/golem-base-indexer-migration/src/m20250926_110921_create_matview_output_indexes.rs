@@ -13,6 +13,7 @@ const LEADERBOARDS_MAT_VIEWS: &[&str] = &[
     "golem_base_leaderboard_largest_entities",
     "golem_base_leaderboard_effectively_largest_entities",
     "golem_base_leaderboard_entities_created",
+    "golem_base_leaderboard_top_accounts",
 ];
 
 #[async_trait::async_trait]

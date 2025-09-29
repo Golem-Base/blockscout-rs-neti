@@ -265,6 +265,8 @@ SELECT
     tx_count
 FROM
     golem_base_leaderboard_top_accounts
+ORDER BY
+    rank ASC
 "#;
 
 pub const LEADERBOARD_BIGGEST_SPENDERS: &str = r#"
