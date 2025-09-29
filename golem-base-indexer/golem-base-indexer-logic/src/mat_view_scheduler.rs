@@ -55,6 +55,10 @@ impl MatViewScheduler {
                 name: "golem_base_leaderboard_largest_entities".to_string(),
                 delay: HALF_HOUR,
             },
+            MatViewSettings {
+                name: "golem_base_leaderboard_top_accounts".to_string(),
+                delay: HALF_HOUR,
+            },
             // timeseries
             MatViewSettings {
                 name: "golem_base_timeseries_data_usage".to_string(),
