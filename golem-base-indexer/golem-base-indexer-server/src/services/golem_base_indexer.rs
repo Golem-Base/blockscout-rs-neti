@@ -571,30 +571,6 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
-    async fn chart_data_usage(
-        &self,
-        request: Request<ChartDataUsageRequest>,
-    ) -> Result<Response<ChartDataUsageResponse>, Status> {
-        let inner = request.into_inner();
-        let resolution = inner
-            .resolution
-            .try_into()
-            .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
-        let (points, info) = repository::timeseries::timeseries_data_usage(
-            &*self.db, inner.from, inner.to, resolution,
-        )
-        .await
-        .map_err(|err| {
-            tracing::error!(?err, "failed to query data usage timeseries");
-            Status::internal("failed to query data usage timeseries")
-        })?;
-
-        Ok(Response::new(ChartDataUsageResponse {
-            chart: points.into_iter().map(Into::into).collect(),
-            info: Some(info.into()),
-        }))
-    }
-
     async fn get_entity_data_histogram(
         &self,
         _request: Request<Empty>,

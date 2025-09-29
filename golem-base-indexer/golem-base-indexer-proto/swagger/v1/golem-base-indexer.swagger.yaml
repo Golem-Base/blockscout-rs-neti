@@ -101,6 +101,20 @@ paths:
           default: DAY
       tags:
         - GolemBaseIndexerService
+  /api/v1/chart/entity-data-histogram:
+    get:
+      operationId: GolemBaseIndexerService_GetEntityDataHistogram
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1GetEntityDataHistogramResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
   /api/v1/chart/storage-forecast:
     get:
       operationId: GolemBaseIndexerService_ChartStorageForecast
@@ -128,20 +142,6 @@ paths:
             - WEEK
             - MONTH
           default: DAY
-      tags:
-        - GolemBaseIndexerService
-  /api/v1/chart/entity-data-histogram:
-    get:
-      operationId: GolemBaseIndexerService_GetEntityDataHistogram
-      responses:
-        "200":
-          description: A successful response.
-          schema:
-            $ref: '#/definitions/v1GetEntityDataHistogramResponse'
-        default:
-          description: An unexpected error response.
-          schema:
-            $ref: '#/definitions/rpcStatus'
       tags:
         - GolemBaseIndexerService
   /api/v1/entities:
