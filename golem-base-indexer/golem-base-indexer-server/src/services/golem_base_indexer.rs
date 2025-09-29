@@ -570,4 +570,48 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             pagination: Some(pagination.into()),
         }))
     }
+
+    async fn chart_data_usage(
+        &self,
+        request: Request<ChartDataUsageRequest>,
+    ) -> Result<Response<ChartDataUsageResponse>, Status> {
+        let inner = request.into_inner();
+        let resolution = inner
+            .resolution
+            .try_into()
+            .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
+        let (points, info) = repository::timeseries::timeseries_data_usage(
+            &*self.db, inner.from, inner.to, resolution,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "failed to query data usage timeseries");
+            Status::internal("failed to query data usage timeseries")
+        })?;
+
+        Ok(Response::new(ChartDataUsageResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
+    async fn get_entity_data_histogram(
+        &self,
+        _request: Request<Empty>,
+    ) -> Result<Response<GetEntityDataHistogramResponse>, Status> {
+        let entity_data_size_histogram =
+            repository::entities::get_entity_size_data_histogram(&*self.db)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query entity data histogram");
+                    Status::internal("failed to query entity data histogram")
+                })?;
+
+        Ok(Response::new(GetEntityDataHistogramResponse {
+            items: entity_data_size_histogram
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        }))
+    }
 }

@@ -5,14 +5,14 @@ use const_hex::traits::ToHexExt;
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
     AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, ChartInfo, ChartPoint,
-    EntitiesFilter, Entity, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
-    EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
-    LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
-    LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
-    ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
-    OperationData, OperationFilter, OperationView, OperationsCount, OperationsFilter,
-    PaginationMetadata, PaginationParams, StringAnnotation, StringAnnotationWithRelations,
-    Transaction,
+    EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter,
+    EntityStatus, EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem,
+    LeaderboardDataOwnedItem, LeaderboardEffectivelyLargestEntitiesItem,
+    LeaderboardEntitiesCreatedItem, LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem,
+    LeaderboardTopAccountsItem, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation,
+    NumericAnnotationWithRelations, OperationData, OperationFilter, OperationView, OperationsCount,
+    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
+    StringAnnotationWithRelations, Transaction,
 };
 
 pub mod blockscout {
@@ -641,6 +641,17 @@ impl From<LeaderboardEffectivelyLargestEntitiesItem>
             entity_key: v.entity_key.to_string(),
             data_size: v.data_size,
             lifespan: v.lifespan,
+        }
+    }
+}
+
+impl From<EntityDataHistogram> for v1::EntityDataHistogram {
+    fn from(v: EntityDataHistogram) -> Self {
+        Self {
+            bucket: v.bucket,
+            bin_start: v.bin_start,
+            bin_end: v.bin_end,
+            count: v.count,
         }
     }
 }

@@ -459,3 +459,11 @@ pub struct LogIndex {
     pub block_hash: BlockHash,
     pub index: u64,
 }
+
+#[derive(Clone, Debug)]
+pub struct EntityDataHistogram {
+    pub bucket: u64,
+    pub bin_start: u64,
+    pub bin_end: u64,
+    pub count: u64,
+}

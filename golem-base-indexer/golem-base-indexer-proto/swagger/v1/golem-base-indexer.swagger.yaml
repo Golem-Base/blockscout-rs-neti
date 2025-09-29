@@ -130,6 +130,20 @@ paths:
           default: DAY
       tags:
         - GolemBaseIndexerService
+  /api/v1/chart/entity-data-histogram:
+    get:
+      operationId: GolemBaseIndexerService_GetEntityDataHistogram
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1GetEntityDataHistogramResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
   /api/v1/entities:
     get:
       operationId: GolemBaseIndexerService_ListEntities
@@ -815,6 +829,21 @@ definitions:
       expires_at_block_number:
         type: string
         format: uint64
+  v1EntityDataHistogram:
+    type: object
+    properties:
+      bucket:
+        type: string
+        format: uint64
+      bin_start:
+        type: string
+        format: uint64
+      bin_end:
+        type: string
+        format: uint64
+      count:
+        type: string
+        format: uint64
   v1EntityHistoryEntry:
     type: object
     properties:
@@ -939,6 +968,14 @@ definitions:
         format: uint64
       updated_at_timestamp:
         type: string
+  v1GetEntityDataHistogramResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1EntityDataHistogram'
   v1GetEntityHistoryResponse:
     type: object
     properties:

@@ -70,6 +70,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardEntitiesByBtl
       get: /api/v1/leaderboard/entities-by-btl
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntityDataHistogram
+      get: /api/v1/chart/entity-data-histogram
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check
