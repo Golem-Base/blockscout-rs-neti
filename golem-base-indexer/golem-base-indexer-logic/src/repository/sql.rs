@@ -247,6 +247,8 @@ SELECT
     total_fees
 FROM
     golem_base_leaderboard_biggest_spenders
+ORDER BY
+    rank ASC
 "#;
 
 pub const LEADERBOARD_ENTITIES_CREATED: &str = r#"
@@ -256,6 +258,8 @@ SELECT
     entities_created_count
 FROM
     golem_base_leaderboard_entities_created
+ORDER BY
+    rank ASC
 "#;
 
 pub const LEADERBOARD_ENTITIES_OWNED: &str = r#"
@@ -265,6 +269,8 @@ SELECT
     entities_count
 FROM
     golem_base_leaderboard_entities_owned
+ORDER BY
+    rank ASC
 "#;
 
 pub const LEADERBOARD_DATA_OWNED: &str = r#"
@@ -274,6 +280,8 @@ SELECT
     data_size
 FROM
     golem_base_leaderboard_data_owned
+ORDER BY
+    rank ASC
 "#;
 
 pub const LEADERBOARD_LARGEST_ENTITIES: &str = r#"
@@ -283,6 +291,8 @@ SELECT
     data_size
 FROM
     golem_base_leaderboard_largest_entities
+ORDER BY
+    rank ASC
 "#;
 
 pub const LEADERBOARD_EFFECTIVELY_LARGEST_ENTITIES: &str = r#"
@@ -293,4 +303,6 @@ SELECT
     lifespan
 FROM
     golem_base_leaderboard_effectively_largest_entities
+ORDER BY
+    rank ASC
 "#;
