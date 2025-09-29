@@ -1,6 +1,7 @@
 use alloy_primitives::address;
 use alloy_rlp::encode;
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use golem_base_indexer_logic::{
     golem_base::block_timestamp,
     types::{Address, BlockHash, BlockNumber, TxHash},
@@ -13,6 +14,7 @@ pub struct Block {
     pub number: BlockNumber,
     pub hash: Option<BlockHash>,
     pub transactions: Vec<Transaction>,
+    pub timestamp: Option<DateTime<Utc>>,
 }
 
 #[derive(Default)]
@@ -30,9 +32,11 @@ pub async fn insert_data<T: ConnectionTrait>(txn: &T, block: Block) -> Result<()
         &golem_base_indexer_logic::types::Block {
             number: 0,
             hash: Default::default(),
-            timestamp: chrono::DateTime::parse_from_rfc3339("2018-10-13T12:30:00Z")
-                .unwrap()
-                .to_utc(),
+            timestamp: block.timestamp.unwrap_or(
+                chrono::DateTime::parse_from_rfc3339("2018-10-13T12:30:00Z")
+                    .unwrap()
+                    .to_utc(),
+            ),
         },
     );
     let parent_hash = BlockHash::random();

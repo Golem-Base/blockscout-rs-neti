@@ -560,6 +560,7 @@ impl From<AddressLeaderboardRanks> for v1::AddressLeaderboardRanksResponse {
     }
 }
 
+// Charts
 impl From<ChartInfo> for v1::ChartInfo {
     fn from(v: ChartInfo) -> Self {
         Self {

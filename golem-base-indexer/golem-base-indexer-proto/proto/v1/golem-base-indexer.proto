@@ -17,7 +17,10 @@ service GolemBaseIndexerService {
   rpc BlockStats(BlockStatsRequest) returns (BlockStatsResponse);
   rpc ListCustomContractTransactions(ListCustomContractTransactionsRequest) returns (ListCustomContractTransactionsResponse);
   rpc AddressLeaderboardRanks(AddressLeaderboardRanksRequest) returns (AddressLeaderboardRanksResponse);
-  rpc ChartDataUsage(ChartDataUsageRequest) returns (ChartDataUsageResponse);
+
+  // Charts
+  rpc ChartDataUsage(ChartDataUsageRequest) returns (ChartResponse);
+  rpc ChartStorageForecast(ChartStorageForecastRequest) returns (ChartResponse);
   rpc GetEntityDataHistogram(Empty) returns (GetEntityDataHistogramResponse);
 
   // Leaderboards
@@ -324,9 +327,12 @@ message AddressLeaderboardRanksResponse {
   uint64 top_accounts = 5;
 }
 
+// Charts
 enum ChartResolution {
   DAY = 0;
   HOUR = 1;
+  WEEK = 2;
+  MONTH = 3;
 }
 
 message ChartInfo {
@@ -341,15 +347,20 @@ message ChartPoint {
   string value = 3;
 }
 
+message ChartResponse {
+  repeated ChartPoint chart = 1;
+  ChartInfo info = 2;
+}
+
 message ChartDataUsageRequest {
   optional string from = 1;
   optional string to = 2;
   ChartResolution resolution = 3;
 }
 
-message ChartDataUsageResponse {
-  repeated ChartPoint chart = 1;
-  ChartInfo info = 2;
+message ChartStorageForecastRequest {
+  string to = 1;
+  ChartResolution resolution = 2;
 }
 
 // Leaderboards

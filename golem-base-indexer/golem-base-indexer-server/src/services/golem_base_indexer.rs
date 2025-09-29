@@ -333,6 +333,55 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         Ok(Response::new(leaderboard_ranks.into()))
     }
 
+    // Charts
+    async fn chart_data_usage(
+        &self,
+        request: Request<ChartDataUsageRequest>,
+    ) -> Result<Response<ChartResponse>, Status> {
+        let inner = request.into_inner();
+        let resolution = inner
+            .resolution
+            .try_into()
+            .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
+        let (points, info) = repository::timeseries::timeseries_data_usage(
+            &*self.db, inner.from, inner.to, resolution,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "failed to query data usage chart");
+            Status::internal("failed to query data usage chart")
+        })?;
+
+        Ok(Response::new(ChartResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
+    async fn chart_storage_forecast(
+        &self,
+        request: Request<ChartStorageForecastRequest>,
+    ) -> Result<Response<ChartResponse>, Status> {
+        let inner = request.into_inner();
+        let resolution = inner
+            .resolution
+            .try_into()
+            .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
+
+        let (points, info) =
+            repository::timeseries::timeseries_storage_forecast(&*self.db, &inner.to, resolution)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query storage forecast chart");
+                    Status::internal("failed to query storage forecast chart")
+                })?;
+
+        Ok(Response::new(ChartResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
     // Leaderboards
     async fn leaderboard_biggest_spenders(
         &self,
@@ -519,30 +568,6 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         Ok(Response::new(LeaderboardEntitiesByBtlResponse {
             items: entities.into_iter().map(Into::into).collect(),
             pagination: Some(pagination.into()),
-        }))
-    }
-
-    async fn chart_data_usage(
-        &self,
-        request: Request<ChartDataUsageRequest>,
-    ) -> Result<Response<ChartDataUsageResponse>, Status> {
-        let inner = request.into_inner();
-        let resolution = inner
-            .resolution
-            .try_into()
-            .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
-        let (points, info) = repository::timeseries::timeseries_data_usage(
-            &*self.db, inner.from, inner.to, resolution,
-        )
-        .await
-        .map_err(|err| {
-            tracing::error!(?err, "failed to query data usage timeseries");
-            Status::internal("failed to query data usage timeseries")
-        })?;
-
-        Ok(Response::new(ChartDataUsageResponse {
-            chart: points.into_iter().map(Into::into).collect(),
-            info: Some(info.into()),
         }))
     }
 

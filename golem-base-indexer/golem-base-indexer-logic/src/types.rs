@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 pub use alloy_primitives::{Address, BlockHash, BlockNumber, TxHash, U256 as CurrencyAmount};
 pub use alloy_rlp::Bytes;
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 
 pub type Timestamp = DateTime<Utc>;
 
@@ -386,14 +387,14 @@ pub struct AddressLeaderboardRanks {
     pub top_accounts: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChartPoint {
     pub date: String,
     pub date_to: String,
     pub value: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChartInfo {
     pub id: String,
     pub title: String,

@@ -81,6 +81,7 @@ async fn test_get_operation_endpoint() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
@@ -154,6 +155,7 @@ async fn test_get_operation_endpoint() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await
@@ -177,6 +179,7 @@ async fn test_get_operation_endpoint() {
                 },
                 ..Default::default()
             }],
+            ..Default::default()
         },
     )
     .await

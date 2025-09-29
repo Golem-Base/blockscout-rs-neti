@@ -64,6 +64,10 @@ impl MatViewScheduler {
                 name: "golem_base_timeseries_data_usage".to_string(),
                 delay: HALF_HOUR,
             },
+            MatViewSettings {
+                name: "golem_base_timeseries_storage_forecast".to_string(),
+                delay: HALF_HOUR,
+            },
         ]
     }
 

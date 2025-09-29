@@ -69,12 +69,13 @@ paths:
         - GolemBaseIndexerService
   /api/v1/chart/data-usage:
     get:
+      summary: Charts
       operationId: GolemBaseIndexerService_ChartDataUsage
       responses:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ChartDataUsageResponse'
+            $ref: '#/definitions/v1ChartResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -95,6 +96,8 @@ paths:
           enum:
             - DAY
             - HOUR
+            - WEEK
+            - MONTH
           default: DAY
       tags:
         - GolemBaseIndexerService
@@ -110,6 +113,35 @@ paths:
           description: An unexpected error response.
           schema:
             $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
+  /api/v1/chart/storage-forecast:
+    get:
+      operationId: GolemBaseIndexerService_ChartStorageForecast
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ChartResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: to
+          in: query
+          required: false
+          type: string
+        - name: resolution
+          in: query
+          required: false
+          type: string
+          enum:
+            - DAY
+            - HOUR
+            - WEEK
+            - MONTH
+          default: DAY
       tags:
         - GolemBaseIndexerService
   /api/v1/entities:
@@ -723,16 +755,6 @@ definitions:
       total_bytes:
         type: string
         format: uint64
-  v1ChartDataUsageResponse:
-    type: object
-    properties:
-      chart:
-        type: array
-        items:
-          type: object
-          $ref: '#/definitions/v1ChartPoint'
-      info:
-        $ref: '#/definitions/v1ChartInfo'
   v1ChartInfo:
     type: object
     properties:
@@ -756,7 +778,20 @@ definitions:
     enum:
       - DAY
       - HOUR
+      - WEEK
+      - MONTH
     default: DAY
+    title: Charts
+  v1ChartResponse:
+    type: object
+    properties:
+      chart:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1ChartPoint'
+      info:
+        $ref: '#/definitions/v1ChartInfo'
   v1CountEntitiesResponse:
     type: object
     properties:
