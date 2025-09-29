@@ -257,6 +257,7 @@ pub struct EntitiesFilter {
     pub status: Option<EntityStatus>,
     pub string_annotation: Option<StringAnnotation>,
     pub numeric_annotation: Option<NumericAnnotation>,
+    pub owner: Option<Address>,
 }
 
 #[derive(Debug, Clone)]
