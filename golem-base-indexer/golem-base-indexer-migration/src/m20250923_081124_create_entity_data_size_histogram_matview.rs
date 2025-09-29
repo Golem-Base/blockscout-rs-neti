@@ -19,8 +19,7 @@ WITH entities AS (
     FROM golem_base_entities
     WHERE 
         status = 'active' 
-        AND data IS NOT NULL 
-        AND OCTET_LENGTH(data) > 0
+        AND data IS NOT NULL
 ),
 params AS (
     SELECT
@@ -87,8 +86,7 @@ CREATE INDEX IF NOT EXISTS golem_base_entity_active_data_size_index
 ON golem_base_entities (OCTET_LENGTH(data))
 WHERE 
     status = 'active' 
-    AND data IS NOT NULL 
-    AND OCTET_LENGTH(data) > 0;
+    AND data IS NOT NULL
         "#,
         );
 
