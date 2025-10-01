@@ -206,7 +206,9 @@ async fn test_get_operation_endpoint() {
             "expires_at_block_number": "103",
             "prev_expires_at_block_number": format!("{}", 101 + extend_by + extend_by),
             "expires_at_timestamp": "2018-10-13T12:33:26+00:00",
+            "expires_at_timestamp_sec": "1539434006",
             "prev_expires_at_timestamp": "2018-10-13T12:41:34+00:00",
+            "prev_expires_at_timestamp_sec": "1539434494",
         }),
     );
 
@@ -229,7 +231,9 @@ async fn test_get_operation_endpoint() {
             "expires_at_block_number": "4",
             "prev_expires_at_block_number": "103",
             "expires_at_timestamp": "2018-10-13T12:30:08+00:00",
+            "expires_at_timestamp_sec": "1539433808",
             "prev_expires_at_timestamp": "2018-10-13T12:33:26+00:00",
+            "prev_expires_at_timestamp_sec": "1539434006",
         }),
     );
 }

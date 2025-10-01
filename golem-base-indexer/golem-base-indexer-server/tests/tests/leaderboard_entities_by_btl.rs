@@ -1,4 +1,4 @@
-use crate::helpers;
+use crate::helpers::{self, utils::iso_to_ts_sec};
 
 use alloy_primitives::{BlockHash, TxHash};
 use blockscout_service_launcher::test_server;
@@ -131,7 +131,8 @@ async fn test_list_entities_by_btl_endpoint() {
     assert_fields(
         &response["items"][0],
         serde_json::json!({
-            "expires_at_timestamp": "2018-10-13T12:40:02+00:00"
+            "expires_at_timestamp": "2018-10-13T12:40:02+00:00",
+            "expires_at_timestamp_sec": iso_to_ts_sec("2018-10-13T12:40:02+00:00"),
         }),
     );
 

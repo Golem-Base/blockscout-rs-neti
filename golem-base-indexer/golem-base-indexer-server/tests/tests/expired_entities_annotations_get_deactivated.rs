@@ -39,6 +39,7 @@ async fn test_expired_entities_annotations_get_deactivated() {
       "updated_at_timestamp": "2025-07-22T11:31:35+00:00",
       "expires_at_block_number": "7",
       "expires_at_timestamp": "2025-07-22T14:17:39+00:00",
+      "expires_at_timestamp_sec": "1753193871",
       "owner": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
       "gas_used": "0",
       "fees_paid": "0"

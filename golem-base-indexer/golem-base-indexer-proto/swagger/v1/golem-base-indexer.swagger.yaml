@@ -894,6 +894,12 @@ definitions:
         type: string
       prev_expires_at_timestamp:
         type: string
+      expires_at_timestamp_sec:
+        type: string
+        format: uint64
+      prev_expires_at_timestamp_sec:
+        type: string
+        format: uint64
   v1EntityStatus:
     type: string
     enum:
@@ -920,6 +926,9 @@ definitions:
         format: uint64
       expires_at_timestamp:
         type: string
+      expires_at_timestamp_sec:
+        type: string
+        format: uint64
   v1FullEntity:
     type: object
     properties:
@@ -970,6 +979,8 @@ definitions:
         type: string
         format: uint64
       updated_at_timestamp:
+        type: string
+      expires_at_timestamp_sec:
         type: string
   v1GetEntityDataHistogramResponse:
     type: object
