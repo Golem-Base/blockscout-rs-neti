@@ -57,6 +57,7 @@ impl v1::FullEntity {
             updated_at_timestamp: entity.updated_at_timestamp.to_rfc3339(),
 
             expires_at_timestamp: entity.expires_at_timestamp.map(|v| v.to_rfc3339()),
+            expires_at_timestamp_sec: entity.expires_at_timestamp_sec.map(|v| v.to_string()),
             expires_at_block_number: entity.expires_at_block_number,
             fees_paid: entity.fees_paid.to_string(),
             gas_used: entity.gas_used.to_string(),
@@ -322,6 +323,7 @@ impl From<EntityWithExpTimestamp> for v1::EntityWithExpTimestamp {
             last_updated_at_tx_hash: entity.last_updated_at_tx_hash.to_string(),
             expires_at_block_number: entity.expires_at_block_number,
             expires_at_timestamp: entity.expires_at_timestamp.map(|v| v.to_rfc3339()),
+            expires_at_timestamp_sec: entity.expires_at_timestamp_sec,
         }
     }
 }
@@ -375,7 +377,9 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             expires_at_block_number: v.expires_at_block_number,
             prev_expires_at_block_number: v.prev_expires_at_block_number,
             expires_at_timestamp: v.expires_at_timestamp.map(|v| v.to_rfc3339()),
+            expires_at_timestamp_sec: v.expires_at_timestamp_sec,
             prev_expires_at_timestamp: v.prev_expires_at_timestamp.map(|v| v.to_rfc3339()),
+            prev_expires_at_timestamp_sec: v.prev_expires_at_timestamp_sec,
             gas_used: "0".into(),  // FIXME
             fees_paid: "0".into(), // FIXME
         }

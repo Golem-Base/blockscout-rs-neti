@@ -16,6 +16,14 @@ pub fn block_timestamp(number: BlockNumber, reference_block: &Block) -> Option<T
     reference_block.timestamp.checked_add_signed(duration)
 }
 
+pub fn block_timestamp_sec(number: BlockNumber, reference_block: &Block) -> Option<u64> {
+    let diff_blocks = number.saturating_sub(reference_block.number);
+    let diff_secs = diff_blocks.saturating_mul(SECS_PER_BLOCK as u64);
+    let base_secs = reference_block.timestamp.timestamp() as u64;
+
+    base_secs.checked_add(diff_secs)
+}
+
 pub fn entity_key(tx_hash: TxHash, data: Bytes, create_op_idx: u64) -> EntityKey {
     let mut buf = Vec::<u8>::new();
     buf.extend_from_slice(tx_hash.as_slice());
@@ -36,7 +44,7 @@ pub fn decode_extend_log_data(data: &Bytes) -> Result<u64> {
 
 #[cfg(test)]
 mod tests {
-    use crate::golem_base::entity_key;
+    use crate::golem_base::{block_timestamp, block_timestamp_sec, entity_key, Block};
     use alloy_primitives::{b256, bytes};
 
     #[test]
@@ -60,5 +68,54 @@ mod tests {
             expected_key,
             entity_key(tx_hash, data.into(), create_op_idx)
         );
+    }
+
+    #[test]
+    fn block_timestamp_sec_calculated() {
+        let date = chrono::DateTime::from_timestamp(1750000000, 0).unwrap();
+        assert_eq!(date.timestamp(), 1750000000);
+        let reference_block = Block {
+            hash: alloy_primitives::BlockHash::ZERO,
+            number: 1,
+            timestamp: date,
+        };
+        // MAX that FE will take as an input
+        let blocks_into_the_future: u64 = 900_000_000_000_000;
+        let target_block = reference_block.number + blocks_into_the_future;
+        // 1_750_000_000 + 9000000000000000 * 2
+        let expected = Some(1_800_001_750_000_000);
+
+        let result = block_timestamp_sec(target_block, &reference_block);
+        assert_eq!(result, expected);
+
+        let blocks_into_the_future: u64 = 900_000_000_000_000 * 10_000;
+        let target_block = reference_block.number + blocks_into_the_future;
+        let result = block_timestamp_sec(target_block, &reference_block);
+        // 585+ billion years into the future
+        let expected = Some(18_000_000_001_750_000_000);
+        assert_eq!(result, expected);
+
+        let result = block_timestamp_sec(u64::MAX, &reference_block);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn block_timestamp_and_block_timestamp_sec_match() {
+        let date = chrono::DateTime::from_timestamp(1_750_000_000, 0).unwrap();
+        let reference_block = Block {
+            hash: alloy_primitives::BlockHash::ZERO,
+            number: 1,
+            timestamp: date,
+        };
+        for blocks_into_the_future in [0, 1, 10, 100, 1_000, 10_000, 100_000, 1_000_000] {
+            let target_block = reference_block.number + blocks_into_the_future;
+            let ts = block_timestamp(target_block, &reference_block).unwrap();
+            let ts_sec = block_timestamp_sec(target_block, &reference_block).unwrap();
+            assert_eq!(ts.timestamp() as u64, ts_sec);
+            assert_eq!(
+                chrono::DateTime::from_timestamp(ts_sec as i64, 0).unwrap(),
+                ts
+            );
+        }
     }
 }
