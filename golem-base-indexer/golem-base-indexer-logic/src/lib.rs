@@ -765,6 +765,7 @@ impl Indexer {
         repository::entities::refresh_entity_based_on_history(&txn, entity_key).await?;
 
         repository::annotations::deactivate_annotations(&txn, entity_key).await?;
+        repository::logs::finish_log_processing(&txn, tx.hash, tx.block_hash, log.index).await?;
         guard.unlock(&txn).await?;
         txn.commit().await?;
         OP_COUNTER.inc();
