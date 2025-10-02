@@ -23,6 +23,7 @@ mod list_custom_contract_transactions;
 mod list_entities_endpoint_works;
 mod list_operations_endpoint_works;
 mod logic_works;
+mod logs_queue_cleaned_correctly;
 mod multiple_annotations_per_entity_work;
 mod non_unique_annotations_work;
 mod queue_cleaned_correctly;

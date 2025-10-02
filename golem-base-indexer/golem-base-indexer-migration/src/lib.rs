@@ -27,6 +27,7 @@ mod m20250925_125411_create_mview_timeseries_storage_forecast;
 mod m20250926_110921_create_matview_output_indexes;
 mod m20250926_121733_create_mview_leaderboard_top_accounts;
 mod m20250929_100022_create_storage_forecast_matview_output_indexes;
+mod m20251002_101024_cleanup_processed_logs_from_queueu;
 
 pub struct Migrator;
 
@@ -62,6 +63,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250926_110921_create_matview_output_indexes::Migration),
             Box::new(m20250925_125411_create_mview_timeseries_storage_forecast::Migration),
             Box::new(m20250929_100022_create_storage_forecast_matview_output_indexes::Migration),
+            Box::new(m20251002_101024_cleanup_processed_logs_from_queueu::Migration),
         ]
     }
 
