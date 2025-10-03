@@ -1,6 +1,5 @@
 mod address_leaderboard_ranks;
 mod block_stats;
-mod chart_data_usage;
 mod expired_entities_annotations_get_deactivated;
 mod expired_entities_dont_get_updated;
 mod get_address_stats_endpoint_works;
