@@ -343,7 +343,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             .resolution
             .try_into()
             .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
-        let (points, info) = repository::timeseries::timeseries_data_usage(
+        let (points, info) = repository::timeseries::data_usage::timeseries_data_usage(
             &*self.db, inner.from, inner.to, resolution,
         )
         .await
@@ -368,15 +368,59 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             .try_into()
             .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
 
-        let (points, info) =
-            repository::timeseries::timeseries_storage_forecast(&*self.db, &inner.to, resolution)
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query storage forecast chart");
-                    Status::internal("failed to query storage forecast chart")
-                })?;
+        let (points, info) = repository::timeseries::storage_forecast::timeseries_storage_forecast(
+            &*self.db, &inner.to, resolution,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "failed to query storage forecast chart");
+            Status::internal("failed to query storage forecast chart")
+        })?;
 
         Ok(Response::new(ChartResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
+    async fn get_entity_data_histogram(
+        &self,
+        _request: Request<Empty>,
+    ) -> Result<Response<GetEntityDataHistogramResponse>, Status> {
+        let entity_data_size_histogram =
+            repository::entities::get_entity_size_data_histogram(&*self.db)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query entity data histogram");
+                    Status::internal("failed to query entity data histogram")
+                })?;
+
+        Ok(Response::new(GetEntityDataHistogramResponse {
+            items: entity_data_size_histogram
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        }))
+    }
+    async fn chart_operation_count(
+        &self,
+        request: Request<ChartOperationCountRequest>,
+    ) -> Result<Response<ChartOperationCountResponse>, Status> {
+        let inner = request.into_inner();
+        let resolution = inner
+            .resolution
+            .try_into()
+            .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
+        let (points, info) = repository::timeseries::operation_count::timeseries_operation_count(
+            &*self.db, inner.from, inner.to, resolution,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "failed to query operation count timeseries");
+            Status::internal("failed to query operation count timeseries")
+        })?;
+
+        Ok(Response::new(ChartOperationCountResponse {
             chart: points.into_iter().map(Into::into).collect(),
             info: Some(info.into()),
         }))
@@ -568,26 +612,6 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         Ok(Response::new(LeaderboardEntitiesByBtlResponse {
             items: entities.into_iter().map(Into::into).collect(),
             pagination: Some(pagination.into()),
-        }))
-    }
-
-    async fn get_entity_data_histogram(
-        &self,
-        _request: Request<Empty>,
-    ) -> Result<Response<GetEntityDataHistogramResponse>, Status> {
-        let entity_data_size_histogram =
-            repository::entities::get_entity_size_data_histogram(&*self.db)
-                .await
-                .map_err(|err| {
-                    tracing::error!(?err, "failed to query entity data histogram");
-                    Status::internal("failed to query entity data histogram")
-                })?;
-
-        Ok(Response::new(GetEntityDataHistogramResponse {
-            items: entity_data_size_histogram
-                .into_iter()
-                .map(Into::into)
-                .collect(),
         }))
     }
 }
