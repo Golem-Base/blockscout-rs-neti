@@ -95,6 +95,10 @@ async fn test_list_entities_endpoint_works() {
         .await
         .unwrap();
 
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, "/api/v1/entities?status=ALL").await;
+    assert_eq!(response["items"].as_array().unwrap().len(), 6);
+
     let response: serde_json::Value = test_server::send_get_request(
         &base,
         "/api/v1/entities?status=ACTIVE&string_annotation_key=foo&string_annotation_value=bar",
@@ -115,6 +119,10 @@ async fn test_list_entities_endpoint_works() {
     )
     .await;
     assert_eq!(response["items"].as_array().unwrap().len(), 2);
+
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, "/api/v1/entities/count?status=ALL").await;
+    assert_eq!(response["count"].as_str().unwrap(), "6");
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,

@@ -284,12 +284,13 @@ impl From<EntityStatus> for v1::EntityStatus {
     }
 }
 
-impl From<v1::EntityStatus> for EntityStatus {
+impl From<v1::EntityStatus> for Option<EntityStatus> {
     fn from(value: v1::EntityStatus) -> Self {
         match value {
-            v1::EntityStatus::Active => Self::Active,
-            v1::EntityStatus::Deleted => Self::Deleted,
-            v1::EntityStatus::Expired => Self::Expired,
+            v1::EntityStatus::All => None,
+            v1::EntityStatus::Active => Some(EntityStatus::Active),
+            v1::EntityStatus::Deleted => Some(EntityStatus::Deleted),
+            v1::EntityStatus::Expired => Some(EntityStatus::Expired),
         }
     }
 }
@@ -425,7 +426,7 @@ impl TryFrom<v1::ListEntitiesRequest> for ListEntitiesFilter {
                 page_size: request.page_size.unwrap_or(100).clamp(1, 100),
             },
             entities_filter: EntitiesFilter {
-                status: Some(status.into()),
+                status: status.into(),
                 string_annotation,
                 numeric_annotation,
                 owner: request.owner.map(|v| v.parse()).transpose()?,
@@ -459,7 +460,7 @@ impl TryFrom<v1::CountEntitiesRequest> for EntitiesFilter {
             _ => return Err(anyhow!("Invalid numeric_annotation filter")),
         };
         Ok(Self {
-            status: Some(status.into()),
+            status: status.into(),
             string_annotation,
             numeric_annotation,
             owner: request.owner.map(|v| v.parse()).transpose()?,
