@@ -402,10 +402,6 @@ fn generate_points_data_usage_daily(
     to_date: Option<NaiveDate>,
     initial_value: Option<i64>,
 ) -> Result<Vec<ChartPoint>> {
-    if db_results.is_empty() && initial_value.is_none() {
-        return Err(anyhow!("No data usage available"));
-    }
-
     let data_map: HashMap<NaiveDate, i64> = db_results
         .into_iter()
         .map(|row| (row.timestamp, row.active_data_bytes))
@@ -458,10 +454,6 @@ fn generate_points_data_usage_hourly(
     to_datetime: Option<NaiveDateTime>,
     initial_value: Option<i64>,
 ) -> Result<Vec<ChartPoint>> {
-    if db_results.is_empty() && initial_value.is_none() {
-        return Err(anyhow!("No data usage available"));
-    }
-
     let data_map: HashMap<NaiveDateTime, i64> = db_results
         .into_iter()
         .map(|row| (row.timestamp, row.active_data_bytes))
