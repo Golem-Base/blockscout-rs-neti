@@ -142,6 +142,7 @@ enum EntityStatus {
   ACTIVE = 0;
   DELETED = 1;
   EXPIRED = 2;
+  ALL = 3;
 }
 
 message Entity {
