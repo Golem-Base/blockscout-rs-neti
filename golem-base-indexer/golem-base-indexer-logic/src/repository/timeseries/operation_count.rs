@@ -242,10 +242,6 @@ fn generate_points_operation_count_daily(
     to_date: Option<NaiveDate>,
     initial_value: Option<i64>,
 ) -> Result<Vec<ChartPoint>> {
-    if db_results.is_empty() && initial_value.is_none() {
-        return Err(anyhow!("No operation count available"));
-    }
-
     let data_map: HashMap<NaiveDate, i64> = db_results
         .into_iter()
         .map(|row| (row.timestamp, row.operation_count))
@@ -298,10 +294,6 @@ fn generate_points_operation_count_hourly(
     to_datetime: Option<NaiveDateTime>,
     initial_value: Option<i64>,
 ) -> Result<Vec<ChartPoint>> {
-    if db_results.is_empty() && initial_value.is_none() {
-        return Err(anyhow!("No operation count available"));
-    }
-
     let data_map: HashMap<NaiveDateTime, i64> = db_results
         .into_iter()
         .map(|row| (row.timestamp, row.operation_count))

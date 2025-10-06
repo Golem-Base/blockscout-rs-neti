@@ -18,7 +18,7 @@ use tokio::time::sleep;
 use tracing::{instrument, warn};
 
 use crate::{
-    golem_base::{block_timestamp, entity_key},
+    golem_base::{block_timestamp, block_timestamp_sec, entity_key},
     repository::locks::Guard,
     types::{
         Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAnnotation,
@@ -256,16 +256,15 @@ impl Indexer {
                 _ => op.op.operation.data().cloned(),
             };
 
-            let expires_at_timestamp = expires_at_block_number.and_then(|v| {
-                block_timestamp(
-                    v,
-                    &Block {
-                        number: op.op.metadata.block_number,
-                        timestamp: op.block_timestamp,
-                        hash: op.op.metadata.block_hash,
-                    },
-                )
-            });
+            let reference_block = Block {
+                number: op.op.metadata.block_number,
+                timestamp: op.block_timestamp,
+                hash: op.op.metadata.block_hash,
+            };
+            let expires_at_timestamp =
+                expires_at_block_number.and_then(|v| block_timestamp(v, &reference_block));
+            let expires_at_timestamp_sec =
+                expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
 
             active_annotations_index = match op.op.operation {
                 OperationData::Delete => None,
@@ -295,8 +294,12 @@ impl Indexer {
                     .as_ref()
                     .and_then(|prev_entry| prev_entry.expires_at_block_number),
                 expires_at_timestamp,
+                expires_at_timestamp_sec,
                 prev_expires_at_timestamp: prev_entry
+                    .clone()
                     .and_then(|prev_entry| prev_entry.expires_at_timestamp),
+                prev_expires_at_timestamp_sec: prev_entry
+                    .and_then(|prev_entry| prev_entry.expires_at_timestamp_sec),
                 btl: op.op.operation.btl(),
             };
             repository::entities::insert_history_entry(txn, entry.clone()).await?;
@@ -510,16 +513,15 @@ impl Indexer {
             OperationData::Delete => Some(tx.block_number),
         };
 
-        let expires_at_timestamp = expires_at_block_number.and_then(|v| {
-            block_timestamp(
-                v,
-                &Block {
-                    number: tx.block_number,
-                    timestamp: tx.block_timestamp,
-                    hash: tx.block_hash,
-                },
-            )
-        });
+        let reference_block = Block {
+            number: tx.block_number,
+            timestamp: tx.block_timestamp,
+            hash: tx.block_hash,
+        };
+        let expires_at_timestamp =
+            expires_at_block_number.and_then(|v| block_timestamp(v, &reference_block));
+        let expires_at_timestamp_sec =
+            expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
         let entry = EntityHistoryEntry {
             entity_key,
             block_number: tx.block_number,
@@ -542,8 +544,12 @@ impl Indexer {
                 .as_ref()
                 .and_then(|prev_entry| prev_entry.expires_at_block_number),
             expires_at_timestamp,
+            expires_at_timestamp_sec,
             prev_expires_at_timestamp: prev_entry
+                .clone()
                 .and_then(|prev_entry| prev_entry.expires_at_timestamp),
+            prev_expires_at_timestamp_sec: prev_entry
+                .and_then(|prev_entry| prev_entry.expires_at_timestamp_sec),
             btl: op.operation.btl(),
         };
         repository::entities::insert_history_entry(txn, entry.clone()).await?;

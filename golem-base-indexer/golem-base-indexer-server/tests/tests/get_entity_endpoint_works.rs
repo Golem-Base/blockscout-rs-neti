@@ -1,4 +1,4 @@
-use crate::helpers;
+use crate::helpers::{self, utils::iso_to_ts_sec};
 
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
@@ -51,6 +51,7 @@ async fn test_get_entity_endpoint_works() {
       "updated_at_timestamp": "2025-07-22T11:31:34+00:00",
       "expires_at_block_number": "2006",
       "expires_at_timestamp": "2025-07-22T15:24:17+00:00",
+      "expires_at_timestamp_sec": iso_to_ts_sec("2025-07-22T15:24:17+00:00"),
       "owner": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
       "gas_used": "0",
       "fees_paid": "0"

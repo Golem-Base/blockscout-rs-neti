@@ -33,3 +33,10 @@ pub async fn refresh_timeseries(db: Arc<DatabaseConnection>) -> Result<()> {
     }
     Ok(())
 }
+
+pub fn iso_to_ts_sec(iso: &str) -> String {
+    chrono::DateTime::parse_from_rfc3339(iso)
+        .unwrap()
+        .timestamp()
+        .to_string()
+}

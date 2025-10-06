@@ -13,7 +13,7 @@ use sea_orm::{
 use tracing::instrument;
 
 use crate::{
-    golem_base::block_timestamp,
+    golem_base::{block_timestamp, block_timestamp_sec},
     model::entity_data_size_histogram,
     pagination::{paginate, paginate_try_from},
     repository::sql,
@@ -121,6 +121,9 @@ impl EntityWithExpTimestamp {
         let expires_at_timestamp = entity_base
             .expires_at_block_number
             .and_then(|v| block_timestamp(v, reference_block));
+        let expires_at_timestamp_sec = entity_base
+            .expires_at_block_number
+            .and_then(|v| block_timestamp_sec(v, reference_block));
 
         Ok(Self {
             key: entity_base.key,
@@ -131,6 +134,7 @@ impl EntityWithExpTimestamp {
             last_updated_at_tx_hash: entity_base.last_updated_at_tx_hash,
             expires_at_block_number: entity_base.expires_at_block_number,
             expires_at_timestamp,
+            expires_at_timestamp_sec,
         })
     }
 }
@@ -154,9 +158,17 @@ impl EntityHistoryEntry {
         let expires_at_timestamp =
             expires_at_block_number.and_then(|v| block_timestamp(v, &reference_block));
 
+        let expires_at_timestamp_sec =
+            expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
+
         let prev_expires_at_timestamp =
             prev_expires_at_block_number.and_then(|expires_at_block_number| {
                 block_timestamp(expires_at_block_number, &reference_block)
+            });
+
+        let prev_expires_at_timestamp_sec =
+            prev_expires_at_block_number.and_then(|expires_at_block_number| {
+                block_timestamp_sec(expires_at_block_number, &reference_block)
             });
 
         Ok(Self {
@@ -177,7 +189,9 @@ impl EntityHistoryEntry {
             expires_at_block_number,
             prev_expires_at_block_number,
             expires_at_timestamp,
+            expires_at_timestamp_sec,
             prev_expires_at_timestamp,
+            prev_expires_at_timestamp_sec,
             btl: value.btl.map(|v| v.try_into()).transpose()?,
         })
     }
@@ -269,6 +283,9 @@ pub async fn get_full_entity<T: ConnectionTrait>(
     let expires_at_timestamp = entity
         .expires_at_block_number
         .and_then(|v| block_timestamp(v as u64, &current_block));
+    let expires_at_timestamp_sec = entity
+        .expires_at_block_number
+        .and_then(|v| block_timestamp_sec(v as u64, &current_block));
 
     let latest_operation = super::operations::find_latest_operation(db, key)
         .await?
@@ -297,6 +314,7 @@ pub async fn get_full_entity<T: ConnectionTrait>(
             .map(TryInto::try_into)
             .transpose()?,
         expires_at_timestamp,
+        expires_at_timestamp_sec,
         owner: entity.owner.map(|v| v.as_slice().try_into()).transpose()?,
         gas_used: Default::default(), // FIXME when we have gas per operation
         fees_paid: Default::default(), // FIXME when we have gas per operation
