@@ -103,6 +103,7 @@ paths:
         - GolemBaseIndexerService
   /api/v1/chart/entity-data-histogram:
     get:
+      summary: FIXME naming
       operationId: GolemBaseIndexerService_GetEntityDataHistogram
       responses:
         "200":
@@ -113,6 +114,39 @@ paths:
           description: An unexpected error response.
           schema:
             $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
+  /api/v1/chart/operation-count:
+    get:
+      operationId: GolemBaseIndexerService_ChartOperationCount
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ChartOperationCountResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: from
+          in: query
+          required: false
+          type: string
+        - name: to
+          in: query
+          required: false
+          type: string
+        - name: resolution
+          in: query
+          required: false
+          type: string
+          enum:
+            - DAY
+            - HOUR
+            - WEEK
+            - MONTH
+          default: DAY
       tags:
         - GolemBaseIndexerService
   /api/v1/chart/storage-forecast:
@@ -766,6 +800,16 @@ definitions:
         type: string
       description:
         type: string
+  v1ChartOperationCountResponse:
+    type: object
+    properties:
+      chart:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1ChartPoint'
+      info:
+        $ref: '#/definitions/v1ChartInfo'
   v1ChartPoint:
     type: object
     properties:
@@ -783,7 +827,6 @@ definitions:
       - WEEK
       - MONTH
     default: DAY
-    title: Charts
   v1ChartResponse:
     type: object
     properties:

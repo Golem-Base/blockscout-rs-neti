@@ -18,11 +18,6 @@ service GolemBaseIndexerService {
   rpc ListCustomContractTransactions(ListCustomContractTransactionsRequest) returns (ListCustomContractTransactionsResponse);
   rpc AddressLeaderboardRanks(AddressLeaderboardRanksRequest) returns (AddressLeaderboardRanksResponse);
 
-  // Charts
-  rpc ChartDataUsage(ChartDataUsageRequest) returns (ChartResponse);
-  rpc ChartStorageForecast(ChartStorageForecastRequest) returns (ChartResponse);
-  rpc GetEntityDataHistogram(Empty) returns (GetEntityDataHistogramResponse);
-
   // Leaderboards
   rpc LeaderboardTopAccounts(PaginationRequest) returns (LeaderboardTopAccountsResponse);
   rpc LeaderboardBiggestSpenders(PaginationRequest) returns (LeaderboardBiggestSpendersResponse);
@@ -32,6 +27,12 @@ service GolemBaseIndexerService {
   rpc LeaderboardLargestEntities(PaginationRequest) returns (LeaderboardLargestEntitiesResponse);
   rpc LeaderboardEffectivelyLargestEntities(PaginationRequest) returns (LeaderboardEffectivelyLargestEntitiesResponse);
   rpc LeaderboardEntitiesByBtl(PaginationRequest) returns (LeaderboardEntitiesByBtlResponse);
+
+  // Charts
+  rpc ChartDataUsage(ChartDataUsageRequest) returns (ChartResponse);
+  rpc ChartStorageForecast(ChartStorageForecastRequest) returns (ChartResponse);
+  rpc GetEntityDataHistogram(Empty) returns (GetEntityDataHistogramResponse); // FIXME naming
+  rpc ChartOperationCount(ChartOperationCountRequest) returns (ChartOperationCountResponse);
 }
 
 message PaginationRequest {
@@ -334,6 +335,7 @@ message AddressLeaderboardRanksResponse {
 }
 
 // Charts
+
 enum ChartResolution {
   DAY = 0;
   HOUR = 1;
@@ -367,6 +369,28 @@ message ChartDataUsageRequest {
 message ChartStorageForecastRequest {
   string to = 1;
   ChartResolution resolution = 2;
+}
+
+message ChartOperationCountRequest {
+  optional string from = 1;
+  optional string to = 2;
+  ChartResolution resolution = 3;
+}
+
+message ChartOperationCountResponse {
+  repeated ChartPoint chart = 1;
+  ChartInfo info = 2;
+}
+
+message GetEntityDataHistogramResponse {
+  repeated EntityDataHistogram items = 1;
+}
+
+message EntityDataHistogram {
+  uint64 bucket = 1;
+  uint64 bin_start = 2;
+  uint64 bin_end = 3;
+  uint64 count = 4;
 }
 
 // Leaderboards
@@ -452,16 +476,4 @@ message LeaderboardEffectivelyLargestEntitiesItem {
 message LeaderboardEntitiesByBtlResponse {
   repeated EntityWithExpTimestamp items = 1;
   Pagination pagination = 2;
-}
-
-
-message GetEntityDataHistogramResponse {
-  repeated EntityDataHistogram items = 1;
-}
-
-message EntityDataHistogram {
-  uint64 bucket = 1;
-  uint64 bin_start = 2;
-  uint64 bin_end = 3;
-  uint64 count = 4;
 }
