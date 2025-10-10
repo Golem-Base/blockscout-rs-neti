@@ -285,13 +285,23 @@ impl From<EntityStatus> for v1::EntityStatus {
     }
 }
 
-impl From<v1::EntityStatus> for Option<EntityStatus> {
+impl From<v1::EntityStatus> for EntityStatus {
     fn from(value: v1::EntityStatus) -> Self {
         match value {
-            v1::EntityStatus::All => None,
-            v1::EntityStatus::Active => Some(EntityStatus::Active),
-            v1::EntityStatus::Deleted => Some(EntityStatus::Deleted),
-            v1::EntityStatus::Expired => Some(EntityStatus::Expired),
+            v1::EntityStatus::Active => EntityStatus::Active,
+            v1::EntityStatus::Deleted => EntityStatus::Deleted,
+            v1::EntityStatus::Expired => EntityStatus::Expired,
+        }
+    }
+}
+
+impl From<v1::entity_status_filter::EntityStatusFilter> for Option<EntityStatus> {
+    fn from(value: v1::entity_status_filter::EntityStatusFilter) -> Self {
+        match value {
+            v1::entity_status_filter::EntityStatusFilter::Active => Some(EntityStatus::Active),
+            v1::entity_status_filter::EntityStatusFilter::Deleted => Some(EntityStatus::Deleted),
+            v1::entity_status_filter::EntityStatusFilter::Expired => Some(EntityStatus::Expired),
+            v1::entity_status_filter::EntityStatusFilter::All => None,
         }
     }
 }
@@ -404,7 +414,7 @@ impl TryFrom<v1::ListEntitiesRequest> for ListEntitiesFilter {
     type Error = anyhow::Error;
 
     fn try_from(request: v1::ListEntitiesRequest) -> Result<Self> {
-        let status: v1::EntityStatus = request.status.try_into()?;
+        let status: v1::entity_status_filter::EntityStatusFilter = request.status.try_into()?;
         let string_annotation = match (
             request.string_annotation_key,
             request.string_annotation_value,
@@ -443,7 +453,7 @@ impl TryFrom<v1::CountEntitiesRequest> for EntitiesFilter {
     type Error = anyhow::Error;
 
     fn try_from(request: v1::CountEntitiesRequest) -> Result<Self> {
-        let status: v1::EntityStatus = request.status.try_into()?;
+        let status: v1::entity_status_filter::EntityStatusFilter = request.status.try_into()?;
         let string_annotation = match (
             request.string_annotation_key,
             request.string_annotation_value,

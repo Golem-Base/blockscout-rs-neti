@@ -949,6 +949,13 @@ definitions:
       - ACTIVE
       - DELETED
       - EXPIRED
+    default: ACTIVE
+  v1EntityStatusFilterEntityStatusFilter:
+    type: string
+    enum:
+      - ACTIVE
+      - DELETED
+      - EXPIRED
       - ALL
     default: ACTIVE
   v1EntityWithExpTimestamp:
