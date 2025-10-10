@@ -33,6 +33,7 @@ mod consensus_tx;
 pub mod golem_base;
 pub mod mat_view_scheduler;
 pub mod model;
+mod operations;
 pub mod pagination;
 pub mod repository;
 pub mod types;
@@ -286,7 +287,7 @@ impl Indexer {
                 prev_data: prev_entry
                     .as_ref()
                     .and_then(|prev_entry| prev_entry.data.clone()),
-                operation: op.op.operation.clone(),
+                operation: op.op.operation.clone().into(),
                 status,
                 prev_status: prev_entry.as_ref().map(|prev_entry| prev_entry.status),
                 expires_at_block_number,
@@ -536,7 +537,7 @@ impl Indexer {
             prev_data: prev_entry
                 .as_ref()
                 .and_then(|prev_entry| prev_entry.data.clone()),
-            operation: op.operation.clone(),
+            operation: op.operation.clone().into(),
             status,
             prev_status: prev_entry.as_ref().map(|prev_entry| prev_entry.status),
             expires_at_block_number,

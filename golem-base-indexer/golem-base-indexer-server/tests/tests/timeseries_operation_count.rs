@@ -24,7 +24,7 @@ async fn chart_operation_count_should_work() {
     // Hourly
     let response: Value = test_server::send_get_request(
         &base,
-        "/api/v1/chart/operation-count?resolution=HOUR&from=2025-07-22%2011:00&to=2025-07-22%2012:00",
+        "/api/v1/chart/operation-count?resolution=HOUR&from=2025-07-22%2011:00&to=2025-07-22%2012:00&operation=ALL",
     )
     .await;
 
@@ -48,7 +48,7 @@ async fn chart_operation_count_should_work() {
     // Daily
     let response: Value = test_server::send_get_request(
         &base,
-        "/api/v1/chart/operation-count?resolution=DAY&from=2025-07-22&to=2025-07-23",
+        "/api/v1/chart/operation-count?resolution=DAY&from=2025-07-22&to=2025-07-23&operation=ALL",
     )
     .await;
 
@@ -63,6 +63,54 @@ async fn chart_operation_count_should_work() {
                 "date": "2025-07-22",
                 "date_to": "2025-07-23",
                 "value": "11",
+            }
+        ]
+    });
+
+    assert_eq!(response, expected);
+
+    // Hourly
+    let response: Value = test_server::send_get_request(
+        &base,
+        "/api/v1/chart/operation-count?resolution=HOUR&from=2025-07-22%2011:00&to=2025-07-22%2012:00&operation=CREATE",
+    )
+    .await;
+
+    let expected: Value = json!({
+        "info": {
+            "id": "golemBaseOperationCount",
+            "title": "Operations over time",
+            "description": "Operations over time",
+        },
+        "chart": [
+            {
+                "date": "2025-07-22 11:00",
+                "date_to": "2025-07-22 12:00",
+                "value": "6",
+            }
+        ]
+    });
+
+    assert_eq!(response, expected);
+
+    // Daily
+    let response: Value = test_server::send_get_request(
+        &base,
+        "/api/v1/chart/operation-count?resolution=DAY&from=2025-07-22&to=2025-07-23&operation=CREATE",
+    )
+    .await;
+
+    let expected: Value = json!({
+        "info": {
+            "id": "golemBaseOperationCount",
+            "title": "Operations over time",
+            "description": "Operations over time",
+        },
+        "chart": [
+            {
+                "date": "2025-07-22",
+                "date_to": "2025-07-23",
+                "value": "6",
             }
         ]
     });

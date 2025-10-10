@@ -5,7 +5,7 @@ use sea_query::{ExprTrait, Iden, PostgresQueryBuilder, Query, SelectStatement};
 use std::collections::HashMap;
 use tracing::instrument;
 
-use crate::types::{ChartInfo, ChartPoint};
+use crate::types::{ChartInfo, ChartPoint, OperationType};
 
 use super::common::*;
 
@@ -13,6 +13,7 @@ use super::common::*;
 pub enum GolemBaseTimeseriesOperationCount {
     Table,
     Timestamp,
+    Operation,
     OperationCount,
 }
 
@@ -28,24 +29,36 @@ struct DbChartOperationCountHourly {
     pub operation_count: i64,
 }
 
+impl OperationType {
+    fn as_sql_string(&self) -> &str {
+        match self {
+            Self::Create => "create",
+            Self::Update => "update",
+            Self::Delete => "delete",
+            Self::Extend => "extend",
+        }
+    }
+}
+
 #[instrument(skip(db))]
 pub async fn timeseries_operation_count<T: ConnectionTrait>(
     db: &T,
     from: Option<String>,
     to: Option<String>,
     resolution: ChartResolution,
+    operation: Option<OperationType>,
 ) -> Result<(Vec<ChartPoint>, ChartInfo)> {
     let chart = match resolution {
         ChartResolution::Day => {
             let (from_date, to_date) = parse_date_range(from, to)?;
-            let query = build_query_operation_count_daily(from_date, to_date);
+            let query = build_query_operation_count_daily(from_date, to_date, operation);
             let results = DbChartOperationCountDaily::find_by_statement(Statement::from_string(
                 DbBackend::Postgres,
                 query.to_string(PostgresQueryBuilder),
             ))
             .all(db)
             .await
-            .context("Failed to get operation count timeseries")?;
+            .context("Failed to get operation count timeseries daily")?;
 
             let initial_value = if let Some(from_date) = from_date {
                 let lookback_query = build_query_operation_count_daily_last_value(from_date);
@@ -67,17 +80,18 @@ pub async fn timeseries_operation_count<T: ConnectionTrait>(
         }
         ChartResolution::Hour => {
             let (from_datetime, to_datetime) = parse_datetime_range(from, to)?;
-            let query = build_query_operation_count_hourly(from_datetime, to_datetime);
+            let query = build_query_operation_count_hourly(from_datetime, to_datetime, operation);
             let results = DbChartOperationCountHourly::find_by_statement(Statement::from_string(
                 DbBackend::Postgres,
                 query.to_string(PostgresQueryBuilder),
             ))
             .all(db)
             .await
-            .context("Failed to get operation count timeseries")?;
+            .context("Failed to get operation count timeseries hourly")?;
 
             let initial_value = if let Some(from_dt) = from_datetime {
-                let lookback_query = build_query_operation_count_hourly_last_value(from_dt);
+                let lookback_query =
+                    build_query_operation_count_hourly_last_value(from_dt, operation);
                 let lookback_result =
                     DbChartOperationCountHourly::find_by_statement(Statement::from_string(
                         DbBackend::Postgres,
@@ -136,15 +150,12 @@ fn build_query_operation_count_daily_last_value(before_date: NaiveDate) -> Selec
 fn build_query_operation_count_daily(
     from: Option<NaiveDate>,
     to: Option<NaiveDate>,
+    operation: Option<OperationType>,
 ) -> SelectStatement {
     let mut query = Query::select()
         .expr_as(
             Expr::col(GolemBaseTimeseriesOperationCount::Timestamp).cast_as("date"),
             "timestamp",
-        )
-        .expr_as(
-            Expr::max(Expr::col(GolemBaseTimeseriesOperationCount::OperationCount)),
-            GolemBaseTimeseriesOperationCount::OperationCount,
         )
         .from(GolemBaseTimeseriesOperationCount::Table)
         .group_by_col("timestamp")
@@ -174,38 +185,68 @@ fn build_query_operation_count_daily(
             );
         }
         (None, None) => {}
-    }
+    };
+
+    match operation {
+        Some(op) => query
+            .expr_as(
+                Expr::max(Expr::col(GolemBaseTimeseriesOperationCount::OperationCount)),
+                GolemBaseTimeseriesOperationCount::OperationCount,
+            )
+            .and_where(
+                Expr::col(GolemBaseTimeseriesOperationCount::Operation).eq(op.as_sql_string()),
+            ),
+        None => query.expr_as(
+            Expr::sum(Expr::col(GolemBaseTimeseriesOperationCount::OperationCount)).cast_as("int8"),
+            GolemBaseTimeseriesOperationCount::OperationCount,
+        ),
+    };
 
     query
 }
 
 fn build_query_operation_count_hourly_last_value(
     before_datetime: NaiveDateTime,
+    operation: Option<OperationType>,
 ) -> SelectStatement {
-    Query::select()
-        .columns([
-            GolemBaseTimeseriesOperationCount::Timestamp,
-            GolemBaseTimeseriesOperationCount::OperationCount,
-        ])
+    let mut query = Query::select()
+        .columns([GolemBaseTimeseriesOperationCount::Timestamp])
         .from(GolemBaseTimeseriesOperationCount::Table)
         .and_where(Expr::col(GolemBaseTimeseriesOperationCount::Timestamp).lt(before_datetime))
+        .group_by_col("timestamp")
         .order_by(
             GolemBaseTimeseriesOperationCount::Timestamp,
             sea_query::Order::Desc,
         )
         .limit(1)
-        .to_owned()
+        .to_owned();
+
+    match operation {
+        Some(op) => query
+            .expr_as(
+                Expr::max(Expr::col(GolemBaseTimeseriesOperationCount::OperationCount)),
+                GolemBaseTimeseriesOperationCount::OperationCount,
+            )
+            .and_where(
+                Expr::col(GolemBaseTimeseriesOperationCount::Operation).eq(op.as_sql_string()),
+            ),
+        None => query.expr_as(
+            Expr::sum(Expr::col(GolemBaseTimeseriesOperationCount::OperationCount)).cast_as("int8"),
+            GolemBaseTimeseriesOperationCount::OperationCount,
+        ),
+    };
+
+    query
 }
 
 fn build_query_operation_count_hourly(
     from: Option<NaiveDateTime>,
     to: Option<NaiveDateTime>,
+    operation: Option<OperationType>,
 ) -> SelectStatement {
     let mut query = Query::select()
-        .columns([
-            GolemBaseTimeseriesOperationCount::Timestamp,
-            GolemBaseTimeseriesOperationCount::OperationCount,
-        ])
+        .columns([GolemBaseTimeseriesOperationCount::Timestamp])
+        .group_by_col("timestamp")
         .from(GolemBaseTimeseriesOperationCount::Table)
         .order_by(
             GolemBaseTimeseriesOperationCount::Timestamp,
@@ -232,6 +273,21 @@ fn build_query_operation_count_hourly(
         }
         (None, None) => {}
     }
+
+    match operation {
+        Some(op) => query
+            .expr_as(
+                Expr::max(Expr::col(GolemBaseTimeseriesOperationCount::OperationCount)),
+                GolemBaseTimeseriesOperationCount::OperationCount,
+            )
+            .and_where(
+                Expr::col(GolemBaseTimeseriesOperationCount::Operation).eq(op.as_sql_string()),
+            ),
+        None => query.expr_as(
+            Expr::sum(Expr::col(GolemBaseTimeseriesOperationCount::OperationCount)).cast_as("int8"),
+            GolemBaseTimeseriesOperationCount::OperationCount,
+        ),
+    };
 
     query
 }

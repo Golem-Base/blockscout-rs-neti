@@ -14,8 +14,8 @@ use crate::{
     pagination::paginate_try_from,
     types::{
         BlockNumberOrHashFilter, EntityKey, FullOperationIndex, ListOperationsFilter, Operation,
-        OperationData, OperationMetadata, OperationView, OperationsCount, OperationsFilter,
-        PaginationMetadata, PaginationParams, TxHash,
+        OperationData, OperationMetadata, OperationType, OperationView, OperationsCount,
+        OperationsFilter, PaginationMetadata, PaginationParams, TxHash,
     },
 };
 
@@ -93,17 +93,17 @@ impl From<Vec<OperationGroupCount>> for OperationsCount {
         counts
     }
 }
-
-impl From<OperationData> for GolemBaseOperationType {
-    fn from(v: OperationData) -> Self {
+impl From<OperationType> for GolemBaseOperationType {
+    fn from(v: OperationType) -> Self {
         match v {
-            OperationData::Create(_, _) => Self::Create,
-            OperationData::Update(_, _) => Self::Update,
-            OperationData::Delete => Self::Delete,
-            OperationData::Extend(_) => Self::Extend,
+            OperationType::Create => Self::Create,
+            OperationType::Update => Self::Update,
+            OperationType::Delete => Self::Delete,
+            OperationType::Extend => Self::Extend,
         }
     }
 }
+
 impl TryFrom<ListOperationsFilter> for DbListOperationsFilter {
     type Error = anyhow::Error;
 
@@ -184,13 +184,13 @@ impl From<&OperationData> for GolemBaseOperationType {
     }
 }
 
-impl From<GolemBaseOperationType> for OperationData {
+impl From<GolemBaseOperationType> for OperationType {
     fn from(value: GolemBaseOperationType) -> Self {
         match value {
-            GolemBaseOperationType::Create => OperationData::Create(Vec::new().into(), 0),
-            GolemBaseOperationType::Update => OperationData::Update(Vec::new().into(), 0),
-            GolemBaseOperationType::Delete => OperationData::Delete,
-            GolemBaseOperationType::Extend => OperationData::Extend(0),
+            GolemBaseOperationType::Create => OperationType::Create,
+            GolemBaseOperationType::Update => OperationType::Update,
+            GolemBaseOperationType::Delete => OperationType::Delete,
+            GolemBaseOperationType::Extend => OperationType::Extend,
         }
     }
 }

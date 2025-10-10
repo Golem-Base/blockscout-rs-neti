@@ -147,6 +147,17 @@ paths:
             - WEEK
             - MONTH
           default: DAY
+        - name: operation
+          in: query
+          required: false
+          type: string
+          enum:
+            - CREATE
+            - UPDATE
+            - DELETE
+            - EXTEND
+            - ALL
+          default: CREATE
       tags:
         - GolemBaseIndexerService
   /api/v1/chart/storage-forecast:
@@ -1293,6 +1304,15 @@ definitions:
       - UPDATE
       - DELETE
       - EXTEND
+    default: CREATE
+  v1OperationTypeFilterOperationTypeFilter:
+    type: string
+    enum:
+      - CREATE
+      - UPDATE
+      - DELETE
+      - EXTEND
+      - ALL
     default: CREATE
   v1Pagination:
     type: object

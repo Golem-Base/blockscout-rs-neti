@@ -222,7 +222,7 @@ impl core::str::FromStr for BlockNumberOrHashFilter {
 #[derive(Debug, Clone)]
 pub struct ListOperationsFilter {
     pub pagination: PaginationParams,
-    pub operation_type: Option<OperationData>,
+    pub operation_type: Option<OperationType>,
     pub operations_filter: OperationsFilter,
 }
 
@@ -281,6 +281,14 @@ pub struct OperationFilter {
     pub op_index: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OperationType {
+    Create,
+    Update,
+    Delete,
+    Extend,
+}
+
 #[derive(Debug, Clone)]
 pub struct Block {
     pub hash: BlockHash,
@@ -318,7 +326,7 @@ pub struct EntityHistoryEntry {
     pub sender: Address,
     pub data: Option<Bytes>,
     pub prev_data: Option<Bytes>,
-    pub operation: OperationData,
+    pub operation: OperationType,
     pub status: EntityStatus,
     pub prev_status: Option<EntityStatus>,
     pub expires_at_block_number: Option<BlockNumber>,
