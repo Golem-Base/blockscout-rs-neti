@@ -3,7 +3,7 @@ use crate::proto::{
 };
 use golem_base_indexer_logic::{
     repository,
-    types::{ListOperationsFilter, OperationsFilter},
+    types::{ListOperationsFilter, OperationType, OperationsFilter},
 };
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
@@ -411,8 +411,13 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             .resolution
             .try_into()
             .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
+        let operation: operation_type_filter::OperationTypeFilter = inner
+            .operation
+            .try_into()
+            .map_err(|_| Status::invalid_argument("Invalid operation filter"))?;
+        let operation: Option<OperationType> = operation.into();
         let (points, info) = repository::timeseries::operation_count::timeseries_operation_count(
-            &*self.db, inner.from, inner.to, resolution,
+            &*self.db, inner.from, inner.to, resolution, operation,
         )
         .await
         .map_err(|err| {

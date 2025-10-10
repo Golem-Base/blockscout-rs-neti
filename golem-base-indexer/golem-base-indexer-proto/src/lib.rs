@@ -10,8 +10,8 @@ use golem_base_indexer_logic::types::{
     LeaderboardDataOwnedItem, LeaderboardEffectivelyLargestEntitiesItem,
     LeaderboardEntitiesCreatedItem, LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem,
     LeaderboardTopAccountsItem, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation,
-    NumericAnnotationWithRelations, OperationData, OperationFilter, OperationView, OperationsCount,
-    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
+    NumericAnnotationWithRelations, OperationData, OperationFilter, OperationType, OperationView,
+    OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
     StringAnnotationWithRelations, Transaction,
 };
 
@@ -144,13 +144,37 @@ impl From<OperationData> for v1::OperationType {
         }
     }
 }
-impl From<v1::OperationType> for OperationData {
+
+impl From<v1::operation_type_filter::OperationTypeFilter> for Option<OperationType> {
+    fn from(value: v1::operation_type_filter::OperationTypeFilter) -> Self {
+        match value {
+            v1::operation_type_filter::OperationTypeFilter::Create => Some(OperationType::Create),
+            v1::operation_type_filter::OperationTypeFilter::Update => Some(OperationType::Update),
+            v1::operation_type_filter::OperationTypeFilter::Delete => Some(OperationType::Delete),
+            v1::operation_type_filter::OperationTypeFilter::Extend => Some(OperationType::Extend),
+            v1::operation_type_filter::OperationTypeFilter::All => None,
+        }
+    }
+}
+
+impl From<OperationType> for v1::OperationType {
+    fn from(value: OperationType) -> Self {
+        match value {
+            OperationType::Create => Self::Create,
+            OperationType::Update => Self::Update,
+            OperationType::Delete => Self::Delete,
+            OperationType::Extend => Self::Extend,
+        }
+    }
+}
+
+impl From<v1::OperationType> for OperationType {
     fn from(value: v1::OperationType) -> Self {
         match value {
-            v1::OperationType::Create => Self::Create(Vec::new().into(), 0),
-            v1::OperationType::Update => Self::Update(Vec::new().into(), 0),
+            v1::OperationType::Create => Self::Create,
+            v1::OperationType::Update => Self::Update,
             v1::OperationType::Delete => Self::Delete,
-            v1::OperationType::Extend => Self::Extend(0),
+            v1::OperationType::Extend => Self::Extend,
         }
     }
 }

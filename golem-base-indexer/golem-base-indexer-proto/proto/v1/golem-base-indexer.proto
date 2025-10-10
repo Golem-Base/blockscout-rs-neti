@@ -379,10 +379,21 @@ message ChartStorageForecastRequest {
   ChartResolution resolution = 2;
 }
 
+message OperationTypeFilter {
+  enum OperationTypeFilter {
+    CREATE = 0;
+    UPDATE = 1;
+    DELETE = 2;
+    EXTEND = 3;
+    ALL = 4;
+  }
+}
+
 message ChartOperationCountRequest {
   optional string from = 1;
   optional string to = 2;
   ChartResolution resolution = 3;
+  OperationTypeFilter.OperationTypeFilter operation = 4;
 }
 
 message ChartOperationCountResponse {
