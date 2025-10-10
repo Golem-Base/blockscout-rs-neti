@@ -74,10 +74,19 @@ message GetOperationRequest {
   uint64 op_index = 2;
 }
 
+message EntityStatusFilter {
+  enum EntityStatusFilter {
+    ACTIVE = 0;
+    DELETED = 1;
+    EXPIRED = 2;
+    ALL = 3;
+  }
+}
+
 message ListEntitiesRequest {
   optional uint64 page = 1;
   optional uint64 page_size = 2;
-  EntityStatus status = 3;
+  EntityStatusFilter.EntityStatusFilter status = 3;
   optional string string_annotation_key = 4;
   optional string string_annotation_value = 5;
   optional string numeric_annotation_key = 6;
@@ -127,7 +136,7 @@ message CountOperationsResponse {
 }
 
 message CountEntitiesRequest {
-  EntityStatus status = 1;
+  EntityStatusFilter.EntityStatusFilter status = 1;
   optional string string_annotation_key = 2;
   optional string string_annotation_value = 3;
   optional string numeric_annotation_key = 4;
@@ -143,7 +152,6 @@ enum EntityStatus {
   ACTIVE = 0;
   DELETED = 1;
   EXPIRED = 2;
-  ALL = 3;
 }
 
 message Entity {
