@@ -35,3 +35,4 @@ mod startup_works;
 mod timeseries_data_usage;
 mod timeseries_operation_count;
 mod timeseries_storage_forecast;
+mod timeseries_transactions_per_block;

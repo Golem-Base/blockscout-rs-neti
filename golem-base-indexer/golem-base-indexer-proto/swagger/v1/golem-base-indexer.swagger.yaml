@@ -160,6 +160,20 @@ paths:
           default: CREATE
       tags:
         - GolemBaseIndexerService
+  /api/v1/chart/transactions-per-block:
+    get:
+      operationId: GolemBaseIndexerService_ChartTransactionsPerBlock
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ChartResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
   /api/v1/chart/storage-forecast:
     get:
       operationId: GolemBaseIndexerService_ChartStorageForecast
