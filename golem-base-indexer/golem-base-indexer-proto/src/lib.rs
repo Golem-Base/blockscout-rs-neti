@@ -4,14 +4,15 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, BlockTransactionPoint, ChartInfo, ChartPoint,
-    EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter,
-    EntityStatus, EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem,
-    LeaderboardDataOwnedItem, LeaderboardEffectivelyLargestEntitiesItem,
-    LeaderboardEntitiesCreatedItem, LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem,
-    LeaderboardTopAccountsItem, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation,
-    NumericAnnotationWithRelations, OperationData, OperationFilter, OperationType, OperationView,
-    OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
+    AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, BlockTransactionPoint,
+    ChartInfo, ChartPoint, EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry,
+    EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
+    LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
+    LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
+    LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
+    ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
+    OperationData, OperationFilter, OperationType, OperationView, OperationsCount,
+    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
     StringAnnotationWithRelations, Transaction,
 };
 

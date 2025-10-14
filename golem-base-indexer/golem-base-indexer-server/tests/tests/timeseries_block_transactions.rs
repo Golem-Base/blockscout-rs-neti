@@ -18,19 +18,21 @@ async fn chart_block_transactions_should_work() {
         .await
         .unwrap();
 
-    let response: Value = test_server::send_get_request(
-        &base,
-        "/api/v1/chart/block-transactions",
-    )
-    .await;
+    let response: Value =
+        test_server::send_get_request(&base, "/api/v1/chart/block-transactions").await;
 
     // Verify the structure and metadata
     assert_eq!(response["info"]["id"], "blockTransactions");
     assert_eq!(response["info"]["title"], "Block Transactions");
-    assert_eq!(response["info"]["description"], "Number of transactions for recent blocks");
+    assert_eq!(
+        response["info"]["description"],
+        "Number of transactions for recent blocks"
+    );
 
     // Verify we have chart data
-    let chart = response["chart"].as_array().expect("chart should be an array");
+    let chart = response["chart"]
+        .as_array()
+        .expect("chart should be an array");
     assert!(!chart.is_empty(), "chart should not be empty");
 
     // The sample data has blocks 0-13, each with 2 transactions except block 0
@@ -42,7 +44,15 @@ async fn chart_block_transactions_should_work() {
     assert_eq!(block_7.unwrap()["tx_count"], "2");
 
     // Verify chart is ordered by block number (ascending)
-    let first_block = chart[0]["block_number"].as_str().unwrap().parse::<u64>().unwrap();
-    let last_block = chart.last().unwrap()["block_number"].as_str().unwrap().parse::<u64>().unwrap();
+    let first_block = chart[0]["block_number"]
+        .as_str()
+        .unwrap()
+        .parse::<u64>()
+        .unwrap();
+    let last_block = chart.last().unwrap()["block_number"]
+        .as_str()
+        .unwrap()
+        .parse::<u64>()
+        .unwrap();
     assert!(first_block < last_block);
 }

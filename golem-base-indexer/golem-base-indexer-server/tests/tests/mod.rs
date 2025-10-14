@@ -32,7 +32,7 @@ mod reorg_handled_correctly_delete_extend;
 mod reorg_handled_correctly_extend_delete;
 mod reorg_handled_correctly_update;
 mod startup_works;
+mod timeseries_block_transactions;
 mod timeseries_data_usage;
 mod timeseries_operation_count;
 mod timeseries_storage_forecast;
-mod timeseries_block_transactions;
