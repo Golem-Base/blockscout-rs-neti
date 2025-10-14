@@ -49,7 +49,7 @@ fn build_query_block_transactions() -> SelectStatement {
         .expr_as(Expr::cust("COUNT(*)"), "transaction_count")
         .from(Transactions::Table)
         .and_where(Expr::col(Transactions::BlockNumber).is_not_null())
-        .and_where(Expr::cust("block_consensus = true"))
+        .and_where(Expr::col("block_consensus").eq(true))
         .group_by_col(Transactions::BlockNumber)
         .order_by(Transactions::BlockNumber, sea_query::Order::Desc)
         .limit(DEFAULT_BLOCK_LIMIT)
@@ -59,7 +59,7 @@ fn build_query_block_transactions() -> SelectStatement {
 fn generate_points_block_transactions(
     mut db_results: Vec<DbChartBlockTransactions>,
 ) -> Result<Vec<ChartPoint>> {
-    // Results come in DESC order, reverse them to get ASC order for the chart
+    // Get ASC order for the chart
     db_results.reverse();
 
     let points: Vec<ChartPoint> = db_results
