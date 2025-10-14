@@ -34,21 +34,15 @@ async fn chart_block_transactions_should_work() {
     assert!(!chart.is_empty(), "chart should not be empty");
 
     // The sample data has blocks 0-13, each with 2 transactions except block 0
-    // We should get the last 100 blocks, but since we only have 14, we get all of them
-    // Block 0 has 0 transactions, blocks 1-13 have 2 transactions each
-    
-    // Find block 1 to verify it has 2 transactions
-    let block_1 = chart.iter().find(|item| item["date"] == "1");
-    assert!(block_1.is_some(), "block 1 should be in the results");
-    assert_eq!(block_1.unwrap()["value"], "2", "block 1 should have 2 transactions");
+    // Verify specific blocks have correct transaction counts
+    let block_1 = chart.iter().find(|item| item["block_number"] == "1");
+    assert_eq!(block_1.unwrap()["tx_count"], "2");
 
-    // Find block 7 to verify it has 2 transactions
-    let block_7 = chart.iter().find(|item| item["date"] == "7");
-    assert!(block_7.is_some(), "block 7 should be in the results");
-    assert_eq!(block_7.unwrap()["value"], "2", "block 7 should have 2 transactions");
+    let block_7 = chart.iter().find(|item| item["block_number"] == "7");
+    assert_eq!(block_7.unwrap()["tx_count"], "2");
 
-    // Verify the chart is ordered by block number (ascending)
-    let first_block_num = chart[0]["date"].as_str().unwrap().parse::<i32>().unwrap();
-    let last_block_num = chart[chart.len() - 1]["date"].as_str().unwrap().parse::<i32>().unwrap();
-    assert!(first_block_num < last_block_num, "blocks should be in ascending order");
+    // Verify chart is ordered by block number (ascending)
+    let first_block = chart[0]["block_number"].as_str().unwrap().parse::<u64>().unwrap();
+    let last_block = chart.last().unwrap()["block_number"].as_str().unwrap().parse::<u64>().unwrap();
+    assert!(first_block < last_block);
 }

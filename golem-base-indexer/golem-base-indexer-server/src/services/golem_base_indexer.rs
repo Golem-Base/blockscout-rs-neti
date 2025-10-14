@@ -434,7 +434,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
     async fn chart_block_transactions(
         &self,
         _request: Request<Empty>,
-    ) -> Result<Response<ChartResponse>, Status> {
+    ) -> Result<Response<ChartBlockTransactionsResponse>, Status> {
         let (points, info) =
             repository::timeseries::block_transactions::timeseries_block_transactions(
                 &*self.db,
@@ -445,7 +445,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
                 Status::internal("failed to query block transactions timeseries")
             })?;
 
-        Ok(Response::new(ChartResponse {
+        Ok(Response::new(ChartBlockTransactionsResponse {
             chart: points.into_iter().map(Into::into).collect(),
             info: Some(info.into()),
         }))

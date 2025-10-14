@@ -74,7 +74,7 @@ paths:
         "200":
           description: A successful response.
           schema:
-            $ref: '#/definitions/v1ChartResponse'
+            $ref: '#/definitions/v1ChartBlockTransactionsResponse'
         default:
           description: An unexpected error response.
           schema:
@@ -816,6 +816,25 @@ definitions:
       total_bytes:
         type: string
         format: uint64
+  v1BlockTransactionPoint:
+    type: object
+    properties:
+      block_number:
+        type: string
+        format: uint64
+      tx_count:
+        type: string
+        format: uint64
+  v1ChartBlockTransactionsResponse:
+    type: object
+    properties:
+      chart:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1BlockTransactionPoint'
+      info:
+        $ref: '#/definitions/v1ChartInfo'
   v1ChartInfo:
     type: object
     properties:
