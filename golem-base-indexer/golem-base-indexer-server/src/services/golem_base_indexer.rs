@@ -431,18 +431,18 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
-    async fn chart_transactions_per_block(
+    async fn chart_block_transactions(
         &self,
         _request: Request<Empty>,
     ) -> Result<Response<ChartResponse>, Status> {
         let (points, info) =
-            repository::timeseries::transactions_per_block::timeseries_transactions_per_block(
+            repository::timeseries::block_transactions::timeseries_block_transactions(
                 &*self.db,
             )
             .await
             .map_err(|err| {
-                tracing::error!(?err, "failed to query transactions per block timeseries");
-                Status::internal("failed to query transactions per block timeseries")
+                tracing::error!(?err, "failed to query block transactions timeseries");
+                Status::internal("failed to query block transactions timeseries")
             })?;
 
         Ok(Response::new(ChartResponse {

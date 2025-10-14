@@ -2,13 +2,13 @@ use crate::helpers;
 
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
-use serde_json::{json, Value};
+use serde_json::Value;
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
-async fn chart_transactions_per_block_should_work() {
+async fn chart_block_transactions_should_work() {
     // Setup
-    let db = helpers::init_db("test", "chart_transactions_per_block_should_work").await;
+    let db = helpers::init_db("test", "chart_block_transactions_should_work").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
     helpers::load_data(&*client, include_str!("../fixtures/sample_data.sql")).await;
@@ -20,13 +20,13 @@ async fn chart_transactions_per_block_should_work() {
 
     let response: Value = test_server::send_get_request(
         &base,
-        "/api/v1/chart/transactions-per-block",
+        "/api/v1/chart/block-transactions",
     )
     .await;
 
     // Verify the structure and metadata
-    assert_eq!(response["info"]["id"], "transactionsPerBlock");
-    assert_eq!(response["info"]["title"], "Transactions per Block");
+    assert_eq!(response["info"]["id"], "blockTransactions");
+    assert_eq!(response["info"]["title"], "Block Transactions");
     assert_eq!(response["info"]["description"], "Number of transactions for recent blocks");
 
     // Verify we have chart data
@@ -52,5 +52,3 @@ async fn chart_transactions_per_block_should_work() {
     let last_block_num = chart[chart.len() - 1]["date"].as_str().unwrap().parse::<i32>().unwrap();
     assert!(first_block_num < last_block_num, "blocks should be in ascending order");
 }
-
-

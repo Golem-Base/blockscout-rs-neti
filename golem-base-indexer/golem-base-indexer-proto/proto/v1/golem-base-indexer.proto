@@ -33,7 +33,7 @@ service GolemBaseIndexerService {
   rpc ChartStorageForecast(ChartStorageForecastRequest) returns (ChartResponse);
   rpc GetEntityDataHistogram(Empty) returns (GetEntityDataHistogramResponse); // FIXME naming
   rpc ChartOperationCount(ChartOperationCountRequest) returns (ChartOperationCountResponse);
-  rpc ChartTransactionsPerBlock(Empty) returns (ChartResponse);
+  rpc ChartBlockTransactions(Empty) returns (ChartResponse);
 }
 
 message PaginationRequest {

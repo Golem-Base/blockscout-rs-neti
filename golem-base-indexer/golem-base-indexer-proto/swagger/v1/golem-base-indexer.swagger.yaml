@@ -67,6 +67,20 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
+  /api/v1/chart/block-transactions:
+    get:
+      operationId: GolemBaseIndexerService_ChartBlockTransactions
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ChartResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
   /api/v1/chart/data-usage:
     get:
       summary: Charts

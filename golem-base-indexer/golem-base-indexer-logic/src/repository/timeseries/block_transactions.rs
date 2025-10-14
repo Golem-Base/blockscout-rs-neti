@@ -12,7 +12,7 @@ pub enum Transactions {
 }
 
 #[derive(Debug, FromQueryResult)]
-struct DbChartTransactionsPerBlock {
+struct DbChartBlockTransactions {
     pub block_number: i32,
     pub transaction_count: i64,
 }
@@ -20,30 +20,30 @@ struct DbChartTransactionsPerBlock {
 const DEFAULT_BLOCK_LIMIT: u64 = 100;
 
 #[instrument(skip(db))]
-pub async fn timeseries_transactions_per_block<T: ConnectionTrait>(
+pub async fn timeseries_block_transactions<T: ConnectionTrait>(
     db: &T,
 ) -> Result<(Vec<ChartPoint>, ChartInfo)> {
-    let query = build_query_transactions_per_block();
-    let results = DbChartTransactionsPerBlock::find_by_statement(Statement::from_string(
+    let query = build_query_block_transactions();
+    let results = DbChartBlockTransactions::find_by_statement(Statement::from_string(
         DbBackend::Postgres,
         query.to_string(PostgresQueryBuilder),
     ))
     .all(db)
     .await
-    .context("Failed to get transactions per block timeseries")?;
+    .context("Failed to get block transactions timeseries")?;
 
-    let chart = generate_points_transactions_per_block(results)?;
+    let chart = generate_points_block_transactions(results)?;
 
     let info = ChartInfo {
-        id: "transactionsPerBlock".to_string(),
-        title: "Transactions per Block".to_string(),
+        id: "blockTransactions".to_string(),
+        title: "Block Transactions".to_string(),
         description: "Number of transactions for recent blocks".to_string(),
     };
 
     Ok((chart, info))
 }
 
-fn build_query_transactions_per_block() -> SelectStatement {
+fn build_query_block_transactions() -> SelectStatement {
     Query::select()
         .column(Transactions::BlockNumber)
         .expr_as(Expr::cust("COUNT(*)"), "transaction_count")
@@ -56,8 +56,8 @@ fn build_query_transactions_per_block() -> SelectStatement {
         .to_owned()
 }
 
-fn generate_points_transactions_per_block(
-    mut db_results: Vec<DbChartTransactionsPerBlock>,
+fn generate_points_block_transactions(
+    mut db_results: Vec<DbChartBlockTransactions>,
 ) -> Result<Vec<ChartPoint>> {
     // Results come in DESC order, reverse them to get ASC order for the chart
     db_results.reverse();
@@ -73,5 +73,3 @@ fn generate_points_transactions_per_block(
 
     Ok(points)
 }
-
-
