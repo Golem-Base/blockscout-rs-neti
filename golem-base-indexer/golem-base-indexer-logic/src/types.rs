@@ -413,6 +413,12 @@ pub struct ChartInfo {
     pub description: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlockTransactionPoint {
+    pub block_number: u64,
+    pub tx_count: u64,
+}
+
 // Leaderboards
 #[derive(Debug, Clone)]
 pub struct LeaderboardBiggestSpendersItem {

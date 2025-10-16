@@ -4,14 +4,15 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, ChartInfo, ChartPoint,
-    EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter,
-    EntityStatus, EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem,
-    LeaderboardDataOwnedItem, LeaderboardEffectivelyLargestEntitiesItem,
-    LeaderboardEntitiesCreatedItem, LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem,
-    LeaderboardTopAccountsItem, ListEntitiesFilter, ListOperationsFilter, NumericAnnotation,
-    NumericAnnotationWithRelations, OperationData, OperationFilter, OperationType, OperationView,
-    OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
+    AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, BlockTransactionPoint,
+    ChartInfo, ChartPoint, EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry,
+    EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
+    LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
+    LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
+    LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
+    ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
+    OperationData, OperationFilter, OperationType, OperationView, OperationsCount,
+    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
     StringAnnotationWithRelations, Transaction,
 };
 
@@ -616,6 +617,15 @@ impl From<ChartPoint> for v1::ChartPoint {
             date: v.date,
             date_to: v.date_to,
             value: v.value,
+        }
+    }
+}
+
+impl From<BlockTransactionPoint> for v1::BlockTransactionPoint {
+    fn from(v: BlockTransactionPoint) -> Self {
+        Self {
+            block_number: v.block_number,
+            tx_count: v.tx_count,
         }
     }
 }

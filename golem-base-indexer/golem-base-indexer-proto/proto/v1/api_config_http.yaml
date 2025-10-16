@@ -76,6 +76,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartOperationCount
       get: /api/v1/chart/operation-count
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartBlockTransactions
+      get: /api/v1/chart/block-transactions
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check
