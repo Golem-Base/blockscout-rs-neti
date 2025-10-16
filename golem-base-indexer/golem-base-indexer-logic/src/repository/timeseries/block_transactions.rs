@@ -1,15 +1,9 @@
 use anyhow::{Context, Result};
-use sea_orm::{prelude::*, DbBackend, FromQueryResult, Statement};
-use sea_query::{Expr, Iden, PostgresQueryBuilder, Query, SelectStatement};
+use sea_orm::{prelude::*, FromQueryResult, QueryOrder, QuerySelect};
 use tracing::instrument;
 
 use crate::types::{BlockTransactionPoint, ChartInfo};
-
-#[derive(Iden)]
-pub enum Transactions {
-    Table,
-    BlockNumber,
-}
+use golem_base_indexer_entity::transactions;
 
 #[derive(Debug, FromQueryResult)]
 struct DbChartBlockTransactions {
@@ -23,14 +17,19 @@ const DEFAULT_BLOCK_LIMIT: u64 = 100;
 pub async fn timeseries_block_transactions<T: ConnectionTrait>(
     db: &T,
 ) -> Result<(Vec<BlockTransactionPoint>, ChartInfo)> {
-    let query = build_query_block_transactions();
-    let results = DbChartBlockTransactions::find_by_statement(Statement::from_string(
-        DbBackend::Postgres,
-        query.to_string(PostgresQueryBuilder),
-    ))
-    .all(db)
-    .await
-    .context("Failed to get block transactions timeseries")?;
+    let results = transactions::Entity::find()
+        .select_only()
+        .column(transactions::Column::BlockNumber)
+        .column_as(transactions::Column::BlockNumber.count(), "tx_count")
+        .filter(transactions::Column::BlockNumber.is_not_null())
+        .filter(transactions::Column::BlockConsensus.eq(true))
+        .group_by(transactions::Column::BlockNumber)
+        .order_by_desc(transactions::Column::BlockNumber)
+        .limit(DEFAULT_BLOCK_LIMIT)
+        .into_model::<DbChartBlockTransactions>()
+        .all(db)
+        .await
+        .context("Failed to get block transactions timeseries")?;
 
     let chart = generate_points_block_transactions(results)?;
 
@@ -41,19 +40,6 @@ pub async fn timeseries_block_transactions<T: ConnectionTrait>(
     };
 
     Ok((chart, info))
-}
-
-fn build_query_block_transactions() -> SelectStatement {
-    Query::select()
-        .column(Transactions::BlockNumber)
-        .expr_as(Expr::cust("COUNT(*)"), "tx_count")
-        .from(Transactions::Table)
-        .and_where(Expr::col(Transactions::BlockNumber).is_not_null())
-        .and_where(Expr::col("block_consensus").eq(true))
-        .group_by_col(Transactions::BlockNumber)
-        .order_by(Transactions::BlockNumber, sea_query::Order::Desc)
-        .limit(DEFAULT_BLOCK_LIMIT)
-        .to_owned()
 }
 
 fn generate_points_block_transactions(
