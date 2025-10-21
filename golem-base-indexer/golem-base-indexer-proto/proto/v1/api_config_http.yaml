@@ -36,6 +36,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.AddressLeaderboardRanks
       get: /api/v1/address/{address}/leaderboard-ranks
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetConsensusInfo
+      get: /api/v1/chain/consensus-info
+
     # Leaderboards
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.LeaderboardBiggestSpenders

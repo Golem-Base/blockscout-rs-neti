@@ -3,19 +3,26 @@ use crate::proto::{
 };
 use golem_base_indexer_logic::{
     repository,
-    types::{ListOperationsFilter, OperationType, OperationsFilter},
+    services::{BlockscoutService, RpcService},
+    types::{ConsensusInfo, ListOperationsFilter, OperationType, OperationsFilter},
 };
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
+pub struct ExternalServices {
+    pub l2_blockscout: Arc<BlockscoutService>,
+    pub l3_rpc: Arc<RpcService>,
+}
+
 pub struct GolemBaseIndexerService {
     db: Arc<DatabaseConnection>,
+    services: ExternalServices,
 }
 
 impl GolemBaseIndexerService {
-    pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { db }
+    pub fn new(db: Arc<DatabaseConnection>, services: ExternalServices) -> Self {
+        Self { db, services }
     }
 }
 
@@ -657,5 +664,33 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             items: entities.into_iter().map(Into::into).collect(),
             pagination: Some(pagination.into()),
         }))
+    }
+
+    async fn get_consensus_info(
+        &self,
+        _request: Request<Empty>,
+    ) -> Result<Response<ConsensusInfoResponse>, Status> {
+        let (blocks_result, gas_result) = tokio::join!(
+            self.services.l3_rpc.get_consensus_blocks_info(),
+            self.services.l2_blockscout.get_consensus_gas_info()
+        );
+
+        let consensus_blocks_info = blocks_result.unwrap_or_else(|e| {
+            tracing::error!(?e, "failed to call RPC Error");
+            Default::default()
+        });
+
+        let consensus_gas_info = gas_result.unwrap_or_else(|e| {
+            tracing::error!(?e, "failed to call blockscout API Error");
+            Default::default()
+        });
+
+        Ok(Response::new(
+            ConsensusInfo {
+                blocks: consensus_blocks_info,
+                gas: consensus_gas_info,
+            }
+            .into(),
+        ))
     }
 }

@@ -53,3 +53,13 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 utoipa = "5.4"
 utoipa-swagger-ui = { version = "9", features = ["actix-web", "vendored"] }
+url = { version = '2.5.7' }
+wiremock = "0.6.5"
+alloy = { version = "1", default-features = false, features = [
+  "std",
+  "reqwest",
+  "rpc-client",
+  "rpc-types-eth",
+  "serde",
+] }
+serde_urlencoded = "0.7.1"

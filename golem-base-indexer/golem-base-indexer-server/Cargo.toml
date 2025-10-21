@@ -26,7 +26,9 @@ tracing-subscriber.workspace = true
 utoipa.workspace = true
 utoipa-swagger-ui.workspace = true
 chrono.workspace = true
-
+reqwest.workspace = true
+wiremock.workspace = true
+alloy.workspace = true
 
 [dev-dependencies]
 alloy-primitives = { workspace = true, features = ["rand"] }

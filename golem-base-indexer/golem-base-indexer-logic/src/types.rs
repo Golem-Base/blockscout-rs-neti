@@ -494,3 +494,29 @@ pub struct EntityDataHistogram {
     pub bin_end: u64,
     pub count: u64,
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct ConsensusBlockInfo {
+    pub block_number: u64,
+    pub timestamp: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ConsensusBlocksInfo {
+    pub latest: ConsensusBlockInfo,
+    pub safe: ConsensusBlockInfo,
+    pub finalized: ConsensusBlockInfo,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ConsensusGasInfo {
+    pub gas_used: u64,
+    pub gas_price: u64,
+    pub transaction_fee: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ConsensusInfo {
+    pub blocks: ConsensusBlocksInfo,
+    pub gas: ConsensusGasInfo,
+}

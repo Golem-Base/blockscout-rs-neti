@@ -19,6 +19,8 @@ pub struct Settings {
     pub database: DatabaseSettings,
     #[serde(default = "default_swagger_path")]
     pub swagger_path: PathBuf,
+    #[serde(default)]
+    pub external_services: ExternalServicesSettings,
 }
 
 fn default_swagger_path() -> PathBuf {
@@ -27,6 +29,29 @@ fn default_swagger_path() -> PathBuf {
 
 impl ConfigSettings for Settings {
     const SERVICE_NAME: &'static str = "GOLEM_BASE_INDEXER";
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub struct ExternalServicesSettings {
+    #[serde(default)]
+    pub l3_rpc_url: String,
+    #[serde(default)]
+    pub l2_blockscout_url: String,
+    #[serde(default)]
+    pub l2_batcher_address: String,
+    #[serde(default)]
+    pub l2_batch_inbox_address: String,
+}
+
+impl Default for ExternalServicesSettings {
+    fn default() -> Self {
+        Self {
+            l3_rpc_url: "http://127.0.0.1:8545".to_string(),
+            l2_blockscout_url: "http://127.0.0.1:4000".to_string(),
+            l2_batcher_address: "0x000000000000000000000000000000000000dEaD".to_string(),
+            l2_batch_inbox_address: "0x000000000000000000000000000000000000dEaD".to_string(),
+        }
+    }
 }
 
 impl Settings {
@@ -42,6 +67,7 @@ impl Settings {
                 run_migrations: Default::default(),
             },
             indexer: Default::default(),
+            external_services: Default::default(),
         }
     }
 }

@@ -12,7 +12,7 @@ use golem_base_indexer_logic::types::{
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
     ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
     OperationData, OperationFilter, OperationType, OperationView, OperationsCount,
-    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
+    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,ConsensusInfo,
     StringAnnotationWithRelations, Transaction,
 };
 
@@ -713,6 +713,23 @@ impl From<EntityDataHistogram> for v1::EntityDataHistogram {
             bin_start: v.bin_start,
             bin_end: v.bin_end,
             count: v.count,
+        }
+    }
+}
+
+impl From<ConsensusInfo> for v1::ConsensusInfoResponse {
+    fn from(v: ConsensusInfo) -> Self {
+        Self {
+            unsafe_block_number: v.blocks.latest.block_number,
+            unsafe_block_timestamp: v.blocks.latest.timestamp.to_string(),
+            safe_block_number: v.blocks.safe.block_number,
+            safe_block_timestamp: v.blocks.safe.timestamp.to_string(),
+            finalized_block_number: v.blocks.finalized.block_number,
+            finalized_block_timestamp: v.blocks.finalized.timestamp.to_string(),
+
+            rollup_gas_used: v.gas.gas_used.to_string(),
+            rollup_gas_price: v.gas.gas_price.to_string(),
+            rollup_transaction_fee: v.gas.transaction_fee.to_string(),
         }
     }
 }
