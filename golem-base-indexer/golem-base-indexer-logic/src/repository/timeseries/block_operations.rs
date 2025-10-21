@@ -2,12 +2,14 @@ use anyhow::{Context, Result};
 use sea_orm::{prelude::*, FromQueryResult, Statement};
 use tracing::instrument;
 
-use crate::repository::sql::BLOCK_OPERATIONS_TIMESERIES;
-use crate::types::{BlockOperationPoint, ChartInfo};
+use crate::{
+    repository::sql::BLOCK_OPERATIONS_TIMESERIES,
+    types::{BlockOperationPoint, ChartInfo},
+};
 
 #[derive(Debug, FromQueryResult)]
 struct DbChartBlockOperations {
-    pub block_number: i32,
+    pub block_number: i64,
     pub create_count: i64,
     pub update_count: i64,
     pub delete_count: i64,

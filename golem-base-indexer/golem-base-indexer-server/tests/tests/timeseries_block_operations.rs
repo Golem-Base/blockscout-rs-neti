@@ -55,24 +55,51 @@ async fn chart_block_operations_should_work() {
         .unwrap()
         .parse::<u64>()
         .unwrap();
-    assert!(first_block < last_block, "chart should be in ascending order");
+    assert!(
+        first_block < last_block,
+        "chart should be in ascending order"
+    );
 
     // Verify that operations exist across the blocks
     let total_creates: u64 = chart
         .iter()
-        .map(|item| item["create_count"].as_str().unwrap().parse::<u64>().unwrap())
+        .map(|item| {
+            item["create_count"]
+                .as_str()
+                .unwrap()
+                .parse::<u64>()
+                .unwrap()
+        })
         .sum();
     let total_updates: u64 = chart
         .iter()
-        .map(|item| item["update_count"].as_str().unwrap().parse::<u64>().unwrap())
+        .map(|item| {
+            item["update_count"]
+                .as_str()
+                .unwrap()
+                .parse::<u64>()
+                .unwrap()
+        })
         .sum();
     let total_deletes: u64 = chart
         .iter()
-        .map(|item| item["delete_count"].as_str().unwrap().parse::<u64>().unwrap())
+        .map(|item| {
+            item["delete_count"]
+                .as_str()
+                .unwrap()
+                .parse::<u64>()
+                .unwrap()
+        })
         .sum();
     let total_extends: u64 = chart
         .iter()
-        .map(|item| item["extend_count"].as_str().unwrap().parse::<u64>().unwrap())
+        .map(|item| {
+            item["extend_count"]
+                .as_str()
+                .unwrap()
+                .parse::<u64>()
+                .unwrap()
+        })
         .sum();
 
     // Based on sample_data.sql and the indexer logic, we expect operations
@@ -126,4 +153,3 @@ async fn chart_block_operations_respects_limit() {
         "default limit should return at least as many results as limit=5"
     );
 }
-
