@@ -67,6 +67,29 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
+  /api/v1/chart/block-operations:
+    get:
+      operationId: GolemBaseIndexerService_ChartBlockOperations
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ChartBlockOperationsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 500
+          default: 100
+      tags:
+        - GolemBaseIndexerService
   /api/v1/chart/block-transactions:
     get:
       operationId: GolemBaseIndexerService_ChartBlockTransactions
@@ -782,6 +805,24 @@ definitions:
       last_seen_block:
         type: string
         format: uint64
+  v1BlockOperationPoint:
+    type: object
+    properties:
+      block_number:
+        type: string
+        format: uint64
+      create_count:
+        type: string
+        format: uint64
+      update_count:
+        type: string
+        format: uint64
+      delete_count:
+        type: string
+        format: uint64
+      extend_count:
+        type: string
+        format: uint64
   v1BlockStatsCounts:
     type: object
     properties:
@@ -825,6 +866,16 @@ definitions:
       tx_count:
         type: string
         format: uint64
+  v1ChartBlockOperationsResponse:
+    type: object
+    properties:
+      chart:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1BlockOperationPoint'
+      info:
+        $ref: '#/definitions/v1ChartInfo'
   v1ChartBlockTransactionsResponse:
     type: object
     properties:
