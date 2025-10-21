@@ -6,13 +6,13 @@ use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
     AddressLeaderboardRanks, BlockEntitiesCount, BlockOperationPoint, BlockStorageUsage,
     BlockTransactionPoint, ChartInfo, ChartPoint, EntitiesFilter, Entity, EntityDataHistogram,
-    EntityHistoryEntry, EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
+    EntityHistoryEntry, EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,ConsensusInfo,
     LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
     ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
     OperationData, OperationFilter, OperationType, OperationView, OperationsCount,
-    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,ConsensusInfo,
+    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
     StringAnnotationWithRelations, Transaction,
 };
 

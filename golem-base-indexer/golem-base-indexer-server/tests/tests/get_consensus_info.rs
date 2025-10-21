@@ -6,8 +6,6 @@ use wiremock::{
     Mock, MockServer, ResponseTemplate,
 };
 
-// use crate::helpers::sample::{Block, Transaction};
-
 #[tokio::test]
 #[ignore = "Needs database to run"]
 async fn test_get_consensus_info() {
@@ -30,8 +28,6 @@ async fn test_get_consensus_info() {
     // Test fallback to zeros
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/chain/consensus-info").await;
-
-    tracing::error!(?response, "response SHOULD BE EMPTY");
 
     assert_eq!(
         response,
@@ -122,26 +118,6 @@ async fn test_get_consensus_info() {
 
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/chain/consensus-info").await;
-
-    tracing::error!(?response, "response SHOULD BE FULL");
-
-    let received = rpc_mock.received_requests().await.unwrap();
-    for req in received {
-        tracing::error!(
-            "Received RPC request: method={}, path={}, body={:?}",
-            req.method,
-            req.url.path(),
-            req.body
-        );
-    }
-    let received_bs = blockscout_mock.received_requests().await.unwrap();
-    for req in received_bs {
-        tracing::error!(
-            "Received Blockscout request: method={}, path={}",
-            req.method,
-            req.url.path()
-        );
-    }
 
     let expected: serde_json::Value = serde_json::json!({
         "unsafe_block_number": "123",
