@@ -31,6 +31,7 @@ mod m20251002_101024_cleanup_processed_logs_from_queueu;
 mod m20251003_112845_create_mview_timeseries_operations_count;
 mod m20251010_082748_create_mview_timeseries_operations_count_by_type;
 mod m20251016_085731_migrate_logs_queue;
+mod m20251021_091030_cleanup_noop_txs_from_tx_queue;
 
 pub struct Migrator;
 
@@ -70,6 +71,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251003_112845_create_mview_timeseries_operations_count::Migration),
             Box::new(m20251010_082748_create_mview_timeseries_operations_count_by_type::Migration),
             Box::new(m20251016_085731_migrate_logs_queue::Migration),
+            Box::new(m20251021_091030_cleanup_noop_txs_from_tx_queue::Migration),
         ]
     }
 
