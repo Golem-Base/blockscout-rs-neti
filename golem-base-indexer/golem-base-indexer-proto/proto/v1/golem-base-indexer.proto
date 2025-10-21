@@ -34,6 +34,7 @@ service GolemBaseIndexerService {
   rpc GetEntityDataHistogram(Empty) returns (GetEntityDataHistogramResponse); // FIXME naming
   rpc ChartOperationCount(ChartOperationCountRequest) returns (ChartOperationCountResponse);
   rpc ChartBlockTransactions(Empty) returns (ChartBlockTransactionsResponse);
+  rpc ChartBlockOperations(ChartBlockOperationsRequest) returns (ChartBlockOperationsResponse);
 }
 
 message PaginationRequest {
@@ -420,6 +421,23 @@ message BlockTransactionPoint {
 
 message ChartBlockTransactionsResponse {
   repeated BlockTransactionPoint chart = 1;
+  ChartInfo info = 2;
+}
+
+message ChartBlockOperationsRequest {
+  optional uint64 limit = 1;
+}
+
+message BlockOperationPoint {
+  uint64 block_number = 1;
+  uint64 create_count = 2;
+  uint64 update_count = 3;
+  uint64 delete_count = 4;
+  uint64 extend_count = 5;
+}
+
+message ChartBlockOperationsResponse {
+  repeated BlockOperationPoint chart = 1;
   ChartInfo info = 2;
 }
 
