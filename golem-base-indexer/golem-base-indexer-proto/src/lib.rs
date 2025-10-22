@@ -4,9 +4,9 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressLeaderboardRanks, BlockEntitiesCount, BlockStorageUsage, BlockTransactionPoint,
-    ChartInfo, ChartPoint, EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry,
-    EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
+    AddressLeaderboardRanks, BlockEntitiesCount, BlockOperationPoint, BlockStorageUsage,
+    BlockTransactionPoint, ChartInfo, ChartPoint, EntitiesFilter, Entity, EntityDataHistogram,
+    EntityHistoryEntry, EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
     LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
@@ -626,6 +626,18 @@ impl From<BlockTransactionPoint> for v1::BlockTransactionPoint {
         Self {
             block_number: v.block_number,
             tx_count: v.tx_count,
+        }
+    }
+}
+
+impl From<BlockOperationPoint> for v1::BlockOperationPoint {
+    fn from(v: BlockOperationPoint) -> Self {
+        Self {
+            block_number: v.block_number,
+            create_count: v.create_count,
+            update_count: v.update_count,
+            delete_count: v.delete_count,
+            extend_count: v.extend_count,
         }
     }
 }

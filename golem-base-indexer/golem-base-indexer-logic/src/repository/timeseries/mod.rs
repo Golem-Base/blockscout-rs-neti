@@ -1,3 +1,4 @@
+pub mod block_operations;
 pub mod block_transactions;
 mod common;
 pub mod data_usage;

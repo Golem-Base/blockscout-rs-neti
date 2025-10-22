@@ -449,6 +449,27 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
+    async fn chart_block_operations(
+        &self,
+        request: Request<ChartBlockOperationsRequest>,
+    ) -> Result<Response<ChartBlockOperationsResponse>, Status> {
+        let inner = request.into_inner();
+        let limit = inner.limit.unwrap_or(100).clamp(1, 500);
+
+        let (points, info) =
+            repository::timeseries::block_operations::timeseries_block_operations(&*self.db, limit)
+                .await
+                .map_err(|err| {
+                    tracing::error!(?err, "failed to query block operations timeseries");
+                    Status::internal("failed to query block operations timeseries")
+                })?;
+
+        Ok(Response::new(ChartBlockOperationsResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
     // Leaderboards
     async fn leaderboard_biggest_spenders(
         &self,

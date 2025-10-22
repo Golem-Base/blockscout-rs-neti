@@ -228,6 +228,19 @@ FROM current_state
 WHERE status = 'active'
 "#;
 
+pub const BLOCK_OPERATIONS_TIMESERIES: &str = r#"
+SELECT
+    block_number,
+    COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
+    COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
+    COUNT(*) FILTER (WHERE operation = 'delete') AS delete_count,
+    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count
+FROM golem_base_operations
+GROUP BY block_number
+ORDER BY block_number DESC
+LIMIT $1
+"#;
+
 pub const GET_ADDRESS_ACTIVITY: &str = r#"
 SELECT
     MIN(t.block_timestamp) AS first_seen_timestamp,

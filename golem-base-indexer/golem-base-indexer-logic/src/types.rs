@@ -419,6 +419,15 @@ pub struct BlockTransactionPoint {
     pub tx_count: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlockOperationPoint {
+    pub block_number: u64,
+    pub create_count: u64,
+    pub update_count: u64,
+    pub delete_count: u64,
+    pub extend_count: u64,
+}
+
 // Leaderboards
 #[derive(Debug, Clone)]
 pub struct LeaderboardBiggestSpendersItem {
