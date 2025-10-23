@@ -319,6 +319,20 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
+    async fn entities_averages(
+        &self,
+        _request: Request<Empty>,
+    ) -> Result<Response<EntitiesAveragesResponse>, Status> {
+        let entities_averages = repository::entities::entities_averages(&*self.db)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to get entities averages");
+                Status::internal("failed to get entities averages")
+            })?;
+
+        Ok(Response::new(entities_averages.into()))
+    }
+
     async fn address_leaderboard_ranks(
         &self,
         request: Request<AddressLeaderboardRanksRequest>,

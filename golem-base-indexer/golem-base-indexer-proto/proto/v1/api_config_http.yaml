@@ -9,6 +9,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.CountEntities
       get: /api/v1/entities/count
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.EntitiesAverages
+      get: /api/v1/entities/averages
+
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.GetEntity
       get: /api/v1/entity/{key}
 

@@ -8,7 +8,7 @@ use sea_orm::{
     sea_query::OnConflict,
     sqlx::types::chrono::Utc,
     ActiveValue::{NotSet, Set},
-    Condition, FromQueryResult, Iterable, QueryOrder, Statement,
+    Condition, DbBackend, FromQueryResult, Iterable, QueryOrder, Statement,
 };
 use tracing::instrument;
 
@@ -18,10 +18,10 @@ use crate::{
     pagination::{paginate, paginate_try_from},
     repository::sql,
     types::{
-        Address, Block, BlockNumber, Bytes, EntitiesFilter, Entity, EntityDataHistogram,
-        EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus, EntityWithExpTimestamp,
-        FullEntity, FullOperationIndex, ListEntitiesFilter, OperationFilter, PaginationMetadata,
-        TxHash,
+        Address, Block, BlockNumber, Bytes, EntitiesAverages, EntitiesFilter, Entity,
+        EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus,
+        EntityWithExpTimestamp, FullEntity, FullOperationIndex, ListEntitiesFilter,
+        OperationFilter, PaginationMetadata, TxHash,
     },
 };
 
@@ -193,6 +193,23 @@ impl EntityHistoryEntry {
             prev_expires_at_timestamp,
             prev_expires_at_timestamp_sec,
             btl: value.btl.map(|v| v.try_into()).transpose()?,
+        })
+    }
+}
+
+#[derive(Debug, FromQueryResult)]
+pub struct DbEntitiesAverages {
+    pub average_entity_size: i64,
+    pub average_entity_btl: i64,
+}
+
+impl TryFrom<DbEntitiesAverages> for EntitiesAverages {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbEntitiesAverages) -> Result<Self> {
+        Ok(Self {
+            average_entitiy_size: value.average_entity_size.try_into()?,
+            average_entity_btl: value.average_entity_btl.try_into()?,
         })
     }
 }
@@ -574,4 +591,18 @@ pub async fn get_entity_size_data_histogram<T: ConnectionTrait>(
         .into_iter()
         .map(EntityDataHistogram::try_from)
         .collect::<Result<Vec<_>>>()
+}
+
+#[instrument(skip(db))]
+pub async fn entities_averages<T: ConnectionTrait>(db: &T) -> Result<EntitiesAverages> {
+    DbEntitiesAverages::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::ENTITIES_AVERAGES,
+        [],
+    ))
+    .one(db)
+    .await
+    .context("Failed to get entities averages")?
+    .expect("Entity averages will always return a row")
+    .try_into()
 }
