@@ -1,0 +1,81 @@
+{
+  "items": [
+    {
+      "priority_fee": null,
+      "raw_input": "0x0046baa8ca97f575fbb312aa3cde9fba9e00000000007c011b3e02f8cf283aafafae0880c628c503acb6b40e91e480b9f6b9e270ddf8f06b59720ce4e6b19248c94a67074f7f06a8b9e7c6606691dc354043dcbfd4756e4fc8399a629d6f01aed7739530da34c9d3fdd220e2a6cef0d3406dbc1f4c565c7522c5a0c5981600810640d09d30a5c7dd1ba457d7660eb1bcef450001",
+      "result": "pending",
+      "hash": "0x38c4ba7191603311f23bc191ef95a043304e69db73be239d1238931d2f68e650",
+      "max_fee_per_gas": "3000000000",
+      "revert_reason": null,
+      "confirmation_duration": [],
+      "transaction_burnt_fee": null,
+      "type": 2,
+      "token_transfers_overflow": null,
+      "confirmations": 0,
+      "position": null,
+      "max_priority_fee_per_gas": "1000000000",
+      "transaction_tag": null,
+      "created_contract": null,
+      "value": "0",
+      "from": {
+        "ens_domain_name": null,
+        "hash": "0x268d5F26c5db34A929fb4aE9096EbA2c1C05Ec0F",
+        "implementations": [],
+        "is_contract": false,
+        "is_scam": false,
+        "is_verified": false,
+        "metadata": null,
+        "name": null,
+        "private_tags": [],
+        "proxy_type": null,
+        "public_tags": [],
+        "watchlist_names": []
+      },
+      "gas_used": null,
+      "status": null,
+      "to": {
+        "ens_domain_name": null,
+        "hash": "0x00917b20026005FD08c4163de344e14Fd83Fb740",
+        "implementations": [],
+        "is_contract": false,
+        "is_scam": false,
+        "is_verified": false,
+        "metadata": null,
+        "name": null,
+        "private_tags": [],
+        "proxy_type": null,
+        "public_tags": [],
+        "watchlist_names": []
+      },
+      "authorization_list": [],
+      "method": null,
+      "fee": {
+        "type": "maximum",
+        "value": "13868790000000000"
+      },
+      "actions": [],
+      "gas_limit": "4622930",
+      "gas_price": "3000000000",
+      "decoded_input": null,
+      "token_transfers": null,
+      "base_fee_per_gas": null,
+      "timestamp": null,
+      "nonce": 2917,
+      "historic_exchange_rate": null,
+      "transaction_types": [],
+      "exchange_rate": "4120.63",
+      "block_number": null,
+      "has_error_in_internal_transactions": null
+    }
+  ],
+  "next_page_params": {
+    "index": null,
+    "value": "0",
+    "filter": "from",
+    "hash": "0x70b14fa93e371d1361793596850bd51cb39740af1a15d441fcd363dd0cc859f2",
+    "inserted_at": "2025-10-14T18:31:37.456364Z",
+    "block_number": null,
+    "fee": "14016420000000000",
+    "items_count": 50
+  }
+}

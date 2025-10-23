@@ -3,11 +3,14 @@ use crate::{
         golem_base_indexer_service_actix::route_golem_base_indexer_service,
         health_actix::route_health, health_server::HealthServer,
     },
-    services::{GolemBaseIndexerService, HealthService},
+    services::{ExternalServices, GolemBaseIndexerService, HealthService},
     settings::Settings,
 };
+use anyhow::{Context, Result};
 use blockscout_endpoint_swagger::route_swagger;
 use blockscout_service_launcher::{launcher, launcher::LaunchSettings};
+use golem_base_indexer_logic::services::{BlockscoutService, RpcService};
+use reqwest::Url;
 use sea_orm::DatabaseConnection;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -54,14 +57,36 @@ impl launcher::HttpRouter for Router {
     }
 }
 
+pub fn setup_external_services(settings: &Settings) -> Result<ExternalServices> {
+    let l3_rpc_url =
+        Url::parse(&settings.external_services.l3_rpc_url).context("invalid RPC url")?;
+    let l2_blockscout_url = Url::parse(&settings.external_services.l2_blockscout_url)
+        .context("invalid blockscout url")?;
+    let l2_batcher_address = settings.external_services.l2_batcher_address.clone();
+    let l2_batch_inbox_address = settings.external_services.l2_batch_inbox_address.clone();
+    let cache_ttl = settings.external_services.cache_ttl_seconds;
+
+    Ok(ExternalServices {
+        l3_rpc: Arc::new(RpcService::new(l3_rpc_url, cache_ttl)),
+        l2_blockscout: Arc::new(BlockscoutService::new(
+            l2_blockscout_url,
+            l2_batcher_address,
+            l2_batch_inbox_address,
+            cache_ttl,
+        )),
+    })
+}
+
 pub async fn run(
     db_connection: Arc<DatabaseConnection>,
     settings: Settings,
 ) -> Result<(), anyhow::Error> {
     let health = Arc::new(HealthService::default());
 
+    let services = setup_external_services(&settings)?;
+
     // TODO: init services here
-    let golem_base_indexer = Arc::new(GolemBaseIndexerService::new(db_connection));
+    let golem_base_indexer = Arc::new(GolemBaseIndexerService::new(db_connection, services));
 
     let router = Router {
         golem_base_indexer,

@@ -67,6 +67,20 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
+  /api/v1/chain/consensus-info:
+    get:
+      operationId: GolemBaseIndexerService_GetConsensusInfo
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ConsensusInfoResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
   /api/v1/chart/block-operations:
     get:
       operationId: GolemBaseIndexerService_ChartBlockOperations
@@ -929,6 +943,30 @@ definitions:
           $ref: '#/definitions/v1ChartPoint'
       info:
         $ref: '#/definitions/v1ChartInfo'
+  v1ConsensusInfoResponse:
+    type: object
+    properties:
+      unsafe_block_number:
+        type: string
+        format: uint64
+      unsafe_block_timestamp:
+        type: string
+      safe_block_number:
+        type: string
+        format: uint64
+      safe_block_timestamp:
+        type: string
+      finalized_block_number:
+        type: string
+        format: uint64
+      finalized_block_timestamp:
+        type: string
+      rollup_gas_used:
+        type: string
+      rollup_gas_price:
+        type: string
+      rollup_transaction_fee:
+        type: string
   v1CountEntitiesResponse:
     type: object
     properties:

@@ -17,6 +17,7 @@ service GolemBaseIndexerService {
   rpc BlockStats(BlockStatsRequest) returns (BlockStatsResponse);
   rpc ListCustomContractTransactions(ListCustomContractTransactionsRequest) returns (ListCustomContractTransactionsResponse);
   rpc AddressLeaderboardRanks(AddressLeaderboardRanksRequest) returns (AddressLeaderboardRanksResponse);
+  rpc GetConsensusInfo(Empty) returns (ConsensusInfoResponse);
 
   // Leaderboards
   rpc LeaderboardTopAccounts(PaginationRequest) returns (LeaderboardTopAccountsResponse);
@@ -342,6 +343,19 @@ message AddressLeaderboardRanksResponse {
   uint64 entities_owned = 3;
   uint64 data_owned = 4;
   uint64 top_accounts = 5;
+}
+
+message ConsensusInfoResponse {
+  uint64 unsafe_block_number = 1;
+  string unsafe_block_timestamp = 2;
+  uint64 safe_block_number = 3;
+  string safe_block_timestamp = 4;
+  uint64 finalized_block_number = 5;
+  string finalized_block_timestamp = 6;
+
+  string rollup_gas_used = 7;
+  string rollup_gas_price = 8;
+  string rollup_transaction_fee = 9;
 }
 
 // Charts
