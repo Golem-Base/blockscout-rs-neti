@@ -41,6 +41,8 @@ pub struct ExternalServicesSettings {
     pub l2_batcher_address: String,
     #[serde(default)]
     pub l2_batch_inbox_address: String,
+    #[serde(default)]
+    pub cache_ttl_seconds: u64,
 }
 
 impl Default for ExternalServicesSettings {
@@ -50,6 +52,7 @@ impl Default for ExternalServicesSettings {
             l2_blockscout_url: "http://127.0.0.1:4000".to_string(),
             l2_batcher_address: "0x000000000000000000000000000000000000dEaD".to_string(),
             l2_batch_inbox_address: "0x000000000000000000000000000000000000dEaD".to_string(),
+            cache_ttl_seconds: 30,
         }
     }
 }

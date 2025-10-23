@@ -1,3 +1,5 @@
+use std::thread::sleep;
+
 use crate::helpers;
 
 use blockscout_service_launcher::test_server;
@@ -21,6 +23,7 @@ async fn test_get_consensus_info() {
             "0x268d5F26c5db34A929fb4aE9096EbA2c1C05Ec0F".to_string();
         x.external_services.l2_batch_inbox_address =
             "0x00917b20026005FD08c4163de344e14Fd83Fb740".to_string();
+        x.external_services.cache_ttl_seconds = 1;
         x
     })
     .await;
@@ -43,6 +46,9 @@ async fn test_get_consensus_info() {
             "rollup_transaction_fee":"0",
         })
     );
+
+    // Allow cache to expire
+    sleep(std::time::Duration::from_secs(1));
 
     fn gen_block_resp(block_number: u64, timestamp: u64, rpc_id: usize) -> serde_json::Value {
         let block_number_hex = format!("0x{:x}", block_number);

@@ -671,24 +671,14 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         _request: Request<Empty>,
     ) -> Result<Response<ConsensusInfoResponse>, Status> {
         let (blocks_result, gas_result) = tokio::join!(
-            self.services.l3_rpc.get_consensus_blocks_info(),
-            self.services.l2_blockscout.get_consensus_gas_info()
+            self.services.l3_rpc.get_consensus_blocks_info_cached(),
+            self.services.l2_blockscout.get_consensus_gas_info_cached()
         );
-
-        let consensus_blocks_info = blocks_result.unwrap_or_else(|e| {
-            tracing::error!(?e, "failed to call RPC Error");
-            Default::default()
-        });
-
-        let consensus_gas_info = gas_result.unwrap_or_else(|e| {
-            tracing::error!(?e, "failed to call blockscout API Error");
-            Default::default()
-        });
 
         Ok(Response::new(
             ConsensusInfo {
-                blocks: consensus_blocks_info,
-                gas: consensus_gas_info,
+                blocks: blocks_result.unwrap_or_default(),
+                gas: gas_result.unwrap_or_default(),
             }
             .into(),
         ))

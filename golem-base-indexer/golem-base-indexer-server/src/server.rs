@@ -64,13 +64,15 @@ pub fn setup_external_services(settings: &Settings) -> Result<ExternalServices> 
         .context("invalid blockscout url")?;
     let l2_batcher_address = settings.external_services.l2_batcher_address.clone();
     let l2_batch_inbox_address = settings.external_services.l2_batch_inbox_address.clone();
+    let cache_ttl = settings.external_services.cache_ttl_seconds;
 
     Ok(ExternalServices {
-        l3_rpc: Arc::new(RpcService::new(l3_rpc_url)),
+        l3_rpc: Arc::new(RpcService::new(l3_rpc_url, cache_ttl)),
         l2_blockscout: Arc::new(BlockscoutService::new(
             l2_blockscout_url,
             l2_batcher_address,
             l2_batch_inbox_address,
+            cache_ttl,
         )),
     })
 }

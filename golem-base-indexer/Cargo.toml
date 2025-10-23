@@ -63,3 +63,4 @@ alloy = { version = "1", default-features = false, features = [
   "serde",
 ] }
 serde_urlencoded = "0.7.1"
+moka = {version = "0.12.11", features = ["future"] }

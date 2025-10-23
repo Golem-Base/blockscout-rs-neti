@@ -32,6 +32,7 @@ serde_json.workspace = true
 url.workspace = true
 alloy.workspace = true
 serde_urlencoded.workspace = true
+moka.workspace = true
 
 [dev-dependencies]
 blockscout-service-launcher = { workspace = true, features = [

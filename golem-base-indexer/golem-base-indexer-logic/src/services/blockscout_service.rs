@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
+use moka::future::Cache;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
@@ -48,16 +51,18 @@ pub struct TransactionResponse {
     pub gas_price: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 pub struct BlockscoutService {
     pub client: Client,
     pub url: Url,
     pub batcher_address: String,
     pub batch_inbox_address: String,
+    pub cache: Arc<Cache<String, ConsensusGasInfo>>,
 }
 
 impl BlockscoutService {
     #[instrument]
-    pub fn new(url: Url, batcher_address: String, batch_inbox_address: String) -> Self {
+    pub fn new(url: Url, batcher_address: String, batch_inbox_address: String, cache_ttl: u64) -> Self {
         let client = Client::builder()
             .user_agent("golem-base-indexer/0.1")
             .build()
@@ -70,6 +75,12 @@ impl BlockscoutService {
             url,
             batcher_address,
             batch_inbox_address,
+            cache: Arc::new(
+                Cache::builder()
+                    .time_to_live(std::time::Duration::from_secs(cache_ttl))
+                    .max_capacity(1_000)
+                    .build(),
+            ),
         }
     }
 
@@ -165,10 +176,31 @@ impl BlockscoutService {
     }
 
     #[instrument(skip(self))]
-    pub async fn get_consensus_gas_info(&self) -> Result<ConsensusGasInfo> {
+    async fn get_consensus_gas_info(&self) -> Result<ConsensusGasInfo> {
         let tx = self.get_verified_tx().await?;
         let txinfo = self.get_txinfo(&tx.hash).await?;
 
         self.get_gas_info(txinfo)
+    }
+
+    pub async fn get_consensus_gas_info_cached(&self) -> Result<ConsensusGasInfo> {
+        let key = "consensus_gas_info".to_string();
+
+        let cache = self.cache.clone();
+        let s = self.clone();
+
+        let res = cache
+            .get_with(key.clone(), async move {
+                match s.get_consensus_gas_info().await {
+                    Ok(info) => info,
+                    Err(e) => {
+                        tracing::error!(%e, "failed to get consensus gas info");
+                        Default::default()
+                    }
+                }
+            })
+            .await;
+
+        Ok(res)
     }
 }
