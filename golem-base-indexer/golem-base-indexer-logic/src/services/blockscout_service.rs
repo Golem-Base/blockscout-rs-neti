@@ -62,7 +62,12 @@ pub struct BlockscoutService {
 
 impl BlockscoutService {
     #[instrument]
-    pub fn new(url: Url, batcher_address: String, batch_inbox_address: String, cache_ttl: u64) -> Self {
+    pub fn new(
+        url: Url,
+        batcher_address: String,
+        batch_inbox_address: String,
+        cache_ttl: u64,
+    ) -> Self {
         let client = Client::builder()
             .user_agent("golem-base-indexer/0.1")
             .build()
