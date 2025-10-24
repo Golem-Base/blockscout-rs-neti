@@ -242,23 +242,38 @@ LIMIT $1
 "#;
 
 pub const GET_ADDRESS_ACTIVITY: &str = r#"
-SELECT
-    MIN(t.block_timestamp) AS first_seen_timestamp,
-    MAX(t.block_timestamp) AS last_seen_timestamp,
-    MIN(t.block_number) AS first_seen_block,
-    MAX(t.block_number) AS last_seen_block
-FROM
-    transactions t
-LEFT JOIN
-    internal_transactions it ON it.transaction_hash = t.hash
-WHERE
-    t.block_timestamp IS NOT NULL
-    AND (
-        t.from_address_hash = $1
-        OR t.to_address_hash = $1
-        OR it.from_address_hash = $1
-        OR it.to_address_hash = $1
+WITH
+    raw_activity_blocks as (
+        SELECT
+            MIN(t.block_number) AS first_seen_block,
+            MAX(t.block_number) AS last_seen_block
+        FROM
+            internal_transactions t
+        WHERE
+            t.from_address_hash = $1
+            OR t.to_address_hash = $1
+        UNION
+        SELECT
+            MIN(t.block_number) AS first_seen_block,
+            MAX(t.block_number) AS last_seen_block
+        FROM
+            transactions t
+        WHERE
+            t.from_address_hash = $1
+            OR t.to_address_hash = $1
+    ),
+    activity_blocks as (
+        select
+            min(first_seen_block) as first_seen_block,
+            max(last_seen_block) as last_seen_block
+        from raw_activity_blocks
     )
+select
+    (select timestamp from blocks where activity_blocks.first_seen_block = number) as first_seen_timestamp,
+    (select timestamp from blocks where activity_blocks.last_seen_block = number) as last_seen_timestamp,
+    first_seen_block,
+    last_seen_block
+from activity_blocks;
 "#;
 
 pub const ENTITIES_AVERAGES: &str = r#"
