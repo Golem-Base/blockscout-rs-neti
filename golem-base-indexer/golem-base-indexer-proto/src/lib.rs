@@ -5,8 +5,8 @@ use const_hex::traits::ToHexExt;
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
     AddressLeaderboardRanks, BlockEntitiesCount, BlockOperationPoint, BlockStorageUsage,
-    BlockTransactionPoint, ChartInfo, ChartPoint, ConsensusInfo, EntitiesFilter, Entity,
-    EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
+    BlockTransactionPoint, ChartInfo, ChartPoint, ConsensusInfo, EntitiesAverages, EntitiesFilter,
+    Entity, EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
     EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
@@ -730,6 +730,15 @@ impl From<ConsensusInfo> for v1::ConsensusInfoResponse {
             rollup_gas_used: v.gas.gas_used.to_string(),
             rollup_gas_price: v.gas.gas_price.to_string(),
             rollup_transaction_fee: v.gas.transaction_fee.to_string(),
+        }
+    }
+}
+
+impl From<EntitiesAverages> for v1::EntitiesAveragesResponse {
+    fn from(v: EntitiesAverages) -> Self {
+        Self {
+            average_entity_size: v.average_entitiy_size,
+            average_entity_btl: v.average_entity_btl,
         }
     }
 }

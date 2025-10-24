@@ -261,6 +261,14 @@ WHERE
     )
 "#;
 
+pub const ENTITIES_AVERAGES: &str = r#"
+SELECT
+    COALESCE(AVG(LENGTH(data)), 0)::BIGINT as average_entity_size,
+    COALESCE(AVG(expires_at_block_number) - (SELECT MAX(number) FROM blocks), 0)::BIGINT as average_entity_btl
+FROM golem_base_entities
+WHERE status = 'active';
+"#;
+
 pub const ADDRESS_LEADERBOARD_RANKS: &str = r#"
 SELECT
     (SELECT rank FROM golem_base_leaderboard_biggest_spenders WHERE address = $1) AS biggest_spenders,

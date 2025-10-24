@@ -18,6 +18,7 @@ service GolemBaseIndexerService {
   rpc ListCustomContractTransactions(ListCustomContractTransactionsRequest) returns (ListCustomContractTransactionsResponse);
   rpc AddressLeaderboardRanks(AddressLeaderboardRanksRequest) returns (AddressLeaderboardRanksResponse);
   rpc GetConsensusInfo(Empty) returns (ConsensusInfoResponse);
+  rpc EntitiesAverages(Empty) returns (EntitiesAveragesResponse);
 
   // Leaderboards
   rpc LeaderboardTopAccounts(PaginationRequest) returns (LeaderboardTopAccountsResponse);
@@ -356,6 +357,11 @@ message ConsensusInfoResponse {
   string rollup_gas_used = 7;
   string rollup_gas_price = 8;
   string rollup_transaction_fee = 9;
+}
+
+message EntitiesAveragesResponse {
+  uint64 average_entity_size = 1;
+  uint64 average_entity_btl = 2;
 }
 
 // Charts

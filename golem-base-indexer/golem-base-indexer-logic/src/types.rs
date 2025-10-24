@@ -520,3 +520,9 @@ pub struct ConsensusInfo {
     pub blocks: ConsensusBlocksInfo,
     pub gas: ConsensusGasInfo,
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct EntitiesAverages {
+    pub average_entitiy_size: u64,
+    pub average_entity_btl: u64,
+}

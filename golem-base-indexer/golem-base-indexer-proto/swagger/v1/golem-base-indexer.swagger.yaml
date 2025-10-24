@@ -292,6 +292,20 @@ paths:
           type: string
       tags:
         - GolemBaseIndexerService
+  /api/v1/entities/averages:
+    get:
+      operationId: GolemBaseIndexerService_EntitiesAverages
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1EntitiesAveragesResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
   /api/v1/entities/count:
     get:
       operationId: GolemBaseIndexerService_CountEntities
@@ -986,6 +1000,15 @@ definitions:
         type: string
         format: uint64
       extend_count:
+        type: string
+        format: uint64
+  v1EntitiesAveragesResponse:
+    type: object
+    properties:
+      average_entity_size:
+        type: string
+        format: uint64
+      average_entity_btl:
         type: string
         format: uint64
   v1Entity:
