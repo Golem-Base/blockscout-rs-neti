@@ -213,38 +213,36 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             Status::invalid_argument("invalid address")
         })?;
 
-        let entities_counts = repository::address::count_entities(&*self.db, address)
-            .await
-            .map_err(|err| {
-                tracing::error!(?err, "failed to count entities");
-                Status::internal("failed to count entities")
-            })?;
-
-        let tx_counts = repository::address::count_txs(&*self.db, address)
-            .await
-            .map_err(|err| {
-                tracing::error!(?err, "failed to count txs");
-                Status::internal("failed to count txs")
-            })?;
-
         let filter = OperationsFilter {
             sender: Some(address),
             ..Default::default()
         };
 
-        let operations_counts = repository::operations::count_operations(&*self.db, filter)
-            .await
-            .map_err(|err| {
-                tracing::error!(?err, "failed to count operations");
-                Status::internal("failed to count operations")
-            })?;
+        let (entities_counts, tx_counts, operations_counts, address_activity) = tokio::join!(
+            repository::address::count_entities(&*self.db, address),
+            repository::address::count_txs(&*self.db, address),
+            repository::operations::count_operations(&*self.db, filter),
+            repository::address::get_address_activity(&*self.db, address)
+        );
+        let entities_counts = entities_counts.map_err(|err| {
+            tracing::error!(?err, "failed to count entities");
+            Status::internal("failed to count entities")
+        })?;
 
-        let address_activity = repository::address::get_address_activity(&*self.db, address)
-            .await
-            .map_err(|err| {
-                tracing::error!(?err, "failed to get address activity");
-                Status::internal("failed to get address activity")
-            })?;
+        let tx_counts = tx_counts.map_err(|err| {
+            tracing::error!(?err, "failed to count txs");
+            Status::internal("failed to count txs")
+        })?;
+
+        let operations_counts = operations_counts.map_err(|err| {
+            tracing::error!(?err, "failed to count operations");
+            Status::internal("failed to count operations")
+        })?;
+
+        let address_activity = address_activity.map_err(|err| {
+            tracing::error!(?err, "failed to get address activity");
+            Status::internal("failed to get address activity")
+        })?;
 
         Ok(Response::new(AddressStatsResponse {
             created_entities: entities_counts.total_entities,
