@@ -646,6 +646,7 @@ paths:
             - UPDATE
             - DELETE
             - EXTEND
+            - ALL
           default: CREATE
         - name: page
           in: query
