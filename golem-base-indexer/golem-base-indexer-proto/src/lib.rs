@@ -184,16 +184,17 @@ impl TryFrom<v1::ListOperationsRequest> for ListOperationsFilter {
     type Error = anyhow::Error;
 
     fn try_from(request: v1::ListOperationsRequest) -> Result<Self> {
-        let operation_type = v1::OperationType::try_from(request.operation)
-            .map_err(|_| anyhow!("Invalid operation"))?
-            .into();
+        let operation_type =
+            v1::operation_type_filter::OperationTypeFilter::try_from(request.operation)
+                .map_err(|_| anyhow!("Invalid operation"))?
+                .into();
 
         Ok(Self {
             pagination: PaginationParams {
                 page: request.page.unwrap_or(1).max(1),
                 page_size: request.page_size.unwrap_or(100).clamp(1, 100),
             },
-            operation_type: Some(operation_type),
+            operation_type,
             operations_filter: OperationsFilter {
                 block_number_or_hash: request
                     .block_number_or_hash
