@@ -60,5 +60,3 @@ DROP MATERIALIZED VIEW IF EXISTS golem_base_timeseries_entity_count;
         crate::from_sql(manager, sql).await
     }
 }
-
-

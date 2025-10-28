@@ -133,7 +133,10 @@ fn build_query_entity_count_daily_last_value(before_date: NaiveDate) -> SelectSt
         .to_owned()
 }
 
-fn build_query_entity_count_daily(from: Option<NaiveDate>, to: Option<NaiveDate>) -> SelectStatement {
+fn build_query_entity_count_daily(
+    from: Option<NaiveDate>,
+    to: Option<NaiveDate>,
+) -> SelectStatement {
     let mut query = Query::select()
         .expr_as(
             Expr::col(GolemBaseTimeseriesEntityCount::Timestamp).cast_as("date"),
@@ -216,7 +219,8 @@ fn build_query_entity_count_hourly(
             );
         }
         (Some(from_datetime), None) => {
-            query.and_where(Expr::col(GolemBaseTimeseriesEntityCount::Timestamp).gte(from_datetime));
+            query
+                .and_where(Expr::col(GolemBaseTimeseriesEntityCount::Timestamp).gte(from_datetime));
         }
         (None, Some(to_datetime)) => {
             query.and_where(Expr::col(GolemBaseTimeseriesEntityCount::Timestamp).lte(to_datetime));
@@ -330,5 +334,3 @@ fn generate_points_entity_count_hourly(
 
     Ok(points)
 }
-
-
