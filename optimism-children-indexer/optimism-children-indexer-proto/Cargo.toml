@@ -1,0 +1,21 @@
+[package]
+name = "optimism-children-indexer-proto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-prost-macros.workspace = true
+actix-prost.workspace = true
+actix-web.workspace = true
+anyhow.workspace = true
+const-hex.workspace = true
+optimism-children-indexer-logic = { path = "../optimism-children-indexer-logic" }
+prost.workspace = true
+serde.workspace = true
+serde_with.workspace = true
+tonic.workspace = true
+
+[build-dependencies]
+actix-prost-build.workspace = true
+prost-build.workspace = true
+tonic-build.workspace = true
