@@ -37,6 +37,7 @@ service GolemBaseIndexerService {
   rpc ChartOperationCount(ChartOperationCountRequest) returns (ChartOperationCountResponse);
   rpc ChartBlockTransactions(Empty) returns (ChartBlockTransactionsResponse);
   rpc ChartBlockOperations(ChartBlockOperationsRequest) returns (ChartBlockOperationsResponse);
+  rpc ChartBlockGasUsageLimit(Empty) returns (ChartBlockGasUsageLimitResponse);
 }
 
 message PaginationRequest {
@@ -458,6 +459,18 @@ message BlockOperationPoint {
 
 message ChartBlockOperationsResponse {
   repeated BlockOperationPoint chart = 1;
+  ChartInfo info = 2;
+}
+
+message ChartBlockGasUsageLimitPoint {
+  uint64 block_number = 1;
+  uint64 gas_used = 2;
+  uint64 gas_limit = 3;
+  string gas_usage_percentage = 4;
+}
+
+message ChartBlockGasUsageLimitResponse {
+  repeated ChartBlockGasUsageLimitPoint chart = 1;
   ChartInfo info = 2;
 }
 
