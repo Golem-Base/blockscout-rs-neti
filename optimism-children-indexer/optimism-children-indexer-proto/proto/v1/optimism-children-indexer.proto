@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package blockscout.optimismChildrenIndexer.v1;
+
+option go_package = "github.com/Golem-Base/blockscout-rs-neti/optimism-children-indexer";
+
+
+service OptimismChildrenIndexerService {
+  rpc Placeholder(Empty) returns (Empty);
+}
+
+message Empty {}
+
+message PaginationRequest {
+  optional uint64 page = 1;
+  optional uint64 page_size = 2;
+}
+
+message Pagination {
+  uint64 page = 1;
+  uint64 page_size = 2;
+  uint64 total_pages = 3;
+  uint64 total_items = 4;
+}
