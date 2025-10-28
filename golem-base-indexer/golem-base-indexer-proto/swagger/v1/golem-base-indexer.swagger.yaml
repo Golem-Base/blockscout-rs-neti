@@ -81,6 +81,20 @@ paths:
             $ref: '#/definitions/rpcStatus'
       tags:
         - GolemBaseIndexerService
+  /api/v1/chart/block-gas-usage-limit:
+    get:
+      operationId: GolemBaseIndexerService_ChartBlockGasUsageLimit
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ChartBlockGasUsageLimitResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      tags:
+        - GolemBaseIndexerService
   /api/v1/chart/block-operations:
     get:
       operationId: GolemBaseIndexerService_ChartBlockOperations
@@ -892,6 +906,30 @@ definitions:
       tx_count:
         type: string
         format: uint64
+  v1ChartBlockGasUsageLimitPoint:
+    type: object
+    properties:
+      block_number:
+        type: string
+        format: uint64
+      gas_used:
+        type: string
+        format: uint64
+      gas_limit:
+        type: string
+        format: uint64
+      gas_usage_percentage:
+        type: string
+  v1ChartBlockGasUsageLimitResponse:
+    type: object
+    properties:
+      chart:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1ChartBlockGasUsageLimitPoint'
+      info:
+        $ref: '#/definitions/v1ChartInfo'
   v1ChartBlockOperationsResponse:
     type: object
     properties:
