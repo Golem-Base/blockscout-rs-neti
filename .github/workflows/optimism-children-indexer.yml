@@ -1,0 +1,70 @@
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "optimism-children-indexer/v*"
+    paths:
+      - optimism-children-indexer/**
+      - .github/workflows/optimism-children-indexer.yml
+      - .github/workflows/_*.yml
+      - .github/actions/**
+  pull_request:
+    paths:
+      - optimism-children-indexer/**
+      - .github/workflows/optimism-children-indexer.yml
+      - .github/workflows/_*.yml
+      - .github/actions/**
+
+name: Test, lint and docker (optimism-children-indexer)
+
+defaults:
+  run:
+    working-directory: optimism-children-indexer
+
+jobs:
+  test:
+    name: Unit, doc and integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: admin
+          POSTGRES_USER: postgres
+          POSTGRES_INITDB_ARGS: "-c max_connections=500"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          working-directory: optimism-children-indexer
+
+      - name: Unit tests
+        run: RUST_BACKTRACE=1 RUST_LOG=info cargo test --locked --workspace --all-features --lib --bins -- --nocapture
+        if: success() || failure()
+
+      - name: Doc tests
+        run: cargo test --locked --workspace --all-features --doc
+        if: success() || failure()
+
+      - name: Integration tests
+        run: RUST_BACKTRACE=1 RUST_LOG=info,sqlx=warn cargo test -j 2 --locked --workspace --test '*' -- --nocapture --include-ignored
+        if: success() || failure()
+        env:
+          DATABASE_URL: postgres://postgres:admin@localhost:5432/
+
+  lint:
+    name: Linting
+    uses: ./.github/workflows/_linting.yml
+    with:
+      working-directory: optimism-children-indexer
