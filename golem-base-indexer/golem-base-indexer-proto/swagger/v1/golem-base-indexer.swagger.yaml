@@ -93,6 +93,12 @@ paths:
           description: An unexpected error response.
           schema:
             $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          type: string
+          format: uint64
       tags:
         - GolemBaseIndexerService
   /api/v1/chart/block-operations:

@@ -26,7 +26,7 @@ async fn chart_block_gas_usage_limit_should_work() {
         .await
         .unwrap();
 
-    // Hourly
+    // Check response
     let response: Value =
         test_server::send_get_request(&base, "/api/v1/chart/block-gas-usage-limit").await;
 
@@ -99,6 +99,51 @@ async fn chart_block_gas_usage_limit_should_work() {
                 "gas_limit": "11612785",
                 "gas_usage_percentage": "8.81"
             },
+            {
+                "block_number": "11",
+                "gas_used": "1022520",
+                "gas_limit": "11624124",
+                "gas_usage_percentage": "8.8"
+            },
+            {
+                "block_number": "12",
+                "gas_used": "1033180",
+                "gas_limit": "11635474",
+                "gas_usage_percentage": "8.88"
+            },
+            {
+                "block_number": "13",
+                "gas_used": "1021680",
+                "gas_limit": "11646835",
+                "gas_usage_percentage": "8.77"
+            }
+        ],
+    });
+
+    assert_eq!(response, expected);
+}
+
+#[tokio::test]
+#[ignore = "Needs database to run"]
+async fn chart_block_gas_usage_limit_should_work_with_limit() {
+    // Setup
+    let db = helpers::init_db("test", "chart_block_gas_usage_limit_should_work_with_limit").await;
+    let client = db.client();
+    let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
+    helpers::load_data(&*client, include_str!("../fixtures/sample_data.sql")).await;
+
+    Indexer::new(client.clone(), Default::default())
+        .tick()
+        .await
+        .unwrap();
+
+    // Check response with a limit of 3
+    let response: Value =
+        test_server::send_get_request(&base, "/api/v1/chart/block-gas-usage-limit?limit=3").await;
+
+    let expected: Value = json!({
+        "info": chart_info(),
+        "chart": [
             {
                 "block_number": "11",
                 "gas_used": "1022520",
