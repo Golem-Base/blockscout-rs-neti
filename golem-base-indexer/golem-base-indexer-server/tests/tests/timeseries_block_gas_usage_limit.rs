@@ -2,9 +2,7 @@ use crate::helpers;
 
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::{types::ChartInfo, Indexer};
-use helpers::utils::refresh_timeseries;
 use serde_json::{json, Value};
-use std::sync::Arc;
 
 fn chart_info() -> Value {
     json!(ChartInfo {
@@ -27,7 +25,6 @@ async fn chart_block_gas_usage_limit_should_work() {
         .tick()
         .await
         .unwrap();
-    refresh_timeseries(Arc::clone(&client)).await.unwrap();
 
     // Hourly
     let response: Value =

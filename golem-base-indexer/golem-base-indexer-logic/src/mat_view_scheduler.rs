@@ -72,10 +72,6 @@ impl MatViewScheduler {
                 name: "golem_base_timeseries_operation_count".to_string(),
                 delay: HALF_HOUR,
             },
-            MatViewSettings {
-                name: "golem_base_timeseries_block_gas_used_and_limit".to_string(),
-                delay: HALF_HOUR,
-            },
         ]
     }
 
