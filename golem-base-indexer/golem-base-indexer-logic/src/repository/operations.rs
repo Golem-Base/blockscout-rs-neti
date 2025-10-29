@@ -266,7 +266,7 @@ pub async fn get_operation<T: ConnectionTrait>(
 }
 
 fn filtered_operations(filter: DbOperationsFilter) -> Select<golem_base_operations::Entity> {
-    let mut q = golem_base_operations::Entity::find().inner_join(blocks::Entity);
+    let mut q = golem_base_operations::Entity::find();
 
     if let Some(key) = filter.entity_key {
         q = q.filter(golem_base_operations::Column::EntityKey.eq(key));
@@ -277,7 +277,9 @@ fn filtered_operations(filter: DbOperationsFilter) -> Select<golem_base_operatio
     }
 
     q = match filter.block_number_or_hash {
-        Some(DbBlockNumberOrHash::Number(number)) => q.filter(blocks::Column::Number.eq(number)),
+        Some(DbBlockNumberOrHash::Number(number)) => q
+            .inner_join(blocks::Entity)
+            .filter(blocks::Column::Number.eq(number)),
         Some(DbBlockNumberOrHash::Hash(hash)) => {
             q.filter(golem_base_operations::Column::BlockHash.eq(hash))
         }
@@ -294,12 +296,22 @@ pub async fn list_operations<T: ConnectionTrait>(
     db: &T,
     filter: ListOperationsFilter,
 ) -> Result<(Vec<OperationView>, PaginationMetadata)> {
+    let blocks_joined = matches!(
+        filter.operations_filter.block_number_or_hash,
+        Some(BlockNumberOrHashFilter::Number(_))
+    );
     let filter: DbListOperationsFilter = filter.try_into()?;
     let mut query = filtered_operations(filter.operations_filter);
 
     if let Some(operation_type) = filter.operation_type {
         query = query.filter(golem_base_operations::Column::Operation.eq(operation_type));
     }
+    let query = if blocks_joined {
+        // already joined by filtered_operations
+        query
+    } else {
+        query.inner_join(blocks::Entity)
+    };
     let query_with_blocks = query.select_also(blocks::Entity);
 
     let paginator = query_with_blocks
