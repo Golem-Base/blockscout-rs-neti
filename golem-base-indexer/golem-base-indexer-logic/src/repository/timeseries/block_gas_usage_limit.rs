@@ -30,6 +30,7 @@ impl TryFrom<DbChartBlockGasUsageLimit> for BlockGasUsageLimitPoint {
 #[instrument(skip(db))]
 pub async fn timeseries_block_gas_usage_limit<T: ConnectionTrait>(
     db: &T,
+    limit: u64,
 ) -> Result<(Vec<BlockGasUsageLimitPoint>, ChartInfo)> {
     let points = blocks::Entity::find()
         .select_only()
@@ -51,6 +52,7 @@ pub async fn timeseries_block_gas_usage_limit<T: ConnectionTrait>(
             "gas_usage_percentage",
         )
         .order_by_desc(blocks::Column::Number)
+        .limit(limit)
         .into_model::<DbChartBlockGasUsageLimit>()
         .all(db)
         .await

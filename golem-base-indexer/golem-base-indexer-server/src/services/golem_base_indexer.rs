@@ -491,11 +491,14 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
 
     async fn chart_block_gas_usage_limit(
         &self,
-        _request: Request<Empty>,
+        request: Request<ChartBlockGasUsageLimitRequest>,
     ) -> Result<Response<ChartBlockGasUsageLimitResponse>, Status> {
+        let inner = request.into_inner();
+        let limit = inner.limit.unwrap_or(1800);
+
         let (points, info) =
             repository::timeseries::block_gas_usage_limit::timeseries_block_gas_usage_limit(
-                &*self.db,
+                &*self.db, limit,
             )
             .await
             .map_err(|err| {
