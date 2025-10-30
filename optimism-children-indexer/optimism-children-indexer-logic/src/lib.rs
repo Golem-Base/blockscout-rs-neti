@@ -1,3 +1,5 @@
+use alloy_primitives::Address;
+use alloy_sol_types::SolValue;
 use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use lazy_static::lazy_static;
@@ -12,7 +14,7 @@ use std::{
 use tokio::time::sleep;
 use tracing::{instrument, warn};
 
-use crate::types::{ConsensusTx, LogIndex};
+use crate::types::{ConsensusTx, LogIndex, TransactionDepositedEvent};
 
 mod consensus_tx;
 pub mod pagination;
@@ -105,7 +107,38 @@ impl Indexer {
             .await?
             .ok_or(anyhow!("Log disappeared from the DB?!"))?;
 
-        // FIXME TODO
+        let from = if let Some(second_topic) = log.second_topic {
+            Address::abi_decode_validate(second_topic.as_slice())?
+        } else {
+            tracing::warn!("TransactionDeposited event with no second topic?");
+            return Ok(());
+        };
+
+        let to = if let Some(third_topic) = log.third_topic {
+            Address::abi_decode_validate(third_topic.as_slice())?
+        } else {
+            tracing::warn!("TransactionDeposited event with no third topic?");
+            return Ok(());
+        };
+
+        let version = if let Some(fourth_topic) = log.fourth_topic {
+            fourth_topic.into()
+        } else {
+            tracing::warn!("TransactionDeposited event with no fourth topic?");
+            return Ok(());
+        };
+
+        let data = log.data.clone();
+
+        let event = TransactionDepositedEvent {
+            from,
+            to,
+            version,
+            data,
+        };
+
+        repository::deposits::store_transaction_deposited(&txn, tx.clone(), log.clone(), event)
+            .await?;
         repository::logs::finish_log_processing(&txn, log.tx_hash, tx.block_hash, log.index)
             .await?;
         txn.commit().await?;
