@@ -1,8 +1,7 @@
-use alloy_primitives::B256;
+use alloy_primitives::{Bytes, B256, U256};
 use chrono::{DateTime, Utc};
 
 pub use alloy_primitives::{Address, BlockHash, BlockNumber, TxHash, U256 as CurrencyAmount};
-pub use alloy_rlp::Bytes;
 use anyhow::{Context, Result};
 
 pub type Timestamp = DateTime<Utc>;
@@ -110,4 +109,26 @@ pub struct Transaction {
     pub r#type: Option<i32>,
     pub l1_transaction_origin: Option<Address>,
     pub l1_block_number: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FullEvent<T> {
+    pub metadata: EventMetadata,
+    pub event: T,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventMetadata {
+    pub transaction_hash: TxHash,
+    pub block_hash: BlockHash,
+    pub index: u64,
+    pub block_number: BlockNumber,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TransactionDepositedEvent {
+    pub from: Address,
+    pub to: Address,
+    pub version: U256,
+    pub data: Bytes,
 }

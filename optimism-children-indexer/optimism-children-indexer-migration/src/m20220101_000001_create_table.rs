@@ -23,6 +23,22 @@ create table optimism_children_pending_logs (
     block_number int not null,
     primary key (transaction_hash, block_hash, index)
 );
+
+create table optimism_children_transaction_deposited_events (
+    transaction_hash bytea not null references transactions (hash),
+    block_hash bytea not null references blocks (hash),
+    index integer not null,
+
+    block_number int not null,
+
+    "from" bytea not null,
+    "to" bytea not null,
+    version numeric(100,0) not null,
+    data bytea not null,
+
+    primary key (transaction_hash, block_hash, index),
+    foreign key (transaction_hash, block_hash, index) references logs (transaction_hash, block_hash, index)
+);
         "#;
 
         let create_logs_insert_trigger = Statement::from_string(
@@ -32,7 +48,7 @@ create or replace trigger optimism_children_handle_logs_insert
 after insert on logs
 for each row
 when (
-    new.first_topic = '\x0297b0e6eaf1bc2289906a8123b8ff5b19e568a60d002d47df44f8294422af93' -- FIXME
+    new.first_topic = '\xb3813568d9991fc951961fcb4c784893574240a28925604d09fc577c55bb7c32'
     and new.block_number is not null
 )
 execute function optimism_children_queue_logs_processing();
@@ -46,7 +62,7 @@ create or replace trigger optimism_children_handle_logs_update
 after update on logs
 for each row
 when (
-    new.first_topic = '\x0297b0e6eaf1bc2289906a8123b8ff5b19e568a60d002d47df44f8294422af93' -- FIXME
+    new.first_topic = '\xb3813568d9991fc951961fcb4c784893574240a28925604d09fc577c55bb7c32'
     and new.block_number is not null
     and old.block_number is null
 )
@@ -81,7 +97,7 @@ $$
 insert into optimism_children_pending_logs (transaction_hash, block_hash, index, block_number)
 select transaction_hash, block_hash, index, block_number from logs
 where
-    first_topic = '\x0297b0e6eaf1bc2289906a8123b8ff5b19e568a60d002d47df44f8294422af93' -- FIXME
+    first_topic = '\xb3813568d9991fc951961fcb4c784893574240a28925604d09fc577c55bb7c32'
     and block_number is not null;
 "#,
         );
@@ -111,6 +127,7 @@ where
             drop trigger if exists optimism_children_handle_logs_insert on logs;
             drop function if exists optimism_children_queue_logs_processing;
             drop table if exists optimism_children_pending_logs;
+            drop table if exists optimism_children_transaction_deposited_events;
         "#;
         crate::from_sql(manager, sql).await
     }
