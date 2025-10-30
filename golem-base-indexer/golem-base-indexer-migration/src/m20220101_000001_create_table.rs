@@ -233,6 +233,7 @@ where
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"
             drop trigger if exists golem_base_handle_tx_create on transactions;
+            drop trigger if exists golem_base_handle_tx_insert on transactions;
             drop trigger if exists golem_base_handle_tx_update on transactions;
             drop trigger if exists golem_base_handle_tx_update_for_cleanup on transactions;
             drop function if exists golem_base_queue_transaction_cleanup;

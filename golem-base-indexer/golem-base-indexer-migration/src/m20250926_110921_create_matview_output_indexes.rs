@@ -49,7 +49,7 @@ ON golem_base_timeseries_data_usage (timestamp)
         let mut stmts: Vec<_> = vec![];
 
         for view in LEADERBOARDS_MAT_VIEWS {
-            let sql = &format!("DROP INDEX IF EXISTS {view}_output_index ON {view} (rank);");
+            let sql = &format!("DROP INDEX IF EXISTS {view}_output_index;");
             let stmt = Statement::from_string(DatabaseBackend::Postgres, sql);
             stmts.push(stmt);
         }

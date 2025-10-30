@@ -66,6 +66,7 @@ $$
                 drop constraint golem_base_pending_transaction_operations_pkey,
                 add primary key(hash);
             alter table golem_base_pending_transaction_operations drop column block_number, drop column index;
+            drop table golem_base_entity_locks;
         "#;
 
         let create_function_new_tx = Statement::from_string(
