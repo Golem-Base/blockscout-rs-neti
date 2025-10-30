@@ -148,8 +148,8 @@ $$
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"
-            drop trigger golem_base_handle_logs_insert;
-            drop trigger golem_base_handle_logs_update;
+            drop trigger golem_base_handle_logs_insert on logs;
+            drop trigger golem_base_handle_logs_update on logs;
             drop function golem_base_queue_logs_processing;
             drop table golem_base_pending_logs_operations;
         "#;
