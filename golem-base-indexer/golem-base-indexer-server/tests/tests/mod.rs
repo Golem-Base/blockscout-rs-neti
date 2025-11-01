@@ -38,5 +38,6 @@ mod timeseries_block_gas_usage_limit;
 mod timeseries_block_operations;
 mod timeseries_block_transactions;
 mod timeseries_data_usage;
+mod timeseries_entity_count;
 mod timeseries_operation_count;
 mod timeseries_storage_forecast;
