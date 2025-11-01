@@ -513,6 +513,29 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
+    async fn chart_block_gas_usage_limit(
+        &self,
+        request: Request<ChartBlockGasUsageLimitRequest>,
+    ) -> Result<Response<ChartBlockGasUsageLimitResponse>, Status> {
+        let inner = request.into_inner();
+        let limit = inner.limit.unwrap_or(1800);
+
+        let (points, info) =
+            repository::timeseries::block_gas_usage_limit::timeseries_block_gas_usage_limit(
+                &*self.db, limit,
+            )
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query block gas usage and limit timeseries");
+                Status::internal("failed to query block gas usage and limit timeseries")
+            })?;
+
+        Ok(Response::new(ChartBlockGasUsageLimitResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
     // Leaderboards
     async fn leaderboard_biggest_spenders(
         &self,

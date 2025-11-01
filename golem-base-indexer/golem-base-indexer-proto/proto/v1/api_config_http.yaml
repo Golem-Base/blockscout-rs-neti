@@ -91,6 +91,9 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartBlockOperations
       get: /api/v1/chart/block-operations
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartBlockGasUsageLimit
+      get: /api/v1/chart/block-gas-usage-limit
+
     #################### Health ####################
 
     - selector: blockscout.golemBaseIndexer.v1.Health.Check

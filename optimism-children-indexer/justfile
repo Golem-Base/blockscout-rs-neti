@@ -1,0 +1,58 @@
+default:
+    just --list --unsorted
+
+db-host := env('DB_HOST', "localhost")
+db-port := env('DB_PORT', "7432")
+db-user := env('DB_USER', "blockscout")
+db-password := env('DB_PASSWORD', "ceWb1MeLBEeOIfk65gU8EjF8")
+db-name := env('DB_NAME', "blockscout")
+
+DEFAULT_DATABASE_URL := "postgres://" + db-user + ":" + db-password + "@" + db-host + ":" + db-port + "/" + db-name
+export DATABASE_URL := env('DATABASE_URL', DEFAULT_DATABASE_URL)
+export TEST_DATABASE_URL := "postgres://admin:admin@localhost:8432"
+
+test *args:
+  - docker stop optimism-children-indexer-postgres
+  docker run -p 8432:5432 --name optimism-children-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500 -c log_statement=all
+  while ! docker exec -i optimism-children-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres -c "select 1"; do echo "Waiting for postgres to start..."; sleep 2; done
+  env DATABASE_URL={{TEST_DATABASE_URL}} cargo test {{args}} -- --include-ignored --nocapture
+
+coverage *args:
+  - docker stop optimism-children-indexer-postgres
+  docker run -p 8432:5432 --name optimism-children-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
+  while ! docker exec -i optimism-children-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres -c "select 1"; do echo "Waiting for postgres to start..."; sleep 2; done
+  env DATABASE_URL={{TEST_DATABASE_URL}} cargo llvm-cov --open {{args}} -- --include-ignored
+  docker stop optimism-children-indexer-postgres
+
+run:
+    OPTIMISM_CHILDREN_INDEXER__DATABASE__CONNECT__URL={{DATABASE_URL}} \
+    OPTIMISM_CHILDREN_INDEXER__DATABASE__RUN_MIGRATIONS=true \
+    OPTIMISM_CHILDREN_INDEXER__DATABASE__CONNECT_OPTIONS__MAX_CONNECTIONS=50 \
+    OPTIMISM_CHILDREN_INDEXER__METRICS__ENABLED=true \
+    OPTIMISM_CHILDREN_INDEXER__SERVER__HTTP__CORS__ENABLED=true \
+    OPTIMISM_CHILDREN_INDEXER__SERVER__HTTP__CORS__ALLOWED_ORIGIN='*' \
+    RUST_LOG=debug,sqlx=info,tracing::span=info \
+    cargo run --bin optimism-children-indexer-server
+
+generate-entities:
+  - docker stop optimism-children-indexer-postgres
+  docker run -p 8432:5432 --name optimism-children-indexer-postgres -e POSTGRES_PASSWORD=admin -e POSTGRES_USER=admin --rm -d postgres -N 500
+  while ! docker exec -i optimism-children-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres -c "select 1"; do echo "Waiting for postgres to start..."; sleep 2; done
+  docker exec -i optimism-children-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres < optimism-children-indexer-server/tests/fixtures/blockscout_tables.sql;
+  env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli migrate -d optimism-children-indexer-migration up
+  env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli generate entity --ignore-tables optimism_children_indexer_migrations,smart_contracts,internal_transactions --lib -o optimism-children-indexer-entity/src
+  cargo fmt -p optimism-children-indexer-entity -- --config imports_granularity=Crate
+  docker stop optimism-children-indexer-postgres
+
+new-migration name:
+    sea-orm-cli migrate generate -d optimism-children-indexer-migration {{name}}
+    ./fix-migrations.sh
+
+migrate-up:
+    sea-orm-cli migrate -d optimism-children-indexer-migration up
+
+migrate-down:
+    sea-orm-cli migrate -d optimism-children-indexer-migration down
+
+fmt:
+    cargo fmt --all -- --config imports_granularity=Crate

@@ -1,0 +1,28 @@
+[package]
+name = "optimism-children-indexer-logic"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+alloy-primitives.workspace = true
+alloy-rlp.workspace = true
+alloy-sol-types.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+futures.workspace = true
+optimism-children-indexer-entity = { path = "../optimism-children-indexer-entity" }
+lazy_static.workspace = true
+prometheus.workspace = true
+sea-orm = { workspace = true, features = [
+  "sqlx-postgres",
+  "runtime-tokio-rustls",
+  "macros",
+  "postgres-array",
+] }
+serde.workspace = true
+serde_with.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]

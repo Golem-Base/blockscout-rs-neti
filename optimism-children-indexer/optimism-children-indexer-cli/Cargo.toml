@@ -1,0 +1,12 @@
+[package]
+name = "optimism-children-indexer-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+optimism-children-indexer-logic = { path = "../optimism-children-indexer-logic" }
+sea-orm.workspace = true
+tokio.workspace = true
+tracing-subscriber.workspace = true

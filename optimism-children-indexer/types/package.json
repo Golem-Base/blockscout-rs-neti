@@ -1,0 +1,26 @@
+{
+  "name": "@golembase/optimism-children-indexer-types",
+  "version": "0.0.29",
+  "description": "TypeScript definitions for Optimism Children Indexer microservice",
+  "main": "./dist/optimism-children-indexer-proto/proto/v1/optimism-children-indexer.js",
+  "types": "./dist/optimism-children-indexer-proto/proto/v1/optimism-children-indexer.d.ts",
+  "scripts": {
+    "build": "npm run compile:proto && npm run compile:ts",
+    "compile:proto": "mkdir -p ./dist && protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_opt=snakeToCamel=false --ts_proto_opt=exportCommonSymbols=false --ts_proto_opt=stringEnums=true --ts_proto_opt=onlyTypes=true --ts_proto_opt=emitImportedFiles=false --ts_proto_opt=forceLong=string --proto_path=../ --proto_path=../../proto/ --ts_proto_out=./dist ../optimism-children-indexer-proto/proto/v1/optimism-children-indexer.proto",
+    "compile:ts": "tsc --declaration ./dist/optimism-children-indexer-proto/proto/v1/optimism-children-indexer.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Golem-Base/blockscout-rs-neti.git",
+    "directory": "optimism-children-indexer/types"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Golem-Base/blockscout-rs-neti/issues"
+  },
+  "homepage": "https://github.com/Golem-Base/blockscout-rs-neti#readme",
+  "devDependencies": {
+    "ts-proto": "^2.7.5",
+    "typescript": "^5.8.3"
+  }
+}

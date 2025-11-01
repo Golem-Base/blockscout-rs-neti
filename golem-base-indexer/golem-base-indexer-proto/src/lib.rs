@@ -4,10 +4,11 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressLeaderboardRanks, BlockEntitiesCount, BlockOperationPoint, BlockStorageUsage,
-    BlockTransactionPoint, ChartInfo, ChartPoint, ConsensusInfo, EntitiesAverages, EntitiesFilter,
-    Entity, EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
-    EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
+    AddressLeaderboardRanks, BlockEntitiesCount, BlockGasUsageLimitPoint, BlockOperationPoint,
+    BlockStorageUsage, BlockTransactionPoint, ChartInfo, ChartPoint, ConsensusInfo,
+    EntitiesAverages, EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry,
+    EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
+    LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
     ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
@@ -639,6 +640,17 @@ impl From<BlockOperationPoint> for v1::BlockOperationPoint {
             update_count: v.update_count,
             delete_count: v.delete_count,
             extend_count: v.extend_count,
+        }
+    }
+}
+
+impl From<BlockGasUsageLimitPoint> for v1::ChartBlockGasUsageLimitPoint {
+    fn from(v: BlockGasUsageLimitPoint) -> Self {
+        Self {
+            block_number: v.block_number,
+            gas_used: v.gas_used,
+            gas_limit: v.gas_limit,
+            gas_usage_percentage: v.gas_usage_percentage.to_string(),
         }
     }
 }
