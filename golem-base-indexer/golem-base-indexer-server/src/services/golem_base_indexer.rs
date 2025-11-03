@@ -450,6 +450,30 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
+    async fn chart_entity_count(
+        &self,
+        request: Request<ChartEntityCountRequest>,
+    ) -> Result<Response<ChartResponse>, Status> {
+        let inner = request.into_inner();
+        let resolution = inner
+            .resolution
+            .try_into()
+            .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
+        let (points, info) = repository::timeseries::entity_count::timeseries_entity_count(
+            &*self.db, inner.from, inner.to, resolution,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "failed to query entity count chart");
+            Status::internal("failed to query entity count chart")
+        })?;
+
+        Ok(Response::new(ChartResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
     async fn chart_block_transactions(
         &self,
         _request: Request<Empty>,

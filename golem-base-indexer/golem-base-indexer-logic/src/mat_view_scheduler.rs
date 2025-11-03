@@ -72,6 +72,10 @@ impl MatViewScheduler {
                 name: "golem_base_timeseries_operation_count".to_string(),
                 delay: HALF_HOUR,
             },
+            MatViewSettings {
+                name: "golem_base_timeseries_entity_count".to_string(),
+                delay: HALF_HOUR,
+            },
         ]
     }
 

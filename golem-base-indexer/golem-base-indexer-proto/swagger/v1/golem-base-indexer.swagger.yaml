@@ -169,6 +169,39 @@ paths:
           default: DAY
       tags:
         - GolemBaseIndexerService
+  /api/v1/chart/entity-count:
+    get:
+      operationId: GolemBaseIndexerService_ChartEntityCount
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1ChartResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: from
+          in: query
+          required: false
+          type: string
+        - name: to
+          in: query
+          required: false
+          type: string
+        - name: resolution
+          in: query
+          required: false
+          type: string
+          enum:
+            - DAY
+            - HOUR
+            - WEEK
+            - MONTH
+          default: DAY
+      tags:
+        - GolemBaseIndexerService
   /api/v1/chart/entity-data-histogram:
     get:
       summary: FIXME naming

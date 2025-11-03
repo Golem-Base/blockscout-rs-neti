@@ -35,6 +35,7 @@ service GolemBaseIndexerService {
   rpc ChartStorageForecast(ChartStorageForecastRequest) returns (ChartResponse);
   rpc GetEntityDataHistogram(Empty) returns (GetEntityDataHistogramResponse); // FIXME naming
   rpc ChartOperationCount(ChartOperationCountRequest) returns (ChartOperationCountResponse);
+  rpc ChartEntityCount(ChartEntityCountRequest) returns (ChartResponse);
   rpc ChartBlockTransactions(Empty) returns (ChartBlockTransactionsResponse);
   rpc ChartBlockOperations(ChartBlockOperationsRequest) returns (ChartBlockOperationsResponse);
   rpc ChartBlockGasUsageLimit(ChartBlockGasUsageLimitRequest) returns (ChartBlockGasUsageLimitResponse);
@@ -422,6 +423,12 @@ message ChartOperationCountRequest {
 message ChartOperationCountResponse {
   repeated ChartPoint chart = 1;
   ChartInfo info = 2;
+}
+
+message ChartEntityCountRequest {
+  optional string from = 1;
+  optional string to = 2;
+  ChartResolution resolution = 3;
 }
 
 message GetEntityDataHistogramResponse {
