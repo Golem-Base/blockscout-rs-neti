@@ -119,6 +119,8 @@ pub struct FullEvent<T> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventMetadata {
+    pub from: Address,
+    pub to: Address,
     pub transaction_hash: TxHash,
     pub block_hash: BlockHash,
     pub index: u64,

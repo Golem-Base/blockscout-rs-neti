@@ -24,3 +24,27 @@ from transactions t
 where
     t.hash = $1
 "#;
+
+pub const LIST_DEPOSITS_WITH_TX: &str = r#"
+select 
+    t.from_address_hash as tx_from,
+    t.to_address_hash as tx_to,
+    d.transaction_hash as tx_hash,
+    d.block_hash,
+    d.block_number,
+    d.index,
+    d.from as deposit_from,
+    d.to as deposit_to,
+    d.source_hash,
+    d.mint,
+    d.value,
+    d.gas_limit,
+    d.is_creation,
+    d.calldata
+from optimism_children_transaction_deposited_events_v0 d
+    inner join transactions t on t.hash = d.transaction_hash
+order by
+    d.block_number desc,
+    t.index desc,
+    d.index desc
+"#;

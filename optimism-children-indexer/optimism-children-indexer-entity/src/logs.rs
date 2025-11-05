@@ -38,6 +38,14 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::blocks::Entity",
+        from = "Column::BlockHash",
+        to = "super::blocks::Column::Hash",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    Blocks,
     #[sea_orm(has_one = "super::optimism_children_transaction_deposited_events_v0::Entity")]
     OptimismChildrenTransactionDepositedEventsV0,
     #[sea_orm(
@@ -48,6 +56,12 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Transactions,
+}
+
+impl Related<super::blocks::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Blocks.def()
+    }
 }
 
 impl Related<super::optimism_children_transaction_deposited_events_v0::Entity> for Entity {
