@@ -32,7 +32,7 @@ impl MigrationTrait for Migration {
             enabled BOOLEAN DEFAULT true NOT NULL,
             
             -- Timestamps
-            created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+            inserted_at TIMESTAMP DEFAULT NOW() NOT NULL,
             updated_at TIMESTAMP DEFAULT NOW() NOT NULL
         );
 

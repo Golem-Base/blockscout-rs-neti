@@ -14,7 +14,7 @@ use alloy::{
 };
 use anyhow::{anyhow, Context, Result};
 use op_alloy::network::Optimism;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, Duration, Instant};
 
 /// A single indexing task for Layer3 Indexer.
 pub struct Layer3IndexerTask {
@@ -29,19 +29,13 @@ impl Layer3IndexerTask {
 
     /// Runs the indexing task after waiting for the specified delay.
     pub async fn run_with_delay(&self, delay: Duration) -> Result<Layer3IndexerTaskOutput> {
-        tracing::debug!(
-            "[{}] Sleeping for {} second(s) before indexing",
-            self.config.chain_name,
-            delay.as_secs(),
-        );
-
         sleep(delay).await;
         self.run().await
     }
 
     /// Executes the main indexing logic for this chain.
     pub async fn run(&self) -> Result<Layer3IndexerTaskOutput> {
-        tracing::debug!("[{}] Starting indexing", self.config.chain_name);
+        let started_at = Instant::now();
 
         let mut config = self.config.clone();
 
@@ -60,10 +54,10 @@ impl Layer3IndexerTask {
         // Start indexing
         if let Some((from_block, to_block)) = block_range {
             tracing::debug!(
-                "[{}] Indexing block range: {} to {}",
-                self.config.chain_name,
                 from_block,
-                to_block
+                to_block,
+                "[{}] Starting indexing.",
+                self.config.chain_name,
             );
 
             // Run indexing for a block range
@@ -74,20 +68,26 @@ impl Layer3IndexerTask {
             // Update last indexed block
             config.l3_last_indexed_block = to_block as i64;
 
-            tracing::debug!(
-                "[{}] Finished indexing. Collected {} items",
+            tracing::info!(
+                "[{}] Status: {}, Indexing blocks {}-{} took {} second(s). Collected {} item(s).",
                 self.config.chain_name,
+                if to_block == latest_block_number {
+                    "synced"
+                } else {
+                    "catching-up"
+                },
+                from_block,
+                to_block,
+                started_at.elapsed().as_secs(),
                 items.len()
             );
 
             Ok((config, items))
         } else {
             // No new blocks to index
-            tracing::debug!(
-                "[{}] No new blocks to index (last_indexed: {}, latest: {})",
+            tracing::info!(
+                "[{}] Status: synced, no new blocks.",
                 self.config.chain_name,
-                config.l3_last_indexed_block,
-                latest_block_number
             );
 
             Ok((config, vec![]))
@@ -104,12 +104,6 @@ impl Layer3IndexerTask {
             .await
             .context("Failed to fetch latest block number")?;
 
-        tracing::debug!(
-            "[{}] Latest block number from RPC: {}",
-            self.config.chain_name,
-            latest_block_number
-        );
-
         Ok(latest_block_number)
     }
 
@@ -124,10 +118,9 @@ impl Layer3IndexerTask {
         }
 
         let batch_size = self.config.l3_batch_size as u64;
-        let from_block = last_indexed;
         let to_block = latest_block.min(last_indexed + batch_size);
 
-        Some((from_block, to_block))
+        Some((last_indexed, to_block))
     }
 
     /// Indexes the specified block range by fetching blocks and receipts.

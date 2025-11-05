@@ -29,7 +29,7 @@ impl From<Layer3Deposit> for optimism_children_l3_deposits::ActiveModel {
             tx_hash: Set(v.tx_hash),
             source_hash: Set(v.source_hash),
             success: Set(v.success),
-            created_at: Default::default(),
+            inserted_at: Default::default(),
         }
     }
 }

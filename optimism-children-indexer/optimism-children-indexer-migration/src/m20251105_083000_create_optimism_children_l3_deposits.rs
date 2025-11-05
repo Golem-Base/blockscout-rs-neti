@@ -16,7 +16,7 @@ impl MigrationTrait for Migration {
             tx_hash BYTEA NOT NULL,
             source_hash BYTEA NOT NULL,
             success BOOLEAN NOT NULL,
-            created_at TIMESTAMP DEFAULT NOW() NOT NULL
+            inserted_at TIMESTAMP DEFAULT NOW() NOT NULL
         );
 
         CREATE INDEX idx_optimism_children_l3_deposits_source_hash

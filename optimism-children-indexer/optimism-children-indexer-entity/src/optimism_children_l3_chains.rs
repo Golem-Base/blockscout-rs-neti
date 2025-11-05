@@ -24,7 +24,7 @@ pub struct Model {
     pub l3_latest_block: Option<i64>,
     pub l3_latest_block_updated_at: Option<DateTime>,
     pub enabled: bool,
-    pub created_at: DateTime,
+    pub inserted_at: DateTime,
     pub updated_at: DateTime,
 }
 

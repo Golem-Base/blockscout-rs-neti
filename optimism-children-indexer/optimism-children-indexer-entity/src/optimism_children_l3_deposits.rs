@@ -15,7 +15,7 @@ pub struct Model {
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub source_hash: Vec<u8>,
     pub success: bool,
-    pub created_at: DateTime,
+    pub inserted_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

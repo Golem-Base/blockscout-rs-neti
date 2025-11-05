@@ -72,11 +72,12 @@ impl Layer3Indexer {
 
         // Spawn new tasks
         for config in to_spawn {
-            tracing::info!(
+            tracing::debug!(
                 chain_id = config.chain_id,
-                "[{}] Spawning indexer task",
+                "[{}] Spawning indexer task.",
                 config.chain_name
             );
+
             self.spawn_task(config, Duration::ZERO);
         }
 
@@ -85,7 +86,7 @@ impl Layer3Indexer {
             if !self.chains.contains_key(&chain_id) {
                 tracing::debug!(
                     chain_id = chain_id,
-                    "Cancelling task for removed/disabled chain"
+                    "Cancelling task for removed/disabled chain."
                 );
                 handle.abort();
                 false
@@ -119,7 +120,7 @@ impl Layer3Indexer {
                 chain_id = chain_id,
                 delay_secs = delay.as_secs(),
                 succeeded = succeeded,
-                "[{}] Scheduling task restart",
+                "[{}] Scheduling task restart.",
                 chain.chain_name
             );
 
@@ -139,7 +140,7 @@ impl Layer3Indexer {
                 RESTART_DELAY_SYNCED
             }
             (_, Some(_)) => {
-                // Behind - catch up quickly
+                // Behind - catch up
                 RESTART_DELAY_BEHIND
             }
             _ => {
@@ -161,28 +162,22 @@ impl Layer3Indexer {
         let chain_name = self
             .chains
             .get(&chain_id)
-            .map(|c| c.chain_name.as_str())
+            .map(|config| config.chain_name.as_str())
             .unwrap_or("unknown");
 
         match result {
             Ok(output) => {
-                tracing::debug!(
-                    chain_id = chain_id,
-                    "[{}] Task completed successfully",
-                    chain_name
-                );
-
                 // Handle task result
                 let (config, items) = output;
 
                 // Store indexed items
                 if let Err(err) = self.store_indexed_items(items).await {
-                    tracing::error!(err = ?err, "Failed to store indexed items in database");
+                    tracing::error!(err = ?err, "Failed to store indexed items in database.");
                 } else {
                     // Update chain config
                     self.update_chain_state(config.clone())
                         .await
-                        .expect("Failed to update chain state");
+                        .expect("Failed to update chain state.");
                     self.chains.insert(chain_id, config);
                 }
 
@@ -193,7 +188,7 @@ impl Layer3Indexer {
                 tracing::error!(
                     chain_id = chain_id,
                     error = %e,
-                    "[{}] Task failed", chain_name
+                    "[{}] Task failed.", chain_name
                 );
                 self.try_respawn(chain_id, false);
             }
@@ -215,7 +210,7 @@ impl Layer3Indexer {
             chain_id = config.chain_id,
             last_indexed = ?updated.l3_last_indexed_block,
             latest = ?updated.l3_latest_block,
-            "[{}] Updated chain state",
+            "[{}] Updated chain state.",
             updated.chain_name
         );
 
