@@ -1,27 +1,50 @@
-use crate::types::{
-    ConsensusTx, DepositV0, EventMetadata, FullEvent, Log, TransactionDepositedEvent,
+use crate::{
+    pagination::paginate_try_from,
+    repository::sql,
+    types::{
+        ConsensusTx, DepositV0, EventMetadata, FullEvent, Log, PaginationMetadata,
+        PaginationParams, TransactionDepositedEvent,
+    },
 };
 use anyhow::Result;
 use optimism_children_indexer_entity::optimism_children_transaction_deposited_events_v0;
-use sea_orm::{prelude::*, ActiveValue::Set, QueryOrder};
+use sea_orm::{prelude::*, ActiveValue::Set, FromQueryResult, Statement};
 use tracing::instrument;
 
-impl TryFrom<optimism_children_transaction_deposited_events_v0::Model>
-    for FullEvent<TransactionDepositedEvent<DepositV0>>
-{
+#[derive(FromQueryResult, Debug)]
+struct DbDeposit {
+    tx_from: Vec<u8>,
+    tx_to: Vec<u8>,
+    tx_hash: Vec<u8>,
+    block_hash: Vec<u8>,
+    index: i32,
+    block_number: i32,
+    deposit_from: Vec<u8>,
+    deposit_to: Vec<u8>,
+    source_hash: Vec<u8>,
+    mint: Decimal,
+    value: Decimal,
+    gas_limit: Decimal,
+    is_creation: bool,
+    calldata: Vec<u8>,
+}
+
+impl TryFrom<DbDeposit> for FullEvent<TransactionDepositedEvent<DepositV0>> {
     type Error = anyhow::Error;
 
-    fn try_from(value: optimism_children_transaction_deposited_events_v0::Model) -> Result<Self> {
+    fn try_from(value: DbDeposit) -> Result<Self> {
         Ok(Self {
             metadata: EventMetadata {
-                transaction_hash: value.transaction_hash.as_slice().try_into()?,
+                from: value.tx_from.as_slice().try_into()?,
+                to: value.tx_to.as_slice().try_into()?,
+                transaction_hash: value.tx_hash.as_slice().try_into()?,
                 block_hash: value.block_hash.as_slice().try_into()?,
                 index: value.index.try_into()?,
                 block_number: value.block_number.try_into()?,
             },
             event: TransactionDepositedEvent {
-                from: value.from.as_slice().try_into()?,
-                to: value.to.as_slice().try_into()?,
+                from: value.deposit_from.as_slice().try_into()?,
+                to: value.deposit_to.as_slice().try_into()?,
                 source_hash: value.source_hash.as_slice().try_into()?,
                 deposit: DepositV0 {
                     // these conversions to u128 are fine, as Decimal only has 96 bits of precision
@@ -70,16 +93,17 @@ pub async fn store_transaction_deposited<T: ConnectionTrait>(
 }
 
 #[instrument(skip(db))]
-pub async fn find_transaction_deposited<T: ConnectionTrait>(
+pub async fn list_deposits<T: ConnectionTrait>(
     db: &T,
-) -> Result<Vec<FullEvent<TransactionDepositedEvent<DepositV0>>>> {
-    optimism_children_transaction_deposited_events_v0::Entity::find()
-        .order_by_asc(optimism_children_transaction_deposited_events_v0::Column::BlockNumber)
-        // FIXME for chronological order we should have a tx index here as well
-        .order_by_asc(optimism_children_transaction_deposited_events_v0::Column::Index)
-        .all(db)
-        .await?
-        .into_iter()
-        .map(FullEvent::<TransactionDepositedEvent<DepositV0>>::try_from)
-        .collect()
+    pagination: PaginationParams,
+) -> Result<(
+    Vec<FullEvent<TransactionDepositedEvent<DepositV0>>>,
+    PaginationMetadata,
+)> {
+    let q = DbDeposit::find_by_statement(Statement::from_string(
+        db.get_database_backend(),
+        sql::LIST_DEPOSITS_WITH_TX,
+    ))
+    .paginate(db, pagination.page_size);
+    paginate_try_from(q, pagination).await
 }

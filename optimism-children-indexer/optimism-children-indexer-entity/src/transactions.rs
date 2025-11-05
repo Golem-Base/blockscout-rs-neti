@@ -58,19 +58,40 @@ pub struct Model {
     pub has_error_in_internal_transactions: Option<bool>,
     pub block_timestamp: Option<DateTime>,
     pub block_consensus: Option<bool>,
-    pub l1_block_number: Option<i32>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
+    pub l1_fee: Option<Decimal>,
+    pub l1_fee_scalar: Option<Decimal>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
+    pub l1_gas_price: Option<Decimal>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
+    pub l1_gas_used: Option<Decimal>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub l1_transaction_origin: Option<Vec<u8>>,
+    pub l1_block_number: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::blocks::Entity",
+        from = "Column::BlockHash",
+        to = "super::blocks::Column::Hash",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    Blocks,
     #[sea_orm(has_many = "super::logs::Entity")]
     Logs,
     #[sea_orm(has_many = "super::optimism_children_pending_logs::Entity")]
     OptimismChildrenPendingLogs,
     #[sea_orm(has_many = "super::optimism_children_transaction_deposited_events_v0::Entity")]
     OptimismChildrenTransactionDepositedEventsV0,
+}
+
+impl Related<super::blocks::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Blocks.def()
+    }
 }
 
 impl Related<super::logs::Entity> for Entity {

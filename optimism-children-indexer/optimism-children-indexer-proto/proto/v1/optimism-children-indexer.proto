@@ -6,10 +6,32 @@ option go_package = "github.com/Golem-Base/blockscout-rs-neti/optimism-children-
 
 
 service OptimismChildrenIndexerService {
-  rpc Placeholder(Empty) returns (Empty);
+  rpc GetDeposits(PaginationRequest) returns (DepositsResponse);
 }
 
-message Empty {}
+message DepositsResponse {
+  repeated Deposit items = 1;
+  Pagination pagination = 2;
+}
+
+message Deposit {
+  TxInfo init_tx = 1;
+  string from = 2;
+  string to = 3;
+  string mint = 4;
+  string value = 5;
+  string gas_limit = 6;
+  bool is_creation = 7;
+  // string calldata = 8;
+}
+
+message TxInfo {
+  string transaction_hash = 1;
+  string block_hash = 2;
+  uint64 block_number = 3;
+  string from = 4;
+  string to = 5;
+}
 
 message PaginationRequest {
   optional uint64 page = 1;

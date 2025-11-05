@@ -10,6 +10,31 @@ consumes:
 produces:
   - application/json
 paths:
+  /api/v1/deposits:
+    get:
+      operationId: OptimismChildrenIndexerService_GetDeposits
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1DepositsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - OptimismChildrenIndexerService
   /health:
     get:
       summary: |-
@@ -32,20 +57,6 @@ paths:
           type: string
       tags:
         - Health
-  /placeholder:
-    get:
-      operationId: OptimismChildrenIndexerService_Placeholder
-      responses:
-        "200":
-          description: A successful response.
-          schema:
-            $ref: '#/definitions/v1Empty'
-        default:
-          description: An unexpected error response.
-          schema:
-            $ref: '#/definitions/rpcStatus'
-      tags:
-        - OptimismChildrenIndexerService
 definitions:
   HealthCheckResponseServingStatus:
     type: string
@@ -75,10 +86,65 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/protobufAny'
-  v1Empty:
+  v1Deposit:
     type: object
+    properties:
+      init_tx:
+        $ref: '#/definitions/v1TxInfo'
+      from:
+        type: string
+      to:
+        type: string
+      mint:
+        type: string
+      value:
+        type: string
+      gas_limit:
+        type: string
+      is_creation:
+        type: boolean
+        title: string calldata = 8;
+  v1DepositsResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1Deposit'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
   v1HealthCheckResponse:
     type: object
     properties:
       status:
         $ref: '#/definitions/HealthCheckResponseServingStatus'
+  v1Pagination:
+    type: object
+    properties:
+      page:
+        type: string
+        format: uint64
+      page_size:
+        type: string
+        format: uint64
+      total_pages:
+        type: string
+        format: uint64
+      total_items:
+        type: string
+        format: uint64
+  v1TxInfo:
+    type: object
+    properties:
+      transaction_hash:
+        type: string
+      block_hash:
+        type: string
+      block_number:
+        type: string
+        format: uint64
+      from:
+        type: string
+      to:
+        type: string
