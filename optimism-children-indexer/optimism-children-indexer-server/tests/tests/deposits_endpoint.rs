@@ -31,6 +31,21 @@ async fn test_deposits_endpoint() {
         json!({
             "items": [
                 {
+                    "from": "0x481c965E6579099F005387B4C1D7fb03bC302F4b",
+                    "gas_limit": "850000",
+                    "init_tx": {
+                        "block_hash": "0x7ec13ee95beee46e78b51559fbf985b2d1124c5b98e7ecc6174ddf90afa30f16",
+                        "block_number": "9398574",
+                        "from": "0x03a858395F1a6cd22e2B4D31139794AaB58C5D4d",
+                        "to": "0x370b965e6579099f005387b4c1D7Fb03bC301e3A",
+                        "transaction_hash": "0x387f9c25f22259f8a044d289434f0a5f49f9259205fd1bd2711a16fe29235bfc",
+                    },
+                    "is_creation": false,
+                    "mint": "1000000000000000000",
+                    "to": "0x03a858395F1a6cd22e2B4D31139794AaB58C5D4d",
+                    "value": "1000000000000000000",
+                },
+                {
                     "from": "0x3C41d8343A1Cba9FD6f0356039b6c6d844610321",
                     "gas_limit": "414371",
                     "init_tx": {
@@ -64,7 +79,7 @@ async fn test_deposits_endpoint() {
             "pagination": {
                 "page": "1",
                 "page_size": "100",
-                "total_items": "2",
+                "total_items": "3",
                 "total_pages": "1",
             },
         })
