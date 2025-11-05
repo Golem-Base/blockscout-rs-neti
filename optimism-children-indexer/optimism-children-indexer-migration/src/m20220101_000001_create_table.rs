@@ -24,7 +24,7 @@ create table optimism_children_pending_logs (
     primary key (transaction_hash, block_hash, index)
 );
 
-create table optimism_children_transaction_deposited_events (
+create table optimism_children_transaction_deposited_events_v0 (
     transaction_hash bytea not null references transactions (hash),
     block_hash bytea not null references blocks (hash),
     index integer not null,
@@ -33,8 +33,14 @@ create table optimism_children_transaction_deposited_events (
 
     "from" bytea not null,
     "to" bytea not null,
-    version numeric(100,0) not null,
-    data bytea not null,
+
+    mint numeric(100,0) not null,
+    value numeric(100,0) not null,
+    gas_limit numeric(100,0) not null,
+    is_creation boolean not null,
+    calldata bytea not null,
+
+    source_hash bytea not null,
 
     primary key (transaction_hash, block_hash, index),
     foreign key (transaction_hash, block_hash, index) references logs (transaction_hash, block_hash, index)

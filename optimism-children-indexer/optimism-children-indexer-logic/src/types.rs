@@ -1,4 +1,4 @@
-use alloy_primitives::{Bytes, B256, U256};
+use alloy_primitives::{Bytes, B256};
 use chrono::{DateTime, Utc};
 
 pub use alloy_primitives::{Address, BlockHash, BlockNumber, TxHash, U256 as CurrencyAmount};
@@ -126,9 +126,18 @@ pub struct EventMetadata {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TransactionDepositedEvent {
+pub struct TransactionDepositedEvent<T> {
     pub from: Address,
     pub to: Address,
-    pub version: U256,
-    pub data: Bytes,
+    pub source_hash: B256,
+    pub deposit: T,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DepositV0 {
+    pub mint: CurrencyAmount,
+    pub value: CurrencyAmount,
+    pub gas_limit: u64,
+    pub is_creation: bool,
+    pub calldata: Bytes,
 }

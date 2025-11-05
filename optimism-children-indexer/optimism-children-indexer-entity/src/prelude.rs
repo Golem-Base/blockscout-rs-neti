@@ -3,6 +3,6 @@
 pub use super::{
     addresses::Entity as Addresses, blocks::Entity as Blocks, logs::Entity as Logs,
     optimism_children_pending_logs::Entity as OptimismChildrenPendingLogs,
-    optimism_children_transaction_deposited_events::Entity as OptimismChildrenTransactionDepositedEvents,
+    optimism_children_transaction_deposited_events_v0::Entity as OptimismChildrenTransactionDepositedEventsV0,
     transactions::Entity as Transactions,
 };

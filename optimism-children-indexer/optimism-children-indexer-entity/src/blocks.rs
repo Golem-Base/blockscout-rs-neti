@@ -42,8 +42,8 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::optimism_children_pending_logs::Entity")]
     OptimismChildrenPendingLogs,
-    #[sea_orm(has_many = "super::optimism_children_transaction_deposited_events::Entity")]
-    OptimismChildrenTransactionDepositedEvents,
+    #[sea_orm(has_many = "super::optimism_children_transaction_deposited_events_v0::Entity")]
+    OptimismChildrenTransactionDepositedEventsV0,
 }
 
 impl Related<super::optimism_children_pending_logs::Entity> for Entity {
@@ -52,9 +52,9 @@ impl Related<super::optimism_children_pending_logs::Entity> for Entity {
     }
 }
 
-impl Related<super::optimism_children_transaction_deposited_events::Entity> for Entity {
+impl Related<super::optimism_children_transaction_deposited_events_v0::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OptimismChildrenTransactionDepositedEvents.def()
+        Relation::OptimismChildrenTransactionDepositedEventsV0.def()
     }
 }
 

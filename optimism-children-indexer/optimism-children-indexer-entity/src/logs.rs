@@ -38,8 +38,8 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_one = "super::optimism_children_transaction_deposited_events::Entity")]
-    OptimismChildrenTransactionDepositedEvents,
+    #[sea_orm(has_one = "super::optimism_children_transaction_deposited_events_v0::Entity")]
+    OptimismChildrenTransactionDepositedEventsV0,
     #[sea_orm(
         belongs_to = "super::transactions::Entity",
         from = "Column::TransactionHash",
@@ -50,9 +50,9 @@ pub enum Relation {
     Transactions,
 }
 
-impl Related<super::optimism_children_transaction_deposited_events::Entity> for Entity {
+impl Related<super::optimism_children_transaction_deposited_events_v0::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OptimismChildrenTransactionDepositedEvents.def()
+        Relation::OptimismChildrenTransactionDepositedEventsV0.def()
     }
 }
 
