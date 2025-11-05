@@ -8,10 +8,9 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let db = manager.get_connection();
 
-        db.execute_unprepared(
-        "
+        db.execute_unprepared("
         CREATE TABLE optimism_children_l3_chains (
-            id SERIAL PRIMARY KEY,
+            chain_id BIGINT PRIMARY KEY,
             chain_name VARCHAR(128) UNIQUE NOT NULL,
             
             -- RPC Configuration
@@ -36,8 +35,7 @@ impl MigrationTrait for Migration {
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
         );
-        ",
-        )
+        ")
         .await?;
 
         Ok(())

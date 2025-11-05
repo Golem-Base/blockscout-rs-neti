@@ -1,0 +1,35 @@
+pub use optimism_children_indexer_entity::{
+    optimism_children_l3_chains as Layer3Chains, optimism_children_l3_deposits,
+};
+use sea_orm::Set;
+
+/// Type returned from indexer task to indexer on successful pass
+pub type Layer3IndexerTaskOutput = (Layer3Chains::Model, Vec<Layer3IndexerTaskOutputItem>);
+
+/// Item type returned from indexer task to indexer on sucessful pass
+pub enum Layer3IndexerTaskOutputItem {
+    Deposit(Layer3Deposit),
+}
+
+/// Deposit transaction (L2 -> L3)
+pub struct Layer3Deposit {
+    pub chain_id: i64,
+    pub block_hash: Vec<u8>,
+    pub tx_hash: Vec<u8>,
+    pub source_hash: Vec<u8>,
+    pub status: bool,
+}
+
+impl From<Layer3Deposit> for optimism_children_l3_deposits::ActiveModel {
+    fn from(v: Layer3Deposit) -> Self {
+        Self {
+            id: Default::default(),
+            chain_id: Set(v.chain_id),
+            block_hash: Set(v.block_hash),
+            tx_hash: Set(v.tx_hash),
+            source_hash: Set(v.source_hash),
+            status: Set(v.status),
+            created_at: Default::default(),
+        }
+    }
+}

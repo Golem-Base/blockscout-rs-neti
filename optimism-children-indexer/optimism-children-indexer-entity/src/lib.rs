@@ -5,5 +5,7 @@ pub mod prelude;
 pub mod addresses;
 pub mod blocks;
 pub mod logs;
+pub mod optimism_children_l3_chains;
+pub mod optimism_children_l3_deposits;
 pub mod optimism_children_pending_logs;
 pub mod transactions;

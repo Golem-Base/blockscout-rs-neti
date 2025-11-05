@@ -17,6 +17,7 @@ use crate::types::{ConsensusTx, LogIndex};
 mod consensus_tx;
 pub mod pagination;
 pub mod repository;
+pub mod services;
 pub mod types;
 pub mod well_known;
 

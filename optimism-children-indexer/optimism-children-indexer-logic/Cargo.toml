@@ -5,13 +5,15 @@ edition = "2021"
 
 
 [dependencies]
+alloy.workspace = true
 alloy-primitives.workspace = true
 alloy-rlp.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 futures.workspace = true
-optimism-children-indexer-entity = { path = "../optimism-children-indexer-entity" }
 lazy_static.workspace = true
+op-alloy.workspace = true
+optimism-children-indexer-entity = { path = "../optimism-children-indexer-entity" }
 prometheus.workspace = true
 sea-orm = { workspace = true, features = [
   "sqlx-postgres",
