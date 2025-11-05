@@ -18,12 +18,15 @@ impl TryFrom<Bytes> for DepositV0 {
     fn try_from(encoded: Bytes) -> Result<Self> {
         ensure!(encoded.len() >= 73, "Invalid length of deposit data");
 
-        println!("WTF, {:x}", encoded);
-        let mint = U256::from_be_slice(encoded[0..32].try_into().unwrap());
-        let value = U256::from_be_slice(encoded[32..64].try_into().unwrap());
-        let gas_limit = u64::from_be_bytes(encoded[64..72].try_into().unwrap());
-        let is_creation = encoded[72] != 0;
-        let calldata = Bytes::copy_from_slice(&encoded[73..]);
+        let _offset = U256::from_be_slice(encoded[0..32].try_into().unwrap());
+        let length: usize = U256::from_be_slice(encoded[32..64].try_into().unwrap())
+            .try_into()
+            .unwrap();
+        let mint = U256::from_be_slice(encoded[64..96].try_into().unwrap());
+        let value = U256::from_be_slice(encoded[96..128].try_into().unwrap());
+        let gas_limit = u64::from_be_bytes(encoded[128..136].try_into().unwrap());
+        let is_creation = encoded[136] != 0;
+        let calldata = Bytes::copy_from_slice(&encoded[137..(length + 64)]);
 
         Ok(Self {
             mint,

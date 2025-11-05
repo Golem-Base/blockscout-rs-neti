@@ -1,4 +1,19 @@
-CREATE TABLE blocks (
+CREATE TABLE public.addresses (
+    fetched_coin_balance numeric(100,0),
+    fetched_coin_balance_block_number bigint,
+    hash bytea NOT NULL,
+    contract_code bytea,
+    inserted_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL,
+    nonce integer,
+    decompiled boolean,
+    verified boolean,
+    gas_used bigint,
+    transactions_count integer,
+    token_transfers_count integer
+);
+
+CREATE TABLE public.blocks (
     consensus boolean NOT NULL,
     difficulty numeric(50,0),
     gas_limit numeric(100,0) NOT NULL,
@@ -18,7 +33,34 @@ CREATE TABLE blocks (
     is_empty boolean
 );
 
-CREATE TABLE logs (
+CREATE TABLE public.internal_transactions (
+    call_type character varying(255),
+    created_contract_code bytea,
+    error character varying(255),
+    gas numeric(100,0),
+    gas_used numeric(100,0),
+    index integer NOT NULL,
+    init bytea,
+    input bytea,
+    output bytea,
+    trace_address integer[] NOT NULL,
+    type character varying(255) NOT NULL,
+    value numeric(100,0) NOT NULL,
+    inserted_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL,
+    created_contract_address_hash bytea,
+    from_address_hash bytea,
+    to_address_hash bytea,
+    transaction_hash bytea NOT NULL,
+    block_number integer,
+    transaction_index integer,
+    block_hash bytea NOT NULL,
+    block_index integer NOT NULL,
+    CONSTRAINT call_has_error_or_result CHECK ((((type)::text <> 'call'::text) OR ((gas IS NOT NULL) AND (((error IS NULL) AND (gas_used IS NOT NULL) AND (output IS NOT NULL)) OR ((error IS NOT NULL) AND (output IS NULL)))))),
+    CONSTRAINT create_has_error_or_result CHECK ((((type)::text <> 'create'::text) OR ((gas IS NOT NULL) AND (((error IS NULL) AND (created_contract_address_hash IS NOT NULL) AND (created_contract_code IS NOT NULL) AND (gas_used IS NOT NULL)) OR ((error IS NOT NULL) AND (created_contract_address_hash IS NULL) AND (created_contract_code IS NULL) AND (gas_used IS NULL))))))
+);
+
+CREATE TABLE public.logs (
     data bytea NOT NULL,
     index integer NOT NULL,
     first_topic bytea,
@@ -33,7 +75,46 @@ CREATE TABLE logs (
     block_number integer
 );
 
-CREATE TABLE transactions (
+CREATE TABLE public.smart_contracts (
+    id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    compiler_version character varying(255) NOT NULL,
+    optimization boolean NOT NULL,
+    contract_source_code text NOT NULL,
+    abi jsonb,
+    address_hash bytea NOT NULL,
+    inserted_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL,
+    constructor_arguments text,
+    optimization_runs bigint,
+    evm_version character varying(255),
+    external_libraries jsonb[] DEFAULT ARRAY[]::jsonb[],
+    verified_via_sourcify boolean,
+    is_vyper_contract boolean,
+    partially_verified boolean,
+    file_path text,
+    is_changed_bytecode boolean DEFAULT false,
+    bytecode_checked_at timestamp without time zone DEFAULT ((now() AT TIME ZONE 'utc'::text) - '1 day'::interval),
+    contract_code_md5 character varying(255) NOT NULL,
+    compiler_settings jsonb,
+    verified_via_eth_bytecode_db boolean,
+    license_type smallint DEFAULT 1 NOT NULL,
+    verified_via_verifier_alliance boolean,
+    certified boolean,
+    is_blueprint boolean,
+    language smallint
+);
+
+CREATE SEQUENCE public.smart_contracts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER SEQUENCE public.smart_contracts_id_seq OWNED BY public.smart_contracts.id;
+
+CREATE TABLE public.transactions (
     cumulative_gas_used numeric(100,0),
     error character varying(255),
     gas numeric(100,0) NOT NULL,
@@ -65,11 +146,15 @@ CREATE TABLE transactions (
     has_error_in_internal_transactions boolean,
     block_timestamp timestamp without time zone,
     block_consensus boolean DEFAULT true,
-    l1_block_number integer,
+    l1_fee numeric(100,0),
+    l1_fee_scalar numeric,
+    l1_gas_price numeric(100,0),
+    l1_gas_used numeric(100,0),
     l1_transaction_origin bytea,
+    l1_block_number integer,
     CONSTRAINT collated_block_number CHECK (((block_hash IS NULL) OR (block_number IS NOT NULL))),
     CONSTRAINT collated_cumalative_gas_used CHECK (((block_hash IS NULL) OR (cumulative_gas_used IS NOT NULL))),
-    CONSTRAINT collated_gas_price CHECK (((block_hash IS NULL) OR (gas_price IS NOT NULL))),
+    CONSTRAINT collated_gas_price CHECK (((block_hash IS NULL) OR (gas_price IS NOT NULL) OR (max_fee_per_gas IS NOT NULL))),
     CONSTRAINT collated_gas_used CHECK (((block_hash IS NULL) OR (gas_used IS NOT NULL))),
     CONSTRAINT collated_index CHECK (((block_hash IS NULL) OR (index IS NOT NULL))),
     CONSTRAINT error CHECK (((status = 0) OR ((status <> 0) AND (error IS NULL)))),
@@ -80,107 +165,270 @@ CREATE TABLE transactions (
     CONSTRAINT status CHECK ((((block_hash IS NULL) AND (status IS NULL)) OR (block_hash IS NOT NULL) OR ((status = 0) AND ((error)::text = 'dropped/replaced'::text))))
 );
 
+ALTER TABLE ONLY public.smart_contracts ALTER COLUMN id SET DEFAULT nextval('public.smart_contracts_id_seq'::regclass);
+
+ALTER TABLE ONLY public.addresses
+    ADD CONSTRAINT addresses_pkey PRIMARY KEY (hash);
+
 ALTER TABLE ONLY public.blocks
     ADD CONSTRAINT blocks_pkey PRIMARY KEY (hash);
 
-ALTER TABLE ONLY logs
+ALTER TABLE public.internal_transactions
+    ADD CONSTRAINT call_has_call_type CHECK ((((type)::text <> 'call'::text) OR (call_type IS NOT NULL))) NOT VALID;
+
+ALTER TABLE public.internal_transactions
+    ADD CONSTRAINT call_has_input CHECK ((((type)::text <> 'call'::text) OR (input IS NOT NULL))) NOT VALID;
+
+ALTER TABLE public.internal_transactions
+    ADD CONSTRAINT create_has_init CHECK ((((type)::text <> 'create'::text) OR (init IS NOT NULL))) NOT VALID;
+
+ALTER TABLE ONLY public.internal_transactions
+    ADD CONSTRAINT internal_transactions_pkey PRIMARY KEY (block_hash, block_index);
+
+ALTER TABLE ONLY public.logs
     ADD CONSTRAINT logs_pkey PRIMARY KEY (transaction_hash, block_hash, index);
 
-ALTER TABLE ONLY transactions
+ALTER TABLE public.internal_transactions
+    ADD CONSTRAINT selfdestruct_has_from_and_to_address CHECK ((((type)::text <> 'selfdestruct'::text) OR ((from_address_hash IS NOT NULL) AND (gas IS NULL) AND (to_address_hash IS NOT NULL)))) NOT VALID;
+
+ALTER TABLE ONLY public.smart_contracts
+    ADD CONSTRAINT smart_contracts_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.transactions
     ADD CONSTRAINT transactions_pkey PRIMARY KEY (hash);
 
+CREATE INDEX addresses_fetched_coin_balance_hash_index ON public.addresses USING btree (fetched_coin_balance DESC, hash) WHERE (fetched_coin_balance > (0)::numeric);
+
+CREATE INDEX addresses_fetched_coin_balance_index ON public.addresses USING btree (fetched_coin_balance);
+
+CREATE INDEX addresses_inserted_at_index ON public.addresses USING btree (inserted_at);
+
+CREATE INDEX addresses_transactions_count_asc_coin_balance_desc_hash_partial ON public.addresses USING btree (transactions_count NULLS FIRST, fetched_coin_balance DESC, hash) WHERE (fetched_coin_balance > (0)::numeric);
+
+CREATE INDEX addresses_transactions_count_desc_partial ON public.addresses USING btree (transactions_count DESC NULLS LAST) WHERE (fetched_coin_balance > (0)::numeric);
+
+CREATE INDEX "addresses_verified_fetched_coin_balance_DESC_hash_index" ON public.addresses USING btree (fetched_coin_balance DESC NULLS LAST, hash) WHERE (verified = true);
+
+CREATE INDEX addresses_verified_hash_index ON public.addresses USING btree (hash) WHERE (verified = true);
+
+CREATE INDEX "addresses_verified_transactions_count_DESC_hash_index" ON public.addresses USING btree (transactions_count DESC NULLS LAST, hash) WHERE (verified = true);
+
 CREATE INDEX blocks_consensus_index ON public.blocks USING btree (consensus);
+
 CREATE INDEX blocks_date ON public.blocks USING btree (date("timestamp"), number);
+
 CREATE INDEX blocks_inserted_at_index ON public.blocks USING btree (inserted_at);
+
 CREATE INDEX blocks_is_empty_index ON public.blocks USING btree (is_empty);
+
+
+
 CREATE INDEX blocks_miner_hash_index ON public.blocks USING btree (miner_hash);
+
+
+
 CREATE INDEX blocks_miner_hash_number_index ON public.blocks USING btree (miner_hash, number);
+
+
+
 CREATE INDEX blocks_number_index ON public.blocks USING btree (number);
+
+
+
 CREATE INDEX blocks_timestamp_index ON public.blocks USING btree ("timestamp");
+
+
+
 CREATE INDEX consensus_block_hashes_refetch_needed ON public.blocks USING btree (hash) WHERE (consensus AND refetch_needed);
+
+
+
 CREATE INDEX empty_consensus_blocks ON public.blocks USING btree (consensus) WHERE (is_empty IS NULL);
+
+
+
+CREATE UNIQUE INDEX internal_transactions_block_hash_transaction_index_index_index ON public.internal_transactions USING btree (block_hash, transaction_index, index);
+
+
+
+CREATE INDEX "internal_transactions_block_number_DESC_transaction_index_DESC_" ON public.internal_transactions USING btree (block_number DESC, transaction_index DESC, index DESC);
+
+
+
+CREATE INDEX internal_transactions_created_contract_address_hash_index ON public.internal_transactions USING btree (created_contract_address_hash);
+
+
+
+CREATE INDEX internal_transactions_created_contract_address_hash_partial_ind ON public.internal_transactions USING btree (created_contract_address_hash, block_number DESC, transaction_index DESC, index DESC) WHERE ((((type)::text = 'call'::text) AND (index > 0)) OR ((type)::text <> 'call'::text));
+
+
+
+CREATE INDEX internal_transactions_from_address_hash_partial_index ON public.internal_transactions USING btree (from_address_hash, block_number DESC, transaction_index DESC, index DESC) WHERE ((((type)::text = 'call'::text) AND (index > 0)) OR ((type)::text <> 'call'::text));
+
+
+
+CREATE INDEX internal_transactions_to_address_hash_partial_index ON public.internal_transactions USING btree (to_address_hash, block_number DESC, transaction_index DESC, index DESC) WHERE ((((type)::text = 'call'::text) AND (index > 0)) OR ((type)::text <> 'call'::text));
+
+
+
+CREATE INDEX internal_transactions_transaction_hash_index_index ON public.internal_transactions USING btree (transaction_hash, index);
+
+
+
+CREATE INDEX "logs_address_hash_block_number_DESC_index_DESC_index" ON public.logs USING btree (address_hash, block_number DESC, index DESC);
+
+
+
+CREATE INDEX logs_address_hash_first_topic_block_number_index_index ON public.logs USING btree (address_hash, first_topic, block_number, index);
+
+
+
+CREATE INDEX logs_block_hash_index ON public.logs USING btree (block_hash);
+
+
+
+CREATE INDEX "logs_block_number_DESC__index_DESC_index" ON public.logs USING btree (block_number DESC, index DESC);
+
+
+
+CREATE INDEX logs_deposits_withdrawals_index ON public.logs USING btree (transaction_hash, block_hash, index, address_hash) WHERE (first_topic = ANY (ARRAY['\xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c'::bytea, '\x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65'::bytea]));
+
+
+
+CREATE INDEX logs_first_topic_index ON public.logs USING btree (first_topic);
+
+
+
+CREATE INDEX logs_fourth_topic_index ON public.logs USING btree (fourth_topic);
+
+
+
+CREATE INDEX logs_second_topic_index ON public.logs USING btree (second_topic);
+
+
+
+CREATE INDEX logs_third_topic_index ON public.logs USING btree (third_topic);
+
+
+
+CREATE INDEX logs_transaction_hash_index_index ON public.logs USING btree (transaction_hash, index);
+
+
+
+CREATE INDEX method_id ON public.transactions USING btree (SUBSTRING(input FROM 1 FOR 4));
+
+
+
 CREATE UNIQUE INDEX one_consensus_block_at_height ON public.blocks USING btree (number) WHERE consensus;
+
+
+
 CREATE UNIQUE INDEX one_consensus_child_per_parent ON public.blocks USING btree (parent_hash) WHERE consensus;
-CREATE INDEX "logs_address_hash_block_number_DESC_index_DESC_index" ON logs USING btree (address_hash, block_number DESC, index DESC);
-CREATE INDEX logs_block_hash_index ON logs USING btree (block_hash);
-CREATE INDEX "logs_block_number_DESC__index_DESC_index" ON logs USING btree (block_number DESC, index DESC);
-CREATE INDEX logs_deposits_withdrawals_index ON logs USING btree (transaction_hash, block_hash, index, address_hash) WHERE (first_topic = ANY (ARRAY['\xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c'::bytea, '\x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65'::bytea]));
-CREATE INDEX logs_first_topic_index ON logs USING btree (first_topic);
-CREATE INDEX logs_fourth_topic_index ON logs USING btree (fourth_topic);
-CREATE INDEX logs_second_topic_index ON logs USING btree (second_topic);
-CREATE INDEX logs_third_topic_index ON logs USING btree (third_topic);
-CREATE INDEX logs_transaction_hash_index_index ON logs USING btree (transaction_hash, index);
-CREATE INDEX method_id ON transactions USING btree (SUBSTRING(input FROM 1 FOR 4));
-CREATE INDEX pending_txs_index ON transactions USING btree (inserted_at, hash) WHERE ((block_hash IS NULL) AND ((error IS NULL) OR ((error)::text <> 'dropped/replaced'::text)));
-CREATE INDEX transactions_block_consensus_index ON transactions USING btree (block_consensus);
-CREATE INDEX transactions_block_hash_error_index ON transactions USING btree (block_hash, error);
-CREATE UNIQUE INDEX transactions_block_hash_index_index ON transactions USING btree (block_hash, index);
-CREATE INDEX transactions_block_number_index ON transactions USING btree (block_number);
-CREATE INDEX transactions_block_timestamp_index ON transactions USING btree (block_timestamp);
-CREATE INDEX transactions_created_contract_address_hash_with_pending_index_a ON transactions USING btree (created_contract_address_hash, block_number, index, inserted_at, hash DESC);
-CREATE INDEX transactions_created_contract_code_indexed_at_index ON transactions USING btree (created_contract_code_indexed_at);
-CREATE INDEX transactions_from_address_hash_with_pending_index_asc ON transactions USING btree (from_address_hash, block_number, index, inserted_at, hash DESC);
-CREATE INDEX transactions_inserted_at_index ON transactions USING btree (inserted_at);
-CREATE INDEX transactions_nonce_from_address_hash_block_hash_index ON transactions USING btree (nonce, from_address_hash, block_hash);
-CREATE INDEX transactions_recent_collated_index ON transactions USING btree (block_number DESC, index DESC);
-CREATE INDEX transactions_status_index ON transactions USING btree (status);
-CREATE INDEX transactions_to_address_hash_with_pending_index_asc ON transactions USING btree (to_address_hash, block_number, index, inserted_at, hash DESC);
-CREATE INDEX transactions_updated_at_index ON transactions USING btree (updated_at);
-ALTER TABLE ONLY logs
-    ADD CONSTRAINT logs_transaction_hash_fkey FOREIGN KEY (transaction_hash) REFERENCES transactions(hash) ON DELETE CASCADE;
 
-CREATE TABLE IF NOT EXISTS smart_contracts (
-    name VARCHAR(255) NOT NULL,
-    abi JSONB,
-    address_hash BYTEA NOT NULL,
-    inserted_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    compiler_version VARCHAR(255) NOT NULL,
-    optimization BOOLEAN NOT NULL,
-    contract_source_code TEXT NOT NULL,
-    contract_code_md5 VARCHAR(255) NOT NULL
-);
 
-CREATE TABLE internal_transactions (
-    call_type character varying(255),
-    created_contract_code bytea,
-    error character varying(255),
-    gas numeric(100,0),
-    gas_used numeric(100,0),
-    index integer NOT NULL,
-    init bytea,
-    input bytea,
-    output bytea,
-    trace_address integer[] NOT NULL,
-    type character varying(255) NOT NULL,
-    value numeric(100,0) NOT NULL,
-    inserted_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL,
-    created_contract_address_hash bytea,
-    from_address_hash bytea,
-    to_address_hash bytea,
-    transaction_hash bytea NOT NULL,
-    block_number integer,
-    transaction_index integer,
-    block_hash bytea NOT NULL,
-    block_index integer NOT NULL,
-    CONSTRAINT internal_transactions_pkey PRIMARY KEY (block_hash, block_index),
-    CONSTRAINT internal_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES blocks(hash),
-    CONSTRAINT internal_transactions_transaction_hash_fkey FOREIGN KEY (transaction_hash) REFERENCES transactions(hash) ON DELETE CASCADE
-);
 
-CREATE TABLE public.addresses (
-    fetched_coin_balance numeric(100,0),
-    fetched_coin_balance_block_number bigint,
-    hash bytea NOT NULL primary key,
-    contract_code bytea,
-    inserted_at timestamp without time zone NOT NULL,
-    updated_at timestamp without time zone NOT NULL,
-    nonce integer,
-    decompiled boolean,
-    verified boolean,
-    gas_used bigint,
-    transactions_count integer,
-    token_transfers_count integer
-);
+CREATE INDEX pending_txs_index ON public.transactions USING btree (inserted_at, hash) WHERE ((block_hash IS NULL) AND ((error IS NULL) OR ((error)::text <> 'dropped/replaced'::text)));
+
+
+
+CREATE UNIQUE INDEX smart_contracts_address_hash_index ON public.smart_contracts USING btree (address_hash);
+
+
+
+CREATE INDEX smart_contracts_certified_index ON public.smart_contracts USING btree (certified);
+
+
+
+CREATE INDEX smart_contracts_contract_code_md5_index ON public.smart_contracts USING btree (contract_code_md5);
+
+
+
+CREATE INDEX smart_contracts_language_index ON public.smart_contracts USING btree (language);
+
+
+
+CREATE INDEX smart_contracts_trgm_idx ON public.smart_contracts USING gin (to_tsvector('english'::regconfig, (name)::text));
+
+
+
+CREATE INDEX transactions_block_consensus_index ON public.transactions USING btree (block_consensus);
+
+
+
+CREATE INDEX transactions_block_hash_error_index ON public.transactions USING btree (block_hash, error);
+
+
+
+CREATE UNIQUE INDEX transactions_block_hash_index_index ON public.transactions USING btree (block_hash, index);
+
+
+
+CREATE INDEX transactions_block_number_index ON public.transactions USING btree (block_number);
+
+
+
+CREATE INDEX transactions_block_timestamp_index ON public.transactions USING btree (block_timestamp);
+
+
+
+CREATE INDEX transactions_created_contract_address_hash_with_pending_index_a ON public.transactions USING btree (created_contract_address_hash, block_number, index, inserted_at, hash DESC);
+
+
+
+CREATE INDEX transactions_created_contract_code_indexed_at_index ON public.transactions USING btree (created_contract_code_indexed_at);
+
+
+
+CREATE INDEX transactions_from_address_hash_with_pending_index_asc ON public.transactions USING btree (from_address_hash, block_number, index, inserted_at, hash DESC);
+
+
+
+CREATE INDEX transactions_inserted_at_index ON public.transactions USING btree (inserted_at);
+
+
+
+CREATE INDEX transactions_nonce_from_address_hash_block_hash_index ON public.transactions USING btree (nonce, from_address_hash, block_hash);
+
+
+
+CREATE INDEX transactions_recent_collated_index ON public.transactions USING btree (block_number DESC, index DESC);
+
+
+
+CREATE INDEX transactions_status_index ON public.transactions USING btree (status);
+
+
+
+CREATE INDEX transactions_to_address_hash_with_pending_index_asc ON public.transactions USING btree (to_address_hash, block_number, index, inserted_at, hash DESC);
+
+
+
+CREATE INDEX transactions_updated_at_index ON public.transactions USING btree (updated_at);
+
+
+
+ALTER TABLE ONLY public.internal_transactions
+    ADD CONSTRAINT internal_transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
+
+
+
+ALTER TABLE ONLY public.internal_transactions
+    ADD CONSTRAINT internal_transactions_transaction_hash_fkey FOREIGN KEY (transaction_hash) REFERENCES public.transactions(hash) ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY public.logs
+    ADD CONSTRAINT logs_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES public.blocks(hash);
+
+
+
+ALTER TABLE ONLY public.logs
+    ADD CONSTRAINT logs_transaction_hash_fkey FOREIGN KEY (transaction_hash) REFERENCES public.transactions(hash) ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY public.transactions
+    ADD CONSTRAINT transactions_block_hash_fkey FOREIGN KEY (block_hash) REFERENCES public.blocks(hash) ON DELETE CASCADE;
+
+
 
