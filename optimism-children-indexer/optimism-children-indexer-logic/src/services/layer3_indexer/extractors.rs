@@ -37,7 +37,7 @@ pub fn extract_deposits(
                         .to_vec(),
                     tx_hash: tx.tx_hash().as_slice().to_vec(),
                     source_hash: deposit_tx.source_hash.as_slice().to_vec(),
-                    status: receipt.status(),
+                    success: receipt.status(),
                 };
 
                 items.push(Layer3IndexerTaskOutputItem::Deposit(deposit));

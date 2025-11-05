@@ -10,18 +10,21 @@ impl MigrationTrait for Migration {
 
         db.execute_unprepared("
         CREATE TABLE optimism_children_l3_deposits (
-            id SERIAL PRIMARY KEY,
+            id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
             chain_id BIGINT NOT NULL REFERENCES optimism_children_l3_chains(chain_id) ON DELETE CASCADE,
             block_hash BYTEA NOT NULL,
             tx_hash BYTEA NOT NULL,
             source_hash BYTEA NOT NULL,
-            status BOOLEAN NOT NULL,
-            created_at TIMESTAMP DEFAULT NOW()
+            success BOOLEAN NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW() NOT NULL
         );
 
-        CREATE INDEX idx_l3_deposits_chain_id ON optimism_children_l3_deposits(chain_id);
-        CREATE INDEX idx_l3_deposits_tx_hash ON optimism_children_l3_deposits(tx_hash);
-        CREATE INDEX idx_l3_deposits_chain_status ON optimism_children_l3_deposits(chain_id, status);
+        CREATE INDEX idx_optimism_children_l3_deposits_source_hash
+            ON optimism_children_l3_deposits(source_hash);
+
+        CREATE INDEX idx_optimism_children_l3_deposits_chain_id_success
+            ON optimism_children_l3_deposits(chain_id)
+            WHERE success = true;
         ")
         .await?;
 

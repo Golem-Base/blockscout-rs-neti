@@ -52,7 +52,7 @@ impl Layer3Indexer {
             .all(&*self.db)
             .await?
             .into_iter()
-            .filter(|config| config.enabled.unwrap_or(false))
+            .filter(|config| config.enabled)
             .map(|config| (config.chain_id, config))
             .collect();
 
@@ -62,7 +62,7 @@ impl Layer3Indexer {
     /// Synchronize running tasks with current chain list
     /// Spawns tasks for new chains, cancels tasks for removed/disabled chains
     fn sync_tasks(&mut self) {
-        // Collect chains to spawn (can't borrow self mutably while iterating)
+        // Collect chains to spawn
         let to_spawn: Vec<_> = self
             .chains
             .iter()
@@ -134,11 +134,11 @@ impl Layer3Indexer {
         }
 
         match (chain.l3_last_indexed_block, chain.l3_latest_block) {
-            (Some(last), Some(latest)) if last >= latest => {
+            (last, Some(latest)) if last >= latest => {
                 // Fully synced - check less frequently
                 RESTART_DELAY_SYNCED
             }
-            (Some(_), Some(_)) => {
+            (_, Some(_)) => {
                 // Behind - catch up quickly
                 RESTART_DELAY_BEHIND
             }
@@ -208,7 +208,7 @@ impl Layer3Indexer {
         model.l3_last_indexed_block = Set(config.l3_last_indexed_block);
         model.l3_latest_block = Set(config.l3_latest_block);
         model.l3_latest_block_updated_at = Set(Some(Utc::now().naive_utc()));
-        model.updated_at = Set(Some(Utc::now().naive_utc()));
+        model.updated_at = Set(Utc::now().naive_utc());
         let updated = model.update(&*self.db).await?;
 
         tracing::debug!(

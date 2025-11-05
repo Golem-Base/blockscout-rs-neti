@@ -16,16 +16,11 @@ use anyhow::{anyhow, Context, Result};
 use op_alloy::network::Optimism;
 use tokio::time::{sleep, Duration};
 
-/// Fallback batch size
-const FALLBACK_BATCH_SIZE: i32 = 2000;
-/// Fallback start block
-const FALLBACK_LAST_INDEXED_BLOCK: i64 = 0;
-
+/// A single indexing task for Layer3 Indexer.
 pub struct Layer3IndexerTask {
     config: Layer3Chains::Model,
 }
 
-/// A single indexing task for a Layer3 chain.
 impl Layer3IndexerTask {
     /// Creates a new indexer task for the given chain configuration.
     pub fn new(config: Layer3Chains::Model) -> Self {
@@ -77,7 +72,7 @@ impl Layer3IndexerTask {
                 .await?;
 
             // Update last indexed block
-            config.l3_last_indexed_block = Some(to_block as i64);
+            config.l3_last_indexed_block = to_block as i64;
 
             tracing::debug!(
                 "[{}] Finished indexing. Collected {} items",
@@ -91,7 +86,7 @@ impl Layer3IndexerTask {
             tracing::debug!(
                 "[{}] No new blocks to index (last_indexed: {}, latest: {})",
                 self.config.chain_name,
-                config.l3_last_indexed_block.unwrap_or(0),
+                config.l3_last_indexed_block,
                 latest_block_number
             );
 
@@ -122,17 +117,13 @@ impl Layer3IndexerTask {
     fn calculate_block_range(&self, latest_block: u64) -> Option<(u64, u64)> {
         // Start indexing from the next block after the one we already have.
         // This also intentionally skips genesis block (no receipts).
-        let last_indexed = self
-            .config
-            .l3_last_indexed_block
-            .unwrap_or(FALLBACK_LAST_INDEXED_BLOCK) as u64
-            + 1;
+        let last_indexed = self.config.l3_last_indexed_block as u64 + 1;
 
         if last_indexed >= latest_block {
             return None;
         }
 
-        let batch_size = self.config.l3_rpc_batch_size.unwrap_or(FALLBACK_BATCH_SIZE) as u64;
+        let batch_size = self.config.l3_batch_size as u64;
         let from_block = last_indexed;
         let to_block = latest_block.min(last_indexed + batch_size);
 

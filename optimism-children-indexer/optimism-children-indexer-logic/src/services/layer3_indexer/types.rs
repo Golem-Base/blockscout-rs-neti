@@ -17,7 +17,7 @@ pub struct Layer3Deposit {
     pub block_hash: Vec<u8>,
     pub tx_hash: Vec<u8>,
     pub source_hash: Vec<u8>,
-    pub status: bool,
+    pub success: bool,
 }
 
 impl From<Layer3Deposit> for optimism_children_l3_deposits::ActiveModel {
@@ -28,7 +28,7 @@ impl From<Layer3Deposit> for optimism_children_l3_deposits::ActiveModel {
             block_hash: Set(v.block_hash),
             tx_hash: Set(v.tx_hash),
             source_hash: Set(v.source_hash),
-            status: Set(v.status),
+            success: Set(v.success),
             created_at: Default::default(),
         }
     }
