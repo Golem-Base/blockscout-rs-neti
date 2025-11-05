@@ -16,6 +16,11 @@ use anyhow::{anyhow, Context, Result};
 use op_alloy::network::Optimism;
 use tokio::time::{sleep, Duration};
 
+/// Fallback batch size
+const FALLBACK_BATCH_SIZE: i32 = 2000;
+/// Fallback start block
+const FALLBACK_LAST_INDEXED_BLOCK: i64 = 0;
+
 pub struct Layer3IndexerTask {
     config: Layer3Chains::Model,
 }
@@ -75,14 +80,14 @@ impl Layer3IndexerTask {
             config.l3_last_indexed_block = Some(to_block as i64);
 
             tracing::debug!(
-                "[{}] Finished indexing. Indexed {} items",
+                "[{}] Finished indexing. Collected {} items",
                 self.config.chain_name,
                 items.len()
             );
 
             Ok((config, items))
         } else {
-            // No need blocks to index
+            // No new blocks to index
             tracing::debug!(
                 "[{}] No new blocks to index (last_indexed: {}, latest: {})",
                 self.config.chain_name,
@@ -115,15 +120,21 @@ impl Layer3IndexerTask {
 
     /// Calculates the block range to index based on the current state.
     fn calculate_block_range(&self, latest_block: u64) -> Option<(u64, u64)> {
-        let last_indexed = self.config.l3_last_indexed_block.unwrap_or(0) as u64 + 1;
+        // Start indexing from the next block after the one we already have.
+        // This also intentionally skips genesis block (no receipts).
+        let last_indexed = self
+            .config
+            .l3_last_indexed_block
+            .unwrap_or(FALLBACK_LAST_INDEXED_BLOCK) as u64
+            + 1;
 
         if last_indexed >= latest_block {
             return None;
         }
 
-        let batch_size = self.config.l3_rpc_batch_size.unwrap_or(2000) as u64;
+        let batch_size = self.config.l3_rpc_batch_size.unwrap_or(FALLBACK_BATCH_SIZE) as u64;
         let from_block = last_indexed;
-        let to_block = std::cmp::min(latest_block, last_indexed + batch_size);
+        let to_block = latest_block.min(last_indexed + batch_size);
 
         Some((from_block, to_block))
     }
@@ -157,13 +168,6 @@ impl Layer3IndexerTask {
             // Run extractors
             items.append(&mut extract_deposits(&self.config, &block, &receipts)?);
         }
-
-        tracing::debug!(
-            "[{}] Fetched blocks {} - {}",
-            self.config.chain_name,
-            from_block,
-            to_block
-        );
 
         Ok(items)
     }
