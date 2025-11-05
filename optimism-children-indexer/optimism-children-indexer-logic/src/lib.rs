@@ -1,6 +1,6 @@
-use alloy_primitives::Address;
+use alloy_primitives::{Address, U256};
 use alloy_sol_types::SolValue;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, ensure, Result};
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use prometheus::{opts, register_gauge, Gauge};
@@ -14,9 +14,13 @@ use std::{
 use tokio::time::sleep;
 use tracing::{instrument, warn};
 
-use crate::types::{ConsensusTx, LogIndex, TransactionDepositedEvent};
+use crate::{
+    deposit::source_hash,
+    types::{ConsensusTx, LogIndex, TransactionDepositedEvent},
+};
 
 mod consensus_tx;
+mod deposit;
 pub mod pagination;
 pub mod repository;
 pub mod types;
@@ -121,20 +125,20 @@ impl Indexer {
             return Ok(());
         };
 
-        let version = if let Some(fourth_topic) = log.fourth_topic {
+        let version: U256 = if let Some(fourth_topic) = log.fourth_topic {
             fourth_topic.into()
         } else {
             tracing::warn!("TransactionDeposited event with no fourth topic?");
             return Ok(());
         };
 
-        let data = log.data.clone();
+        ensure!(version == U256::ZERO, "Unsupported deposit version");
 
         let event = TransactionDepositedEvent {
             from,
             to,
-            version,
-            data,
+            source_hash: source_hash(tx.block_hash, log.index.try_into()?),
+            deposit: log.data.clone().try_into()?,
         };
 
         repository::deposits::store_transaction_deposited(&txn, tx.clone(), log.clone(), event)

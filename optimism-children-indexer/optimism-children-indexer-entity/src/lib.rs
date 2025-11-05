@@ -6,5 +6,5 @@ pub mod addresses;
 pub mod blocks;
 pub mod logs;
 pub mod optimism_children_pending_logs;
-pub mod optimism_children_transaction_deposited_events;
+pub mod optimism_children_transaction_deposited_events_v0;
 pub mod transactions;

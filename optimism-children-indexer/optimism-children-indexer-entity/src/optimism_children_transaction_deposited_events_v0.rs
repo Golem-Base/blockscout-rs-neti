@@ -3,7 +3,7 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "optimism_children_transaction_deposited_events")]
+#[sea_orm(table_name = "optimism_children_transaction_deposited_events_v0")]
 pub struct Model {
     #[sea_orm(
         primary_key,
@@ -24,10 +24,6 @@ pub struct Model {
     pub from: Vec<u8>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub to: Vec<u8>,
-    #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
-    pub version: Decimal,
-    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
-    pub opaque_data: Vec<u8>,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
     pub mint: Decimal,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
