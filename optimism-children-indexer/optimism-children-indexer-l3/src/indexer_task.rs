@@ -13,14 +13,14 @@ use alloy::{
     providers::{Identity, Provider, ProviderBuilder},
     rpc::client::RpcClient,
     transports::{
-        http::{reqwest::Url, Http},
+        http::{Http, reqwest::Url},
         layers::FallbackLayer,
     },
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use op_alloy::network::Optimism;
 use std::num::NonZeroUsize;
-use tokio::time::{sleep, Duration, Instant};
+use tokio::time::{Duration, Instant, sleep};
 use tower::ServiceBuilder;
 
 /// A single indexing task for Layer3 Indexer.
