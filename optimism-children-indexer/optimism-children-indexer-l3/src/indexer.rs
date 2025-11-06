@@ -11,10 +11,12 @@ use super::{
     },
 };
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use chrono::Utc;
 use optimism_children_indexer_entity::optimism_children_l3_chains::{self, Model as Layer3Chain};
-use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{
+    ActiveModelTrait, DatabaseConnection, DatabaseTransaction, EntityTrait, Set, TransactionTrait,
+};
 use std::{collections::HashMap, sync::Arc};
 use tokio::{
     task::{AbortHandle, JoinSet},
@@ -158,48 +160,86 @@ impl Layer3Indexer {
         &mut self,
         chain_id: ChainId,
         result: Result<Layer3IndexerTaskOutput>,
-    ) {
+    ) -> Result<()> {
         // Always remove from active tasks first
         self.abort_handles.remove(&chain_id);
 
         let chain_name = self
             .chains
             .get(&chain_id)
-            .map(|config| config.chain_name.as_str())
-            .unwrap_or("unknown");
+            .map(|config| config.chain_name.clone())
+            .ok_or(anyhow!(
+                "Failed to lookup chain in local config for chain_id={}",
+                chain_id
+            ))?;
 
         match result {
             Ok(output) => {
                 // Handle task result
                 let (config, items) = output;
 
-                // Store indexed items
-                if let Err(err) = self.store_indexed_items(items).await {
-                    tracing::error!(err = ?err, "Failed to store indexed items in database.");
-                } else {
-                    // Update chain config
-                    self.update_chain_state(config.clone())
-                        .await
-                        .expect("Failed to update chain state.");
-                    self.chains.insert(chain_id, config);
-                }
+                // Begin DB transaction
+                let db_tx = self.db.begin().await.map_err(|err| {
+                    anyhow!(
+                        "[{}] Failed to begin database transaction: {}",
+                        chain_name,
+                        err
+                    )
+                })?;
 
-                // Schedule respawn
-                self.try_respawn(chain_id, true);
+                // Store indexed items
+                self.store_indexed_items(&db_tx, items)
+                    .await
+                    .map_err(|err| {
+                        anyhow!(
+                            "[{}] Failed to store indexed items in database: {}",
+                            chain_name,
+                            err
+                        )
+                    })?;
+
+                // Update chain config
+                self.update_chain_state(&db_tx, config.clone())
+                    .await
+                    .map_err(|err| {
+                        anyhow!(
+                            "[{}] Failed to update chain state in database: {}",
+                            chain_name,
+                            err
+                        )
+                    })?;
+
+                // Commit DB transaction
+                db_tx.commit().await.map_err(|err| {
+                    anyhow!(
+                        "[{}] Failed to commit database transaction: {}",
+                        chain_name,
+                        err
+                    )
+                })?;
+
+                // Update local chain config
+                self.chains.insert(chain_id, config);
             }
-            Err(e) => {
+            Err(err) => {
                 tracing::error!(
                     chain_id = chain_id,
-                    error = %e,
+                    err = ?err,
                     "[{}] Task failed.", chain_name
                 );
-                self.try_respawn(chain_id, false);
+                return Err(anyhow!("[{}] Task failed: {}", chain_name, err));
             }
         }
+
+        Ok(())
     }
 
     /// Update chain state
-    async fn update_chain_state(&mut self, config: Layer3Chain) -> Result<()> {
+    async fn update_chain_state(
+        &mut self,
+        db_tx: &DatabaseTransaction,
+        config: Layer3Chain,
+    ) -> Result<()> {
         let mut model: optimism_children_l3_chains::ActiveModel = config.clone().into();
 
         // Update block numbers
@@ -207,7 +247,7 @@ impl Layer3Indexer {
         model.l3_latest_block = Set(config.l3_latest_block);
         model.l3_latest_block_updated_at = Set(Some(Utc::now().naive_utc()));
         model.updated_at = Set(Utc::now().naive_utc());
-        let updated = model.update(&*self.db).await?;
+        let updated = model.update(db_tx).await?;
 
         tracing::debug!(
             chain_id = config.chain_id,
@@ -221,7 +261,11 @@ impl Layer3Indexer {
     }
 
     /// Stores indexed items in database
-    async fn store_indexed_items(&self, items: Vec<Layer3IndexerTaskOutputItem>) -> Result<()> {
+    async fn store_indexed_items(
+        &self,
+        db_tx: &DatabaseTransaction,
+        items: Vec<Layer3IndexerTaskOutputItem>,
+    ) -> Result<()> {
         if items.is_empty() {
             return Ok(());
         }
@@ -239,7 +283,7 @@ impl Layer3Indexer {
 
         // Store deposits
         optimism_children_l3_deposits::Entity::insert_many(deposits)
-            .exec(&*self.db)
+            .exec(db_tx)
             .await?;
 
         Ok(())
@@ -258,7 +302,14 @@ impl Layer3Indexer {
                 Some(result) = self.tasks.join_next() => {
                     match result {
                         Ok((chain_id, task_result)) => {
-                            self.handle_task_completion(chain_id, task_result).await;
+                            let mut task_succeeded = true;
+
+                            if let Err(err) = self.handle_task_completion(chain_id, task_result).await {
+                                tracing::error!("{}", err);
+                                task_succeeded = false;
+                            }
+
+                            self.try_respawn(chain_id, task_succeeded);
                         }
                         Err(err) => {
                             tracing::error!(error = ?err, "Task panicked");
