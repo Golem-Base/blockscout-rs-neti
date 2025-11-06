@@ -82,11 +82,17 @@ http:
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartOperationCount
       get: /api/v1/chart/operation-count
 
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartEntityCount
+      get: /api/v1/chart/entity-count
+
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartBlockTransactions
       get: /api/v1/chart/block-transactions
 
     - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartBlockOperations
       get: /api/v1/chart/block-operations
+
+    - selector: blockscout.golemBaseIndexer.v1.GolemBaseIndexerService.ChartBlockGasUsageLimit
+      get: /api/v1/chart/block-gas-usage-limit
 
     #################### Health ####################
 

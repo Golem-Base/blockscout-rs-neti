@@ -3,7 +3,7 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "optimism_children_pending_logs")]
+#[sea_orm(table_name = "optimism_children_transaction_deposited_events_v0")]
 pub struct Model {
     #[sea_orm(
         primary_key,
@@ -20,6 +20,21 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub index: i32,
     pub block_number: i32,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub from: Vec<u8>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub to: Vec<u8>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
+    pub mint: Decimal,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
+    pub value: Decimal,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
+    pub gas_limit: Decimal,
+    pub is_creation: bool,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub calldata: Vec<u8>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)")]
+    pub source_hash: Vec<u8>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -33,6 +48,14 @@ pub enum Relation {
     )]
     Blocks,
     #[sea_orm(
+        belongs_to = "super::logs::Entity",
+        from = "(Column::TransactionHash, Column::BlockHash, Column::Index)",
+        to = "(super::logs::Column::TransactionHash, super::logs::Column::BlockHash, super::logs::Column::Index)",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    Logs,
+    #[sea_orm(
         belongs_to = "super::transactions::Entity",
         from = "Column::TransactionHash",
         to = "super::transactions::Column::Hash",
@@ -45,6 +68,12 @@ pub enum Relation {
 impl Related<super::blocks::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Blocks.def()
+    }
+}
+
+impl Related<super::logs::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Logs.def()
     }
 }
 

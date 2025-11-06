@@ -32,3 +32,5 @@ blockscout-service-launcher = { workspace = true, features = [
   "test-database",
 ] }
 reqwest.workspace = true
+pretty_assertions.workspace = true
+alloy-primitives.workspace = true

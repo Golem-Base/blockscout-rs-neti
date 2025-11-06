@@ -1,13 +1,11 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use optimism_children_indexer_logic::Indexer;
 
 #[derive(Parser)]
 struct Cli {
     #[arg(long, env = "DATABASE_URL")]
     db: String,
-
-    #[arg(long)]
-    chain_id: String,
 
     #[command(subcommand)]
     command: Commands,
@@ -15,21 +13,21 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Tick,
-    Reindex { since_block: String },
+    L2Tick,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let _ = tracing_subscriber::fmt::try_init();
     let cli = Cli::parse();
 
-    let _db = sea_orm::Database::connect(cli.db).await?;
+    let db = sea_orm::Database::connect(cli.db).await?;
     match &cli.command {
-        Commands::Tick => {
-            // FIXME TODO
-        }
-        Commands::Reindex { .. } => {
-            // FIXME TODO
+        Commands::L2Tick => {
+            Indexer::new(db.into(), Default::default())
+                .tick()
+                .await
+                .unwrap();
         }
     };
 

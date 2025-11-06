@@ -1,4 +1,6 @@
-use anyhow::{anyhow, Result};
+use alloy_primitives::{Address, U256};
+use alloy_sol_types::SolValue;
+use anyhow::{anyhow, ensure, Result};
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use prometheus::{opts, register_gauge, Gauge};
@@ -12,9 +14,13 @@ use std::{
 use tokio::time::sleep;
 use tracing::{instrument, warn};
 
-use crate::types::{ConsensusTx, LogIndex};
+use crate::{
+    deposit::source_hash,
+    types::{ConsensusTx, LogIndex, TransactionDepositedEvent},
+};
 
 mod consensus_tx;
+mod deposit;
 pub mod pagination;
 pub mod repository;
 pub mod services;
@@ -106,7 +112,38 @@ impl Indexer {
             .await?
             .ok_or(anyhow!("Log disappeared from the DB?!"))?;
 
-        // FIXME TODO
+        let from = if let Some(second_topic) = log.second_topic {
+            Address::abi_decode_validate(second_topic.as_slice())?
+        } else {
+            tracing::warn!("TransactionDeposited event with no second topic?");
+            return Ok(());
+        };
+
+        let to = if let Some(third_topic) = log.third_topic {
+            Address::abi_decode_validate(third_topic.as_slice())?
+        } else {
+            tracing::warn!("TransactionDeposited event with no third topic?");
+            return Ok(());
+        };
+
+        let version: U256 = if let Some(fourth_topic) = log.fourth_topic {
+            fourth_topic.into()
+        } else {
+            tracing::warn!("TransactionDeposited event with no fourth topic?");
+            return Ok(());
+        };
+
+        ensure!(version == U256::ZERO, "Unsupported deposit version");
+
+        let event = TransactionDepositedEvent {
+            from,
+            to,
+            source_hash: source_hash(tx.block_hash, log.index.try_into()?),
+            deposit: log.data.clone().try_into()?,
+        };
+
+        repository::deposits::store_transaction_deposited(&txn, tx.clone(), log.clone(), event)
+            .await?;
         repository::logs::finish_log_processing(&txn, log.tx_hash, tx.block_hash, log.index)
             .await?;
         txn.commit().await?;

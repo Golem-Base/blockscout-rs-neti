@@ -3,8 +3,8 @@ config_version: 3
 
 http:
   rules:
-    - selector: blockscout.optimismChildrenIndexer.v1.OptimismChildrenIndexerService.Placeholder
-      get: /placeholder
+    - selector: blockscout.optimismChildrenIndexer.v1.OptimismChildrenIndexerService.GetDeposits
+      get: /api/v1/deposits
 
     #################### Health ####################
 

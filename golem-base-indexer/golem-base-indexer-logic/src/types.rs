@@ -428,6 +428,14 @@ pub struct BlockOperationPoint {
     pub extend_count: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlockGasUsageLimitPoint {
+    pub block_number: u64,
+    pub gas_used: u64,
+    pub gas_limit: u64,
+    pub gas_usage_percentage: f64,
+}
+
 // Leaderboards
 #[derive(Debug, Clone)]
 pub struct LeaderboardBiggestSpendersItem {

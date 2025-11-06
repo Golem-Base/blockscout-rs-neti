@@ -450,6 +450,30 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         }))
     }
 
+    async fn chart_entity_count(
+        &self,
+        request: Request<ChartEntityCountRequest>,
+    ) -> Result<Response<ChartResponse>, Status> {
+        let inner = request.into_inner();
+        let resolution = inner
+            .resolution
+            .try_into()
+            .map_err(|_| Status::invalid_argument("Unsupported chart resolution"))?;
+        let (points, info) = repository::timeseries::entity_count::timeseries_entity_count(
+            &*self.db, inner.from, inner.to, resolution,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!(?err, "failed to query entity count chart");
+            Status::internal("failed to query entity count chart")
+        })?;
+
+        Ok(Response::new(ChartResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
     async fn chart_block_transactions(
         &self,
         _request: Request<Empty>,
@@ -484,6 +508,29 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
                 })?;
 
         Ok(Response::new(ChartBlockOperationsResponse {
+            chart: points.into_iter().map(Into::into).collect(),
+            info: Some(info.into()),
+        }))
+    }
+
+    async fn chart_block_gas_usage_limit(
+        &self,
+        request: Request<ChartBlockGasUsageLimitRequest>,
+    ) -> Result<Response<ChartBlockGasUsageLimitResponse>, Status> {
+        let inner = request.into_inner();
+        let limit = inner.limit.unwrap_or(1800);
+
+        let (points, info) =
+            repository::timeseries::block_gas_usage_limit::timeseries_block_gas_usage_limit(
+                &*self.db, limit,
+            )
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query block gas usage and limit timeseries");
+                Status::internal("failed to query block gas usage and limit timeseries")
+            })?;
+
+        Ok(Response::new(ChartBlockGasUsageLimitResponse {
             chart: points.into_iter().map(Into::into).collect(),
             info: Some(info.into()),
         }))

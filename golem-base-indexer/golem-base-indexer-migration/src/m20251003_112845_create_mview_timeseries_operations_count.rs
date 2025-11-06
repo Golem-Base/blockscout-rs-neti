@@ -24,8 +24,8 @@ on golem_base_timeseries_operation_count (timestamp)
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         let sql = r#"
-drop materialized view if exists golem_base_timeseries_operation_count;
 drop index golem_base_timeseries_operation_count_output_index;
+drop materialized view if exists golem_base_timeseries_operation_count;
         "#;
 
         crate::from_sql(manager, sql).await

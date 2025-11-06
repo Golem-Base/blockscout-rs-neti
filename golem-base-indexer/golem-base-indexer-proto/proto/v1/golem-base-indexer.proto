@@ -35,8 +35,10 @@ service GolemBaseIndexerService {
   rpc ChartStorageForecast(ChartStorageForecastRequest) returns (ChartResponse);
   rpc GetEntityDataHistogram(Empty) returns (GetEntityDataHistogramResponse); // FIXME naming
   rpc ChartOperationCount(ChartOperationCountRequest) returns (ChartOperationCountResponse);
+  rpc ChartEntityCount(ChartEntityCountRequest) returns (ChartResponse);
   rpc ChartBlockTransactions(Empty) returns (ChartBlockTransactionsResponse);
   rpc ChartBlockOperations(ChartBlockOperationsRequest) returns (ChartBlockOperationsResponse);
+  rpc ChartBlockGasUsageLimit(ChartBlockGasUsageLimitRequest) returns (ChartBlockGasUsageLimitResponse);
 }
 
 message PaginationRequest {
@@ -423,6 +425,12 @@ message ChartOperationCountResponse {
   ChartInfo info = 2;
 }
 
+message ChartEntityCountRequest {
+  optional string from = 1;
+  optional string to = 2;
+  ChartResolution resolution = 3;
+}
+
 message GetEntityDataHistogramResponse {
   repeated EntityDataHistogram items = 1;
 }
@@ -456,8 +464,24 @@ message BlockOperationPoint {
   uint64 extend_count = 5;
 }
 
+message ChartBlockGasUsageLimitRequest {
+  optional uint64 limit = 1;
+}
+
 message ChartBlockOperationsResponse {
   repeated BlockOperationPoint chart = 1;
+  ChartInfo info = 2;
+}
+
+message ChartBlockGasUsageLimitPoint {
+  uint64 block_number = 1;
+  uint64 gas_used = 2;
+  uint64 gas_limit = 3;
+  string gas_usage_percentage = 4;
+}
+
+message ChartBlockGasUsageLimitResponse {
+  repeated ChartBlockGasUsageLimitPoint chart = 1;
   ChartInfo info = 2;
 }
 
