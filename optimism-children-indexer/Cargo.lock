@@ -4152,6 +4152,7 @@ dependencies = [
  "serde",
  "serde_with",
  "tokio",
+ "tower 0.5.2",
  "tracing",
 ]
 

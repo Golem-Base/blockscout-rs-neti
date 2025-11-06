@@ -8,13 +8,19 @@ use super::{
     types::{Layer3Chains, Layer3IndexerTaskOutput, Layer3IndexerTaskOutputItem},
 };
 
+use alloy::rpc::client::RpcClient;
+use alloy::transports::http::reqwest::Url;
+use alloy::transports::http::Http;
+use alloy::transports::layers::FallbackLayer;
 use alloy::{
     eips::{BlockId, BlockNumberOrTag},
     providers::{Identity, Provider, ProviderBuilder},
 };
 use anyhow::{anyhow, Context, Result};
 use op_alloy::network::Optimism;
+use std::num::NonZeroUsize;
 use tokio::time::{sleep, Duration, Instant};
+use tower::ServiceBuilder;
 
 /// A single indexing task for Layer3 Indexer.
 pub struct Layer3IndexerTask {
@@ -35,14 +41,32 @@ impl Layer3IndexerTask {
 
     /// Executes the main indexing logic for this chain.
     pub async fn run(&self) -> Result<Layer3IndexerTaskOutput> {
+        // Used to measure indexer pass duration
         let started_at = Instant::now();
 
         let mut config = self.config.clone();
 
-        // Connect to RPC
-        let provider = ProviderBuilder::<Identity, Identity, Optimism>::default()
-            .connect(&self.config.l3_rpc_url)
-            .await?;
+        // Configure available RPC(s)
+        let mut transports = vec![Http::new(Url::parse(&self.config.l3_rpc_url)?)];
+        if let Some(fallback_url) = &self.config.l3_rpc_url_fallback {
+            transports.push(Http::new(Url::parse(fallback_url)?));
+        }
+
+        // Configure fallback layer
+        let fallback_layer = FallbackLayer::default().with_active_transport_count(
+            NonZeroUsize::new(transports.len()).ok_or(anyhow!(
+                "[{}] Failed to create fallback layer (no valid RPC endpoints?).",
+                &self.config.chain_name
+            ))?,
+        );
+
+        // Build RPC provider
+        let transport = ServiceBuilder::new()
+            .layer(fallback_layer)
+            .service(transports);
+        let client = RpcClient::builder().transport(transport, false);
+        let provider =
+            ProviderBuilder::<Identity, Identity, Optimism>::default().connect_client(client);
 
         // Fetch latest block number
         let latest_block_number = self.fetch_latest_block_number(&provider).await?;
