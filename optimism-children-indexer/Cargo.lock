@@ -4144,10 +4144,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "optimism-children-indexer-logic"
+name = "optimism-children-indexer-l3"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "anyhow",
+ "chrono",
+ "op-alloy",
+ "optimism-children-indexer-entity",
+ "optimism-children-indexer-logic",
+ "sea-orm",
+ "tokio",
+ "tower 0.5.2",
+ "tracing",
+]
+
+[[package]]
+name = "optimism-children-indexer-logic"
+version = "0.1.0"
+dependencies = [
  "alloy-primitives",
  "alloy-rlp",
  "alloy-sol-types",
@@ -4155,14 +4170,12 @@ dependencies = [
  "chrono",
  "futures",
  "lazy_static",
- "op-alloy",
  "optimism-children-indexer-entity",
  "prometheus",
  "sea-orm",
  "serde",
  "serde_with",
  "tokio",
- "tower 0.5.2",
  "tracing",
 ]
 
@@ -4205,6 +4218,7 @@ dependencies = [
  "blockscout-service-launcher",
  "bytes",
  "chrono",
+ "optimism-children-indexer-l3",
  "optimism-children-indexer-logic",
  "optimism-children-indexer-migration",
  "optimism-children-indexer-proto",

@@ -23,7 +23,6 @@ mod consensus_tx;
 mod deposit;
 pub mod pagination;
 pub mod repository;
-pub mod services;
 pub mod types;
 pub mod well_known;
 

@@ -1,12 +1,12 @@
 //! Data extractors for Layer3 chains.
 use super::types::{Layer3Chains, Layer3Deposit, Layer3IndexerTaskOutputItem};
-use crate::well_known::ARKIV_HOUSEKEEPING_ADDRESS;
+use optimism_children_indexer_logic::well_known::ARKIV_HOUSEKEEPING_ADDRESS;
 
 use alloy::{
     network::{ReceiptResponse, TransactionResponse},
     providers::Network,
 };
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use op_alloy::network::Optimism;
 
 /// Extracts Optimism deposit transactions from a block.

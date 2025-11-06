@@ -4,8 +4,8 @@
 //! It automatically spawns, monitors, and restarts indexing tasks based on the current
 //! state of chains in the database.
 use super::{
-    types::{optimism_children_l3_deposits, Layer3IndexerTaskOutput, Layer3IndexerTaskOutputItem},
     Layer3IndexerTask,
+    types::{Layer3IndexerTaskOutput, Layer3IndexerTaskOutputItem, optimism_children_l3_deposits},
 };
 
 use anyhow::Result;
@@ -15,7 +15,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use std::{collections::HashMap, sync::Arc};
 use tokio::{
     task::{AbortHandle, JoinSet},
-    time::{interval, Duration},
+    time::{Duration, interval},
 };
 
 ///  TODO: Consider making this configurable via Settings
@@ -66,7 +66,7 @@ impl Layer3Indexer {
         let to_spawn: Vec<_> = self
             .chains
             .iter()
-            .filter(|(&chain_id, _)| !self.abort_handles.contains_key(&chain_id))
+            .filter(|&(&chain_id, _)| !self.abort_handles.contains_key(&chain_id))
             .map(|(_, chain)| chain.clone())
             .collect();
 

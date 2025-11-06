@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use crate::settings::Settings;
-use optimism_children_indexer_logic::{services::layer3_indexer::Layer3Indexer, Indexer};
+use optimism_children_indexer_l3::Layer3Indexer;
+use optimism_children_indexer_logic::Indexer;
 use sea_orm::DatabaseConnection;
 use tokio::time::{sleep, Duration};
 

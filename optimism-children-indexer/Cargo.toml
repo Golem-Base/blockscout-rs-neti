@@ -7,6 +7,7 @@ members = [
   "optimism-children-indexer-proto",
   "optimism-children-indexer-server",
   "optimism-children-indexer-cli",
+  "optimism-children-indexer-l3",
 ]
 
 [workspace.dependencies]
