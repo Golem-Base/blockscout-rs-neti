@@ -5,7 +5,10 @@
 //! state of chains in the database.
 use super::{
     Layer3IndexerTask,
-    types::{Layer3IndexerTaskOutput, Layer3IndexerTaskOutputItem, optimism_children_l3_deposits},
+    types::{
+        ChainId, Layer3IndexerTaskOutput, Layer3IndexerTaskOutputItem,
+        optimism_children_l3_deposits,
+    },
 };
 
 use anyhow::Result;
@@ -31,9 +34,9 @@ const RESTART_DELAY_FAILING: Duration = Duration::from_secs(90);
 /// Main task for Layer3 Indexer.
 pub struct Layer3Indexer {
     db: Arc<DatabaseConnection>,
-    chains: HashMap<i64, Layer3Chain>,
-    tasks: JoinSet<(i64, Result<Layer3IndexerTaskOutput>)>,
-    abort_handles: HashMap<i64, AbortHandle>,
+    chains: HashMap<ChainId, Layer3Chain>,
+    tasks: JoinSet<(ChainId, Result<Layer3IndexerTaskOutput>)>,
+    abort_handles: HashMap<ChainId, AbortHandle>,
 }
 
 impl Layer3Indexer {
@@ -112,7 +115,7 @@ impl Layer3Indexer {
 
     /// Attempt to respawn a task after completion or failure
     /// Only respawns if the chain still exists and is enabled
-    fn try_respawn(&mut self, chain_id: i64, succeeded: bool) {
+    fn try_respawn(&mut self, chain_id: ChainId, succeeded: bool) {
         if let Some(chain) = self.chains.get(&chain_id).cloned() {
             let delay = self.calculate_restart_delay(&chain, succeeded);
 
@@ -153,7 +156,7 @@ impl Layer3Indexer {
     /// Handle task completion
     async fn handle_task_completion(
         &mut self,
-        chain_id: i64,
+        chain_id: ChainId,
         result: Result<Layer3IndexerTaskOutput>,
     ) {
         // Always remove from active tasks first

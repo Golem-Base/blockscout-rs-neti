@@ -3,6 +3,9 @@ pub use optimism_children_indexer_entity::{
 };
 use sea_orm::Set;
 
+/// Type used for chain IDs
+pub type ChainId = i64;
+
 /// Type returned from indexer task to indexer on successful pass
 pub type Layer3IndexerTaskOutput = (Layer3Chains::Model, Vec<Layer3IndexerTaskOutputItem>);
 
