@@ -8,13 +8,14 @@ use super::{
     types::{Layer3Chains, Layer3IndexerTaskOutput, Layer3IndexerTaskOutputItem},
 };
 
-use alloy::rpc::client::RpcClient;
-use alloy::transports::http::reqwest::Url;
-use alloy::transports::http::Http;
-use alloy::transports::layers::FallbackLayer;
 use alloy::{
     eips::{BlockId, BlockNumberOrTag},
     providers::{Identity, Provider, ProviderBuilder},
+    rpc::client::RpcClient,
+    transports::{
+        http::{reqwest::Url, Http},
+        layers::FallbackLayer,
+    },
 };
 use anyhow::{anyhow, Context, Result};
 use op_alloy::network::Optimism;
