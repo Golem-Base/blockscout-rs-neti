@@ -23,6 +23,8 @@ message Deposit {
   string gas_limit = 6;
   bool is_creation = 7;
   // string calldata = 8;
+  optional TxInfo execution_tx = 9;
+  optional string destination_chain_id = 10;
 }
 
 message TxInfo {
@@ -31,6 +33,7 @@ message TxInfo {
   uint64 block_number = 3;
   string from = 4;
   string to = 5;
+  bool success = 6;
 }
 
 message PaginationRequest {

@@ -2,8 +2,8 @@ use crate::{
     pagination::paginate_try_from,
     repository::sql,
     types::{
-        ConsensusTx, DepositV0, EventMetadata, FullEvent, Log, PaginationMetadata,
-        PaginationParams, TransactionDepositedEvent,
+        ConsensusTx, DepositV0, EventMetadata, ExecutionTransaction, FullDeposit, FullEvent, Log,
+        PaginationMetadata, PaginationParams, TransactionDepositedEvent,
     },
 };
 use anyhow::Result;
@@ -27,33 +27,64 @@ struct DbDeposit {
     gas_limit: Decimal,
     is_creation: bool,
     calldata: Vec<u8>,
+    chain_id: Option<Decimal>,
+    execution_tx_block_hash: Option<Vec<u8>>,
+    execution_tx_block_number: Option<Decimal>,
+    execution_tx_to: Option<Vec<u8>>,
+    execution_tx_from: Option<Vec<u8>>,
+    execution_tx_hash: Option<Vec<u8>>,
+    execution_tx_success: Option<bool>,
 }
 
-impl TryFrom<DbDeposit> for FullEvent<TransactionDepositedEvent<DepositV0>> {
+impl TryFrom<DbDeposit> for FullDeposit<DepositV0> {
     type Error = anyhow::Error;
 
     fn try_from(value: DbDeposit) -> Result<Self> {
+        let execution_tx = value
+            .execution_tx_block_hash
+            .map(|execution_tx_block_hash| -> Result<ExecutionTransaction> {
+                assert!(value.execution_tx_block_number.is_some());
+                assert!(value.execution_tx_from.is_some());
+                assert!(value.execution_tx_to.is_some());
+                assert!(value.execution_tx_hash.is_some());
+                assert!(value.execution_tx_success.is_some());
+
+                Ok(ExecutionTransaction {
+                    block_hash: execution_tx_block_hash.as_slice().try_into()?,
+                    block_number: value.execution_tx_block_number.unwrap().try_into()?,
+                    hash: value.execution_tx_hash.unwrap().as_slice().try_into()?,
+                    from: value.execution_tx_from.unwrap().as_slice().try_into()?,
+                    to: value.execution_tx_to.unwrap().as_slice().try_into()?,
+                    success: value.execution_tx_success.unwrap(),
+                })
+            })
+            .transpose()?;
+
         Ok(Self {
-            metadata: EventMetadata {
-                from: value.tx_from.as_slice().try_into()?,
-                to: value.tx_to.as_slice().try_into()?,
-                transaction_hash: value.tx_hash.as_slice().try_into()?,
-                block_hash: value.block_hash.as_slice().try_into()?,
-                index: value.index.try_into()?,
-                block_number: value.block_number.try_into()?,
-            },
-            event: TransactionDepositedEvent {
-                from: value.deposit_from.as_slice().try_into()?,
-                to: value.deposit_to.as_slice().try_into()?,
-                source_hash: value.source_hash.as_slice().try_into()?,
-                deposit: DepositV0 {
-                    // these conversions to u128 are fine, as Decimal only has 96 bits of precision
-                    // anyway
-                    mint: u128::try_from(value.mint)?.try_into()?,
-                    value: u128::try_from(value.value)?.try_into()?,
-                    gas_limit: value.gas_limit.try_into()?,
-                    is_creation: value.is_creation,
-                    calldata: value.calldata.into(),
+            execution_tx,
+            chain_id: value.chain_id.map(TryInto::try_into).transpose()?,
+            event: FullEvent {
+                metadata: EventMetadata {
+                    from: value.tx_from.as_slice().try_into()?,
+                    to: value.tx_to.as_slice().try_into()?,
+                    transaction_hash: value.tx_hash.as_slice().try_into()?,
+                    block_hash: value.block_hash.as_slice().try_into()?,
+                    index: value.index.try_into()?,
+                    block_number: value.block_number.try_into()?,
+                },
+                event: TransactionDepositedEvent {
+                    from: value.deposit_from.as_slice().try_into()?,
+                    to: value.deposit_to.as_slice().try_into()?,
+                    source_hash: value.source_hash.as_slice().try_into()?,
+                    deposit: DepositV0 {
+                        // these conversions to u128 are fine, as Decimal only has 96 bits of precision
+                        // anyway
+                        mint: u128::try_from(value.mint)?.try_into()?,
+                        value: u128::try_from(value.value)?.try_into()?,
+                        gas_limit: value.gas_limit.try_into()?,
+                        is_creation: value.is_creation,
+                        calldata: value.calldata.into(),
+                    },
                 },
             },
         })
@@ -96,10 +127,7 @@ pub async fn store_transaction_deposited<T: ConnectionTrait>(
 pub async fn list_deposits<T: ConnectionTrait>(
     db: &T,
     pagination: PaginationParams,
-) -> Result<(
-    Vec<FullEvent<TransactionDepositedEvent<DepositV0>>>,
-    PaginationMetadata,
-)> {
+) -> Result<(Vec<FullDeposit<DepositV0>>, PaginationMetadata)> {
     let q = DbDeposit::find_by_statement(Statement::from_string(
         db.get_database_backend(),
         sql::LIST_DEPOSITS_WITH_TX,

@@ -3,7 +3,8 @@
 use crate::blockscout::optimism_children_indexer::v1;
 use anyhow::Result;
 use optimism_children_indexer_logic::types::{
-    DepositV0, FullEvent, PaginationMetadata, PaginationParams, TransactionDepositedEvent,
+    DepositV0, EventMetadata, ExecutionTransaction, FullDeposit, PaginationMetadata,
+    PaginationParams,
 };
 
 pub mod blockscout {
@@ -39,22 +40,44 @@ impl TryFrom<v1::PaginationRequest> for PaginationParams {
     }
 }
 
-impl From<FullEvent<TransactionDepositedEvent<DepositV0>>> for v1::Deposit {
-    fn from(ev: FullEvent<TransactionDepositedEvent<DepositV0>>) -> Self {
+impl From<EventMetadata> for v1::TxInfo {
+    fn from(v: EventMetadata) -> Self {
         Self {
-            init_tx: Some(v1::TxInfo {
-                from: ev.metadata.from.to_checksum(None),
-                to: ev.metadata.to.to_checksum(None),
-                transaction_hash: ev.metadata.transaction_hash.to_string(),
-                block_hash: ev.metadata.block_hash.to_string(),
-                block_number: ev.metadata.block_number,
-            }),
-            from: ev.event.from.to_checksum(None),
-            to: ev.event.to.to_checksum(None),
-            mint: ev.event.deposit.mint.to_string(),
-            value: ev.event.deposit.value.to_string(),
-            gas_limit: ev.event.deposit.gas_limit.to_string(),
-            is_creation: ev.event.deposit.is_creation,
+            from: v.from.to_checksum(None),
+            to: v.to.to_checksum(None),
+            transaction_hash: v.transaction_hash.to_string(),
+            block_hash: v.block_hash.to_string(),
+            block_number: v.block_number,
+            success: true,
+        }
+    }
+}
+
+impl From<ExecutionTransaction> for v1::TxInfo {
+    fn from(v: ExecutionTransaction) -> Self {
+        Self {
+            from: v.from.to_checksum(None),
+            to: v.to.to_checksum(None),
+            transaction_hash: v.hash.to_string(),
+            block_hash: v.block_hash.to_string(),
+            block_number: v.block_number,
+            success: v.success,
+        }
+    }
+}
+
+impl From<FullDeposit<DepositV0>> for v1::Deposit {
+    fn from(d: FullDeposit<DepositV0>) -> Self {
+        Self {
+            init_tx: Some(d.event.metadata.into()),
+            execution_tx: d.execution_tx.map(Into::into),
+            from: d.event.event.from.to_checksum(None),
+            to: d.event.event.to.to_checksum(None),
+            mint: d.event.event.deposit.mint.to_string(),
+            value: d.event.event.deposit.value.to_string(),
+            gas_limit: d.event.event.deposit.gas_limit.to_string(),
+            is_creation: d.event.event.deposit.is_creation,
+            destination_chain_id: d.chain_id.map(|v| v.to_string()),
         }
     }
 }

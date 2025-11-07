@@ -31,6 +31,8 @@ async fn test_deposits_endpoint() {
         json!({
             "items": [
                 {
+                    "destination_chain_id": null,
+                    "execution_tx": null,
                     "from": "0x3C41d8343A1Cba9FD6f0356039b6c6d844610321",
                     "gas_limit": "414371",
                     "init_tx": {
@@ -39,6 +41,7 @@ async fn test_deposits_endpoint() {
                         "from": "0x17acfafcfa4A6912F97d85950F37ceEf97305393",
                         "to": "0x8cF3068a4a1C4f329Cc19b7c57BD4b2e7EaA3662",
                         "transaction_hash": "0x653d3f9ec83c23f5e870e6d2710961a681e3bfbb280d8c19da7739146df3b6bb",
+                        "success": true,
                     },
                     "is_creation": false,
                     "mint": "1000000000000000",
@@ -46,6 +49,8 @@ async fn test_deposits_endpoint() {
                     "value": "1000000000000000",
                 },
                 {
+                    "destination_chain_id": null,
+                    "execution_tx": null,
                     "from": "0x3C41d8343A1Cba9FD6f0356039b6c6d844610321",
                     "gas_limit": "414371",
                     "init_tx": {
@@ -54,6 +59,7 @@ async fn test_deposits_endpoint() {
                         "from": "0x17acfafcfa4A6912F97d85950F37ceEf97305393",
                         "to": "0x8cF3068a4a1C4f329Cc19b7c57BD4b2e7EaA3662",
                         "transaction_hash": "0xc913706ddb07d506aebab4bb006be97c02147fc5ac9a58497f17b22486dc72f3",
+                        "success": true,
                     },
                     "is_creation": false,
                     "mint": "1000000000000000",

@@ -9,6 +9,7 @@ members = [
   "optimism-children-indexer-cli",
   "optimism-children-indexer-l3",
 ]
+package.rust-version = "1.91"
 
 [workspace.dependencies]
 actix-prost = "0.2.0"
