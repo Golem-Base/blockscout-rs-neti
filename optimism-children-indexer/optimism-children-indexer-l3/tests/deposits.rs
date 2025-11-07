@@ -10,7 +10,9 @@ use optimism_children_indexer_l3::{
 const MOCKED_CHAIN_ID: i64 = 1234567890;
 const MOCKED_LATEST_BLOCK: u64 = 20;
 const INDEX_FROM_BLOCK: u64 = 0;
-const INJECT_TX_AT_BLOCK: u64 = 10;
+const INJECT_DEPOSIT_TX_AT_BLOCK: u64 = 10;
+const DEPOSIT_TX_FROM: &str = "0x481c965e6579099f005387b4c1d7fb03bc302f4b";
+const DEPOSIT_TX_TO: &str = "0x03a858395f1a6cd22e2b4d31139794aab58c5d4d";
 const DEPOSIT_TX_HASH: &str = "0xb41fd72d60425a9d836d9307b6afcd8b8b217c6fe4f09d9cf7bbe155944069a2";
 const DEPOSIT_TX_BLOCK_HASH: &str =
     "0x595b3bdd6b2fb42235e760ba15d3a5a58f1665bea4d5fb526a81bb68ea8be24b";
@@ -70,7 +72,7 @@ async fn indexing_deposits_should_work() {
     let eth_mock_server = EthMockServer::start(MOCKED_LATEST_BLOCK).await;
     eth_mock_server
         .mount_block_by_number(
-            INJECT_TX_AT_BLOCK,
+            INJECT_DEPOSIT_TX_AT_BLOCK,
             Some(DEPOSIT_TX_BLOCK_HASH),
             Some(
                 serde_json::from_str(DEPOSIT_TX_BLOCK)
@@ -80,7 +82,7 @@ async fn indexing_deposits_should_work() {
         .await;
     eth_mock_server
         .mount_block_receipts(
-            INJECT_TX_AT_BLOCK,
+            INJECT_DEPOSIT_TX_AT_BLOCK,
             serde_json::from_str(DEPOSIT_TX_RECEIPT)
                 .expect("Deposit TX receipt serialization error"),
         )
@@ -119,6 +121,9 @@ async fn indexing_deposits_should_work() {
 
     let extracted_deposit = Layer3Deposit {
         chain_id: MOCKED_CHAIN_ID,
+        from: const_hex::decode(DEPOSIT_TX_FROM).unwrap(),
+        to: const_hex::decode(DEPOSIT_TX_TO).unwrap(),
+        block_number: INJECT_DEPOSIT_TX_AT_BLOCK as i64,
         block_hash: const_hex::decode(DEPOSIT_TX_BLOCK_HASH).unwrap(),
         tx_hash: const_hex::decode(DEPOSIT_TX_HASH).unwrap(),
         source_hash: const_hex::decode(DEPOSIT_TX_SOURCE_HASH).unwrap(),

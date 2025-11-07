@@ -19,6 +19,9 @@ pub enum Layer3IndexerTaskOutputItem {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Layer3Deposit {
     pub chain_id: i64,
+    pub from: Vec<u8>,
+    pub to: Vec<u8>,
+    pub block_number: i64,
     pub block_hash: Vec<u8>,
     pub tx_hash: Vec<u8>,
     pub source_hash: Vec<u8>,
@@ -30,6 +33,9 @@ impl From<Layer3Deposit> for optimism_children_l3_deposits::ActiveModel {
         Self {
             id: Default::default(),
             chain_id: Set(v.chain_id),
+            from: Set(v.from),
+            to: Set(v.to),
+            block_number: Set(v.block_number),
             block_hash: Set(v.block_hash),
             tx_hash: Set(v.tx_hash),
             source_hash: Set(v.source_hash),
