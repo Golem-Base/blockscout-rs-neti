@@ -50,13 +50,13 @@ async fn test_transaction_deposited_indexing() {
                     block_hash: b256!(
                         "0x7ec13ee95beee46e78b51559fbf985b2d1124c5b98e7ecc6174ddf90afa30f16"
                     ),
-                    index: 3,
+                    index: 528,
                     block_number: 9398574,
                 },
                 event: TransactionDepositedEvent::<DepositV0> {
                     from: address!("0x481c965E6579099F005387B4C1D7fb03bC302F4b"),
                     to: address!("0x03a858395F1a6cd22e2B4D31139794AaB58C5D4d"),
-                    source_hash: b256!("0xd203826d40f1c2afc385568c4c8591a29df07778659d59cf2879253cfe243136"), // FIXME not verified on dest chain yet
+                    source_hash: b256!("0x405ed121ccc1cd47773fbe0ef8e14b8d00acf028ac83145da72e5b6d4002efcf"),
                     deposit: DepositV0 {
                         mint: 1000000000000000000u128.try_into().unwrap(),
                         value: 1000000000000000000u128.try_into().unwrap(),
