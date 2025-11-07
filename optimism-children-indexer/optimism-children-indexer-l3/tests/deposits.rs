@@ -64,6 +64,8 @@ const DEPOSIT_TX_RECEIPT: &str = r#"
     }
 ]"#;
 
+// TODO: Remove this once new variant is added to `Layer3IndexerTaskOutputItem`
+#[allow(unreachable_patterns)]
 #[tokio::test]
 #[ignore = "Needs database to run"]
 async fn indexing_deposits_should_work() {
