@@ -11,6 +11,7 @@ async-trait.workspace = true
 blockscout-service-launcher = { workspace = true, features = ["database-1"] }
 blockscout-endpoint-swagger.workspace = true
 bytes.workspace = true
+optimism-children-indexer-l3 = { path = "../optimism-children-indexer-l3" }
 optimism-children-indexer-logic = { path = "../optimism-children-indexer-logic" }
 optimism-children-indexer-proto = { path = "../optimism-children-indexer-proto" }
 optimism-children-indexer-migration = { path = "../optimism-children-indexer-migration" }
