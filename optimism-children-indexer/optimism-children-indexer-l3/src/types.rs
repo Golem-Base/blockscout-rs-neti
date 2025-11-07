@@ -10,11 +10,13 @@ pub type ChainId = i64;
 pub type Layer3IndexerTaskOutput = (Layer3Chains::Model, Vec<Layer3IndexerTaskOutputItem>);
 
 /// Item type returned from indexer task to indexer on sucessful pass
+#[derive(Debug)]
 pub enum Layer3IndexerTaskOutputItem {
     Deposit(Layer3Deposit),
 }
 
 /// Deposit transaction (L2 -> L3)
+#[derive(Debug, PartialEq, Eq)]
 pub struct Layer3Deposit {
     pub chain_id: i64,
     pub block_hash: Vec<u8>,
