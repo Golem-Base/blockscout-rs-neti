@@ -1,7 +1,6 @@
 mod helpers;
 
-use helpers::eth_mock_server::EthMockServer;
-use helpers::utils::build_test_chain_config;
+use helpers::{eth_mock_server::EthMockServer, utils::build_test_chain_config};
 use optimism_children_indexer_l3::{
     Layer3IndexerTask,
     types::{Layer3Deposit, Layer3IndexerTaskOutputItem},
