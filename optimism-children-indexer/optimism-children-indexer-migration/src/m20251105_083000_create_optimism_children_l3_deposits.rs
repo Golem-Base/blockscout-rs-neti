@@ -12,6 +12,9 @@ impl MigrationTrait for Migration {
         CREATE TABLE optimism_children_l3_deposits (
             id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
             chain_id BIGINT NOT NULL REFERENCES optimism_children_l3_chains(chain_id) ON DELETE CASCADE,
+            \"from\" BYTEA NOT NULL,
+            \"to\" BYTEA NOT NULL,
+            block_number BIGINT NOT NULL,
             block_hash BYTEA NOT NULL,
             tx_hash BYTEA NOT NULL,
             source_hash BYTEA NOT NULL,

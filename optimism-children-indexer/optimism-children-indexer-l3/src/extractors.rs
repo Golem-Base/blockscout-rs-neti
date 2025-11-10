@@ -28,6 +28,14 @@ pub fn extract_deposits(
                 // Collect deposit transaction information
                 let deposit = Layer3Deposit {
                     chain_id: config.chain_id,
+                    from: deposit_tx.from.into_array().to_vec(),
+                    to: deposit_tx
+                        .to
+                        .into_to()
+                        .ok_or(anyhow!("Failed to get 'to' for tx_hash: {}", tx.tx_hash()))?
+                        .into_array()
+                        .to_vec(),
+                    block_number: block.number() as i64,
                     block_hash: tx
                         .block_hash
                         .ok_or_else(|| anyhow!("Missing block_hash for tx_hash: {}", tx.tx_hash()))?

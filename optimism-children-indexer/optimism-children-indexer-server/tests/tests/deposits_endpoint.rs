@@ -70,7 +70,7 @@ async fn test_deposits_endpoint() {
             "pagination": {
                 "page": "1",
                 "page_size": "100",
-                "total_items": "2",
+                "total_items": "3",
                 "total_pages": "1",
             },
         })
