@@ -46,6 +46,32 @@ async fn test_transaction_deposited_indexing() {
             FullDeposit {
                 event: FullEvent {
                     metadata: EventMetadata {
+                        from: address!("0x03a858395f1a6cd22e2b4d31139794aab58c5d4d"),
+                        to: address!("0x370b965e6579099f005387b4c1d7fb03bc301e3a"),
+                        transaction_hash: b256!("0x387f9c25f22259f8a044d289434f0a5f49f9259205fd1bd2711a16fe29235bfc"),
+                        block_hash: b256!("0x7ec13ee95beee46e78b51559fbf985b2d1124c5b98e7ecc6174ddf90afa30f16"),
+                        index: 528,
+                        block_number: 9398574,
+                    },
+                    event: TransactionDepositedEvent {
+                        from: address!("0x481c965e6579099f005387b4c1d7fb03bc302f4b"),
+                        to: address!("0x03a858395f1a6cd22e2b4d31139794aab58c5d4d"),
+                        source_hash: b256!("0x405ed121ccc1cd47773fbe0ef8e14b8d00acf028ac83145da72e5b6d4002efcf"),
+                        deposit: DepositV0 {
+                            mint: 1000000000000000000u128.try_into().unwrap(),
+                            value: 1000000000000000000u128.try_into().unwrap(),
+                            gas_limit: 850000,
+                            is_creation: false,
+                            calldata: bytes!(),
+                        }
+                    },
+                },
+                execution_tx: None,
+                chain_id: None,
+            },
+            FullDeposit {
+                event: FullEvent {
+                    metadata: EventMetadata {
                         from: address!("0x17acfafcfa4A6912F97d85950F37ceEf97305393"),
                         to: address!("0x8cF3068a4a1C4f329Cc19b7c57BD4b2e7EaA3662"),
                         transaction_hash: b256!(
