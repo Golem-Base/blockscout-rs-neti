@@ -24,15 +24,30 @@ async fn test_deposits_endpoint() {
     .await;
     indexer.tick().await.unwrap();
 
+    // load L3 sample data
+    helpers::load_data(
+        &*client,
+        include_str!("../fixtures/sample_l3_deposit_data.sql"),
+    )
+    .await;
+
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/deposits").await;
+
     assert_eq!(
         response,
         json!({
             "items": [
                 {
-                    "destination_chain_id": null,
-                    "execution_tx": null,
+                    "destination_chain_id": "21377321",
+                    "execution_tx": {
+                        "block_hash": "0x595b3bdd6b2fb42235e760ba15d3a5a58f1665bea4d5fb526a81bb68ea8be24b",
+                        "block_number": "113040",
+                        "from": "0x481c965E6579099F005387B4C1D7fb03bC302F4b",
+                        "to": "0x03a858395F1a6cd22e2B4D31139794AaB58C5D4d",
+                        "transaction_hash": "0xb41fd72d60425a9d836d9307b6afcd8b8b217c6fe4f09d9cf7bbe155944069a2",
+                        "success": true,
+                    },
                     "from": "0x481c965E6579099F005387B4C1D7fb03bC302F4b",
                     "gas_limit": "850000",
                     "init_tx": {
@@ -49,8 +64,15 @@ async fn test_deposits_endpoint() {
                     "value": "1000000000000000000",
                 },
                 {
-                    "destination_chain_id": null,
-                    "execution_tx": null,
+                    "destination_chain_id": "60138453025",
+                    "execution_tx": {
+                        "block_hash": "0xa1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
+                        "block_number": "82060",
+                        "from": "0x2f67dd5b165D37b179D3cEcEBFa67765a38c8ad3",
+                        "to": "0x7bB44cCbAb1445d064049ed6a1ccb6f116aDd1B9",
+                        "transaction_hash": "0x6b52cc514f3a4d953d5648a69d3f309e52aaeb55e62ee683d4ca526163cc153d",
+                        "success": true,
+                    },
                     "from": "0x3C41d8343A1Cba9FD6f0356039b6c6d844610321",
                     "gas_limit": "414371",
                     "init_tx": {

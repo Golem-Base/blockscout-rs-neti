@@ -41,16 +41,15 @@ select
     d.gas_limit,
     d.is_creation,
     d.calldata,
-    l3.chain_id as chain_id,
+    l3d.chain_id as chain_id,
     l3d.block_hash as execution_tx_block_hash,
-    -- l3d.block_number as execution_tx_block_number, -- FIXME!
-    -- l3d.to as execution_tx_to, -- FIXME!
-    -- l3d.from as execution_tx_from, -- FIXME!
+    l3d.block_number as execution_tx_block_number,
+    l3d.to as execution_tx_to,
+    l3d.from as execution_tx_from,
     l3d.tx_hash as execution_tx_hash,
     l3d.success as execution_tx_success
 from optimism_children_transaction_deposited_events_v0 d
     inner join transactions t on t.hash = d.transaction_hash
-    left join optimism_children_l3_chains l3 on l3.l2_portal_address = t.to_address_hash
     left join optimism_children_l3_deposits l3d on l3d.source_hash = d.source_hash
 order by
     d.block_number desc,
