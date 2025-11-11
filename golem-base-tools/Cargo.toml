@@ -11,8 +11,10 @@ homepage = "https://github.com/Golem-Base/blockscout-rs-neti"
 repository = "https://github.com/Golem-Base/blockscout-rs-neti"
 
 [workspace.dependencies]
-alloy-rlp = "0.3.12"
-golem-base-sdk = { version = "0.4.0" }
-pico-args = "0.5.0"
+alloy-primitives = { version = "1.4.1", features = ["rlp"] }
+alloy-rlp = { version = "0.3.12", features = ["derive"] }
+alloy-sol-types = "1.4.1"
+brotli = "8.0.2"
 color-eyre = "0.6.5"
 hex = "0.4.3"
+pico-args = "0.5.0"

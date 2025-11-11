@@ -13,7 +13,6 @@ blockscout-display-bytes.workspace = true
 chrono.workspace = true
 futures.workspace = true
 golem-base-indexer-entity = { path = "../golem-base-indexer-entity" }
-golem-base-sdk.workspace = true
 lazy_static.workspace = true
 prometheus.workspace = true
 sea-orm = { workspace = true, features = [
@@ -33,6 +32,7 @@ url.workspace = true
 alloy.workspace = true
 serde_urlencoded.workspace = true
 moka.workspace = true
+arkiv-storage-tx.workspace = true
 
 [dev-dependencies]
 blockscout-service-launcher = { workspace = true, features = [

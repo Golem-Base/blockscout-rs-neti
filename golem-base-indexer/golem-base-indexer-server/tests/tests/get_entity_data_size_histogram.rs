@@ -1,10 +1,10 @@
 use crate::helpers;
 
 use alloy_primitives::Address;
+use arkiv_storage_tx::{StorageTransaction, Update};
 use blockscout_service_launcher::test_server;
 use bytes::Bytes;
 use golem_base_indexer_logic::{mat_view_scheduler::MatViewScheduler, types::EntityKey, Indexer};
-use golem_base_sdk::entity::{EncodableGolemBaseTransaction, Update};
 
 use crate::helpers::sample::{Block, Transaction};
 
@@ -95,11 +95,11 @@ async fn test_get_entity_data_size_histogram() {
     fn gen_tx_with_key(bytes_len: u64, entity_key: EntityKey) -> Transaction {
         Transaction {
             sender: Address::random(),
-            operations: EncodableGolemBaseTransaction {
+            operations: StorageTransaction {
                 updates: vec![Update {
                     entity_key,
                     btl: 100,
-                    data: Bytes::from(vec![0u8; bytes_len as usize]),
+                    payload: Bytes::from(vec![0u8; bytes_len as usize]),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -148,7 +148,7 @@ async fn test_get_entity_data_size_histogram() {
             number: 2,
             transactions: vec![Transaction {
                 sender: Address::random(),
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     deletes: vec![ek1, ek2],
                     ..Default::default()
                 },

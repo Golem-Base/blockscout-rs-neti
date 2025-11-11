@@ -9,8 +9,8 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-alloy-rlp.workspace = true
+alloy-primitives.workspace = true
 color-eyre.workspace = true
-golem-base-sdk.workspace = true
 pico-args.workspace = true
 hex.workspace = true
+arkiv-storage-tx = { path = "../arkiv-storage-tx" }

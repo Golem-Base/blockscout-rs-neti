@@ -1,7 +1,7 @@
 use crate::helpers;
 
+use arkiv_storage_tx::{Create, StorageTransaction};
 use golem_base_indexer_logic::Indexer;
-use golem_base_sdk::entity::{Create, EncodableGolemBaseTransaction};
 use pretty_assertions::assert_eq;
 use sea_orm::{ConnectionTrait, Statement};
 
@@ -16,7 +16,7 @@ async fn test_queue_gets_cleaned() {
         &*client,
         Block {
             transactions: vec![Transaction {
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     creates: vec![Create {
                         ..Default::default()
                     }],

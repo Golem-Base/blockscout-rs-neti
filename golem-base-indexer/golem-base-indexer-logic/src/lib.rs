@@ -1,9 +1,6 @@
-use alloy_rlp::Decodable;
 use anyhow::{anyhow, Context, Result};
+use arkiv_storage_tx::{ChangeOwner, Create, Delete, Extend, StorageTransaction, Update};
 use futures::StreamExt;
-use golem_base_sdk::entity::{
-    Create, EncodableGolemBaseTransaction, Extend, GolemBaseDelete, Update,
-};
 use lazy_static::lazy_static;
 use prometheus::{opts, register_counter, register_gauge, Counter, Gauge};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
@@ -18,19 +15,19 @@ use tokio::time::sleep;
 use tracing::{instrument, warn};
 
 use crate::{
-    golem_base::{block_timestamp, block_timestamp_sec, entity_key},
+    arkiv::{block_timestamp, block_timestamp_sec, entity_key},
     repository::locks::Guard,
     types::{
-        Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAnnotation,
-        FullOperationIndex, FullStringAnnotation, ListOperationsFilter, LogIndex,
-        NumericAnnotation, Operation, OperationData, OperationMetadata, OperationsFilter,
-        PaginationParams, StringAnnotation, TxHash,
+        Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAttribute,
+        FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogIndex, NumericAttribute,
+        Operation, OperationData, OperationMetadata, OperationsFilter, PaginationParams,
+        StringAttribute, TxHash,
     },
 };
 
-mod annotations;
+pub mod arkiv;
+mod attributes;
 mod consensus_tx;
-pub mod golem_base;
 pub mod mat_view_scheduler;
 pub mod model;
 mod operations;
@@ -229,7 +226,7 @@ impl Indexer {
 
         repository::entities::delete_history(txn, entity).await?;
         let mut prev_entry: Option<EntityHistoryEntry> = None;
-        let mut active_annotations_index = None;
+        let mut active_attributes_index = None;
         for op in ops {
             let status = match op.op.operation {
                 OperationData::Create(_, _) => EntityStatus::Active,
@@ -268,9 +265,9 @@ impl Indexer {
             let expires_at_timestamp_sec =
                 expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
 
-            active_annotations_index = match op.op.operation {
+            active_attributes_index = match op.op.operation {
                 OperationData::Delete => None,
-                OperationData::Extend(_) => active_annotations_index,
+                OperationData::Extend(_) => active_attributes_index,
                 _ => Some((op.op.metadata.tx_hash, op.op.metadata.index)),
             };
 
@@ -307,9 +304,9 @@ impl Indexer {
             repository::entities::insert_history_entry(txn, entry.clone()).await?;
             prev_entry = Some(entry);
         }
-        repository::annotations::deactivate_annotations(txn, entity).await?;
-        if let Some(active_annotations_index) = active_annotations_index {
-            repository::annotations::activate_annotations(txn, entity, active_annotations_index)
+        repository::attributes::deactivate_attributes(txn, entity).await?;
+        if let Some(active_attributes_index) = active_attributes_index {
+            repository::attributes::activate_attributes(txn, entity, active_attributes_index)
                 .await?;
         }
 
@@ -350,7 +347,7 @@ impl Indexer {
 
         let mut op_idx = 0;
         let mut guards = HashMap::<_, _>::new();
-        let storagetx = match EncodableGolemBaseTransaction::decode(&mut &*tx.input) {
+        let storagetx: StorageTransaction = match (&tx.input).try_into() {
             Ok(storagetx) => storagetx,
             Err(e) => {
                 tracing::warn!(?e, "Storage tx with undecodable data");
@@ -384,6 +381,14 @@ impl Indexer {
                 .with_context(|| format!("Handling extend op tx_hash={tx_hash} op_idx={op_idx}"))?;
             op_idx += 1;
         }
+        for change_owner in storagetx.change_owners {
+            self.handle_change_owner(&txn, &mut guards, &tx, change_owner, op_idx)
+                .await
+                .with_context(|| {
+                    format!("Handling change_owner op tx_hash={tx_hash} op_idx={op_idx}")
+                })?;
+            op_idx += 1;
+        }
 
         repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
         for guard in guards.into_values() {
@@ -405,7 +410,7 @@ impl Indexer {
         create: Create,
         idx: u64,
     ) -> Result<()> {
-        let key = entity_key(tx.hash, create.data.clone(), idx);
+        let key = entity_key(tx.hash, create.payload.clone(), idx);
         if let Entry::Vacant(e) = guards.entry(key) {
             e.insert(repository::locks::lock(txn, key).await?);
         }
@@ -422,7 +427,7 @@ impl Indexer {
                 tx_index: tx.index,
                 block_number: tx.block_number,
             },
-            operation: OperationData::create(create.data.clone(), create.btl),
+            operation: OperationData::create(create.payload.clone(), create.btl),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
 
@@ -445,18 +450,18 @@ impl Indexer {
 
         repository::entities::refresh_entity_based_on_history(txn, key).await?;
 
-        self.store_annotations(
+        self.store_attributes(
             txn,
             key,
             tx,
             idx,
             create
-                .string_annotations
+                .string_attributes
                 .into_iter()
                 .map(Into::into)
                 .collect(),
             create
-                .numeric_annotations
+                .numeric_attributes
                 .into_iter()
                 .map(Into::into)
                 .collect(),
@@ -583,7 +588,7 @@ impl Indexer {
                 block_number: tx.block_number,
                 tx_index: tx.index,
             },
-            operation: OperationData::update(update.data.clone(), update.btl),
+            operation: OperationData::update(update.payload.clone(), update.btl),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
 
@@ -607,18 +612,18 @@ impl Indexer {
 
         repository::entities::refresh_entity_based_on_history(txn, update.entity_key).await?;
 
-        self.store_annotations(
+        self.store_attributes(
             txn,
             update.entity_key,
             tx,
             idx,
             update
-                .string_annotations
+                .string_attributes
                 .into_iter()
                 .map(Into::into)
                 .collect(),
             update
-                .numeric_annotations
+                .numeric_attributes
                 .into_iter()
                 .map(Into::into)
                 .collect(),
@@ -634,7 +639,7 @@ impl Indexer {
         txn: &DatabaseTransaction,
         guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
-        delete: GolemBaseDelete,
+        delete: Delete,
         idx: u64,
     ) -> Result<()> {
         if let Entry::Vacant(e) = guards.entry(delete) {
@@ -659,7 +664,7 @@ impl Indexer {
         self.insert_history_entry(txn, delete, tx, op).await?;
         repository::entities::refresh_entity_based_on_history(txn, delete).await?;
 
-        repository::annotations::deactivate_annotations(txn, delete).await?;
+        repository::attributes::deactivate_attributes(txn, delete).await?;
         Ok(())
     }
 
@@ -712,6 +717,22 @@ impl Indexer {
         repository::entities::refresh_entity_based_on_history(txn, extend.entity_key).await?;
 
         Ok(())
+    }
+
+    #[instrument(skip_all, fields(extend, idx))]
+    async fn handle_change_owner(
+        &self,
+        txn: &DatabaseTransaction,
+        guards: &mut HashMap<EntityKey, Guard>,
+        _tx: &ConsensusTx,
+        change_owner: ChangeOwner,
+        _idx: u64,
+    ) -> Result<()> {
+        if let Entry::Vacant(e) = guards.entry(change_owner.entity_key) {
+            e.insert(repository::locks::lock(txn, change_owner.entity_key).await?);
+        }
+        tracing::info!("Processing ChangeOwner operation");
+        todo!();
     }
 
     async fn is_latest_update(
@@ -772,7 +793,7 @@ impl Indexer {
         self.insert_history_entry(&txn, entity_key, &tx, op).await?;
         repository::entities::refresh_entity_based_on_history(&txn, entity_key).await?;
 
-        repository::annotations::deactivate_annotations(&txn, entity_key).await?;
+        repository::attributes::deactivate_attributes(&txn, entity_key).await?;
         repository::logs::finish_log_processing(&txn, tx.hash, tx.block_hash, log.index).await?;
         guard.unlock(&txn).await?;
         txn.commit().await?;
@@ -782,14 +803,14 @@ impl Indexer {
     }
 
     #[instrument(skip_all, fields(entity_key))]
-    async fn store_annotations(
+    async fn store_attributes(
         &self,
         txn: &DatabaseTransaction,
         entity_key: EntityKey,
         tx: &ConsensusTx,
         op_index: u64,
-        string_annotations: Vec<StringAnnotation>,
-        numeric_annotations: Vec<NumericAnnotation>,
+        string_attributes: Vec<StringAttribute>,
+        numeric_attributes: Vec<NumericAttribute>,
     ) -> Result<()> {
         let latest_update = self
             .is_latest_update(
@@ -804,19 +825,19 @@ impl Indexer {
             .await?;
 
         if latest_update {
-            repository::annotations::deactivate_annotations(txn, entity_key).await?;
+            repository::attributes::deactivate_attributes(txn, entity_key).await?;
         }
 
-        for annotation in string_annotations {
-            repository::annotations::insert_string_annotation(
+        for attribute in string_attributes {
+            repository::attributes::insert_string_attribute(
                 txn,
-                FullStringAnnotation {
+                FullStringAttribute {
                     entity_key,
                     operation_tx_hash: tx.hash,
                     operation_index: op_index,
-                    annotation: StringAnnotation {
-                        key: annotation.key,
-                        value: annotation.value,
+                    attribute: StringAttribute {
+                        key: attribute.key,
+                        value: attribute.value,
                     },
                 },
                 latest_update,
@@ -824,16 +845,16 @@ impl Indexer {
             .await?;
         }
 
-        for annotation in numeric_annotations {
-            repository::annotations::insert_numeric_annotation(
+        for attribute in numeric_attributes {
+            repository::attributes::insert_numeric_attribute(
                 txn,
-                FullNumericAnnotation {
+                FullNumericAttribute {
                     entity_key,
                     operation_tx_hash: tx.hash,
                     operation_index: op_index,
-                    annotation: NumericAnnotation {
-                        key: annotation.key,
-                        value: annotation.value,
+                    attribute: NumericAttribute {
+                        key: attribute.key,
+                        value: attribute.value,
                     },
                 },
                 latest_update,

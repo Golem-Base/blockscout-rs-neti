@@ -111,26 +111,6 @@ order by
 limit 1;
 "#;
 
-pub const FIND_LATEST_LOG: &str = r#"
-select
-    data,
-    logs.index,
-    first_topic,
-    second_topic,
-    third_topic,
-    fourth_topic,
-    transaction_hash
-from logs
-inner join transactions on transactions.hash = logs.transaction_hash
-where
-    first_topic = $1
-    and second_topic = $2
-order by
-    transactions.block_number desc,
-    transactions.index desc,
-    logs.index desc
-"#;
-
 pub const FIND_LATEST_OPERATION: &str = r#"
 select 
     o.*,

@@ -1,0 +1,16 @@
+[package]
+name = "arkiv-storage-tx"
+version = "0.2.0"
+description = "Library for encoding and decoding Arkiv DB Chain storage transactions"
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[dependencies]
+alloy-primitives.workspace = true
+alloy-rlp.workspace = true
+alloy-sol-types.workspace = true
+brotli.workspace = true

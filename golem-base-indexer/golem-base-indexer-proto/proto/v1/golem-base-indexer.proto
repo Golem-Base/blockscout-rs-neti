@@ -93,10 +93,10 @@ message ListEntitiesRequest {
   optional uint64 page = 1;
   optional uint64 page_size = 2;
   EntityStatusFilter.EntityStatusFilter status = 3;
-  optional string string_annotation_key = 4;
-  optional string string_annotation_value = 5;
-  optional string numeric_annotation_key = 6;
-  optional string numeric_annotation_value = 7;
+  optional string string_attribute_key = 4;
+  optional string string_attribute_value = 5;
+  optional string numeric_attribute_key = 6;
+  optional string numeric_attribute_value = 7;
   optional string owner = 8;
 }
 
@@ -143,10 +143,10 @@ message CountOperationsResponse {
 
 message CountEntitiesRequest {
   EntityStatusFilter.EntityStatusFilter status = 1;
-  optional string string_annotation_key = 2;
-  optional string string_annotation_value = 3;
-  optional string numeric_annotation_key = 4;
-  optional string numeric_annotation_value = 5;
+  optional string string_attribute_key = 2;
+  optional string string_attribute_value = 3;
+  optional string numeric_attribute_key = 4;
+  optional string numeric_attribute_value = 5;
   optional string owner = 6;
 }
 
@@ -181,23 +181,23 @@ message EntityWithExpTimestamp {
   optional uint64 expires_at_timestamp_sec = 8;
 }
 
-message StringAnnotation {
+message StringAttribute {
   string key = 1;
   string value = 2;
 }
 
-message NumericAnnotation {
+message NumericAttribute {
   string key = 1;
   uint64 value = 2;
 }
 
-message StringAnnotationWithRelations {
+message StringAttributeWithRelations {
   string key = 1;
   string value = 2;
   uint64 related_entities = 3;
 }
 
-message NumericAnnotationWithRelations {
+message NumericAttributeWithRelations {
   string key = 1;
   uint64 value = 2;
   uint64 related_entities = 3;
@@ -209,8 +209,8 @@ message FullEntity {
   optional uint64 data_size = 3;
   EntityStatus status = 4;
 
-  repeated StringAnnotationWithRelations string_annotations = 5;
-  repeated NumericAnnotationWithRelations numeric_annotations = 6;
+  repeated StringAttributeWithRelations string_attributes = 5;
+  repeated NumericAttributeWithRelations numeric_attributes = 6;
 
   optional string created_at_tx_hash = 7;
   optional string created_at_operation_index = 8;

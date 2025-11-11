@@ -1,12 +1,9 @@
 use crate::helpers;
 
-use alloy_primitives::TxHash;
+use alloy_primitives::{Address, TxHash};
+use arkiv_storage_tx::{Create, StorageTransaction};
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
-use golem_base_sdk::{
-    entity::{Create, EncodableGolemBaseTransaction},
-    Address,
-};
 use helpers::{
     assert_json::{assert_fields, assert_fields_array},
     sample::{Block, Transaction},
@@ -34,7 +31,7 @@ async fn test_list_addresses_by_entities_owned() {
                 Transaction {
                     sender: owner1,
                     hash: Some(TxHash::random()),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![Create {
                             btl: 10,
                             ..Default::default()
@@ -46,7 +43,7 @@ async fn test_list_addresses_by_entities_owned() {
                 Transaction {
                     sender: owner2,
                     hash: Some(TxHash::random()),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![
                             Create {
                                 btl: 10,
@@ -64,7 +61,7 @@ async fn test_list_addresses_by_entities_owned() {
                 Transaction {
                     sender: owner3,
                     hash: Some(TxHash::random()),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![
                             Create {
                                 btl: 10,

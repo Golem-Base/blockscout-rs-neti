@@ -1,8 +1,8 @@
 use crate::helpers;
 
+use alloy_primitives::Address;
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
-use golem_base_sdk::Address;
 use pretty_assertions::assert_eq;
 
 #[tokio::test]

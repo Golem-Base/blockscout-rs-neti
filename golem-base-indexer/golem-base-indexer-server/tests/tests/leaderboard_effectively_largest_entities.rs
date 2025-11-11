@@ -1,13 +1,10 @@
 use crate::helpers;
 
-use alloy_primitives::{BlockHash, TxHash};
+use alloy_primitives::{Address, BlockHash, TxHash};
+use arkiv_storage_tx::{Create, StorageTransaction};
 use blockscout_service_launcher::test_server;
 use bytes::Bytes;
 use golem_base_indexer_logic::Indexer;
-use golem_base_sdk::{
-    entity::{Create, EncodableGolemBaseTransaction},
-    Address,
-};
 use helpers::{
     assert_json::assert_fields_array,
     sample::{Block, Transaction},
@@ -33,7 +30,7 @@ async fn test_list_effectively_largest_entities_endpoint() {
     fn gen_create(data: Bytes, btl: u64) -> Create {
         Create {
             btl,
-            data,
+            payload: data,
             ..Default::default()
         }
     }
@@ -46,7 +43,7 @@ async fn test_list_effectively_largest_entities_endpoint() {
             transactions: vec![Transaction {
                 hash: Some(TxHash::random()),
                 sender: Address::random(),
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     creates: vec![
                         gen_create(gen_bytes(5), 1000),
                         gen_create(gen_bytes(10), 100),

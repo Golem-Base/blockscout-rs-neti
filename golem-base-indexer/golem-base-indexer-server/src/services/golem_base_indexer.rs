@@ -47,23 +47,23 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             })?
             .ok_or(Status::not_found("entity not found"))?;
 
-        let string_annotations =
-            repository::annotations::find_active_string_annotations(&*self.db, key)
+        let string_attributes =
+            repository::attributes::find_active_string_attributes(&*self.db, key)
                 .await
                 .map_err(|err| {
-                    tracing::error!(?err, "failed to query annotations");
-                    Status::internal("failed to query annotations")
+                    tracing::error!(?err, "failed to query attributes");
+                    Status::internal("failed to query attributes")
                 })?;
 
-        let numeric_annotations =
-            repository::annotations::find_active_numeric_annotations(&*self.db, key)
+        let numeric_attributes =
+            repository::attributes::find_active_numeric_attributes(&*self.db, key)
                 .await
                 .map_err(|err| {
-                    tracing::error!(?err, "failed to query annotations");
-                    Status::internal("failed to query annotations")
+                    tracing::error!(?err, "failed to query attributes");
+                    Status::internal("failed to query attributes")
                 })?;
 
-        let entity = FullEntity::new(entity, string_annotations, numeric_annotations);
+        let entity = FullEntity::new(entity, string_attributes, numeric_attributes);
 
         Ok(Response::new(entity))
     }

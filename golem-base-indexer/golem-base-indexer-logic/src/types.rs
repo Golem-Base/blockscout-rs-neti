@@ -11,39 +11,39 @@ pub type Timestamp = DateTime<Utc>;
 pub type EntityKey = B256;
 
 #[derive(Clone, Debug)]
-pub struct FullAnnotation<T: std::fmt::Debug> {
+pub struct FullAttribute<T: std::fmt::Debug> {
     pub entity_key: EntityKey,
     pub operation_tx_hash: TxHash,
     pub operation_index: u64,
-    pub annotation: Annotation<T>,
+    pub attribute: Attribute<T>,
 }
 
 #[derive(Clone, Debug)]
-pub struct AnnotationWithRelations<T: std::fmt::Debug> {
-    pub annotation: Annotation<T>,
+pub struct AttributeWithRelations<T: std::fmt::Debug> {
+    pub attribute: Attribute<T>,
     pub related_entities: u64,
 }
 
 #[derive(Clone, Debug)]
-pub struct Annotation<T: std::fmt::Debug> {
+pub struct Attribute<T: std::fmt::Debug> {
     pub key: String,
     pub value: T,
 }
 
-impl<T: std::fmt::Debug> From<FullAnnotation<T>> for Annotation<T> {
-    fn from(v: FullAnnotation<T>) -> Self {
-        v.annotation
+impl<T: std::fmt::Debug> From<FullAttribute<T>> for Attribute<T> {
+    fn from(v: FullAttribute<T>) -> Self {
+        v.attribute
     }
 }
 
-pub type StringAnnotation = Annotation<String>;
-pub type NumericAnnotation = Annotation<u64>;
+pub type StringAttribute = Attribute<String>;
+pub type NumericAttribute = Attribute<u64>;
 
-pub type FullStringAnnotation = FullAnnotation<String>;
-pub type FullNumericAnnotation = FullAnnotation<u64>;
+pub type FullStringAttribute = FullAttribute<String>;
+pub type FullNumericAttribute = FullAttribute<u64>;
 
-pub type StringAnnotationWithRelations = AnnotationWithRelations<String>;
-pub type NumericAnnotationWithRelations = AnnotationWithRelations<u64>;
+pub type StringAttributeWithRelations = AttributeWithRelations<String>;
+pub type NumericAttributeWithRelations = AttributeWithRelations<u64>;
 
 #[derive(Clone, Debug)]
 pub struct Log {
@@ -258,8 +258,8 @@ pub struct EntityHistoryFilter {
 #[derive(Debug, Clone)]
 pub struct EntitiesFilter {
     pub status: Option<EntityStatus>,
-    pub string_annotation: Option<StringAnnotation>,
-    pub numeric_annotation: Option<NumericAnnotation>,
+    pub string_attribute: Option<StringAttribute>,
+    pub numeric_attribute: Option<NumericAttribute>,
     pub owner: Option<Address>,
 }
 

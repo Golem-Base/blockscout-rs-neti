@@ -2,11 +2,10 @@ use crate::{
     types::{Block, BlockNumber, Bytes, EntityKey, Timestamp, TxHash},
     well_known::SECS_PER_BLOCK,
 };
-use alloy_primitives::U256;
+use alloy_primitives::{keccak256, U256};
 use alloy_sol_types::SolValue;
 use anyhow::Result;
 use chrono::Duration;
-use golem_base_sdk::keccak256;
 
 pub fn block_timestamp(number: BlockNumber, reference_block: &Block) -> Option<Timestamp> {
     let diff = (number as i64).checked_sub(reference_block.number as i64)?;
@@ -44,7 +43,7 @@ pub fn decode_extend_log_data(data: &Bytes) -> Result<u64> {
 
 #[cfg(test)]
 mod tests {
-    use crate::golem_base::{block_timestamp, block_timestamp_sec, entity_key, Block};
+    use crate::arkiv::{block_timestamp, block_timestamp_sec, entity_key, Block};
     use alloy_primitives::{b256, bytes};
 
     #[test]

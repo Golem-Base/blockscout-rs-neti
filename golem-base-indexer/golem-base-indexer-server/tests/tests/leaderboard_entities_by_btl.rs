@@ -1,13 +1,10 @@
 use crate::helpers::{self, utils::iso_to_ts_sec};
 
-use alloy_primitives::{BlockHash, TxHash};
+use alloy_primitives::{Address, BlockHash, TxHash};
+use arkiv_storage_tx::{StorageTransaction, Update};
 use blockscout_service_launcher::test_server;
 use bytes::Bytes;
 use golem_base_indexer_logic::{types::EntityKey, Indexer};
-use golem_base_sdk::{
-    entity::{EncodableGolemBaseTransaction, Update},
-    Address,
-};
 use pretty_assertions::assert_eq;
 
 use crate::helpers::{
@@ -36,36 +33,36 @@ async fn test_list_entities_by_btl_endpoint() {
             transactions: vec![Transaction {
                 hash: Some(TxHash::random()),
                 sender: Address::random(),
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     updates: vec![
                         Update {
                             entity_key: EntityKey::random(),
                             btl: 100,
-                            data: data.clone(),
+                            payload: data.clone(),
                             ..Default::default()
                         },
                         Update {
                             entity_key: EntityKey::random(),
                             btl: 200,
-                            data: data.clone(),
+                            payload: data.clone(),
                             ..Default::default()
                         },
                         Update {
                             entity_key: EntityKey::random(),
                             btl: 300,
-                            data: data.clone(),
+                            payload: data.clone(),
                             ..Default::default()
                         },
                         Update {
                             entity_key: EntityKey::random(),
                             btl: 300,
-                            data: data.clone(),
+                            payload: data.clone(),
                             ..Default::default()
                         },
                         Update {
                             entity_key: deleted_entity_key,
                             btl: 10_000,
-                            data: data.clone(),
+                            payload: data.clone(),
                             ..Default::default()
                         },
                     ],
@@ -88,7 +85,7 @@ async fn test_list_entities_by_btl_endpoint() {
             transactions: vec![Transaction {
                 hash: Some(TxHash::random()),
                 sender: Address::random(),
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     deletes: vec![deleted_entity_key],
                     ..Default::default()
                 },
