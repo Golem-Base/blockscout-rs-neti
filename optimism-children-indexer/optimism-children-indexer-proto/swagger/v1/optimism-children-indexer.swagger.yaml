@@ -103,7 +103,11 @@ definitions:
         type: string
       is_creation:
         type: boolean
+      execution_tx:
+        $ref: '#/definitions/v1TxInfo'
         title: string calldata = 8;
+      destination_chain_id:
+        type: string
   v1DepositsResponse:
     type: object
     properties:
@@ -148,3 +152,5 @@ definitions:
         type: string
       to:
         type: string
+      success:
+        type: boolean

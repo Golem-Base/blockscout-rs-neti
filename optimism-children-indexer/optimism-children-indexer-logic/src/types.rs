@@ -1,7 +1,9 @@
 use alloy_primitives::{Bytes, B256};
 use chrono::{DateTime, Utc};
 
-pub use alloy_primitives::{Address, BlockHash, BlockNumber, TxHash, U256 as CurrencyAmount};
+pub use alloy_primitives::{
+    Address, BlockHash, BlockNumber, ChainId, TxHash, U256 as CurrencyAmount,
+};
 use anyhow::{Context, Result};
 
 pub type Timestamp = DateTime<Utc>;
@@ -142,4 +144,21 @@ pub struct DepositV0 {
     pub gas_limit: u64,
     pub is_creation: bool,
     pub calldata: Bytes,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FullDeposit<T> {
+    pub event: FullEvent<TransactionDepositedEvent<T>>,
+    pub execution_tx: Option<ExecutionTransaction>,
+    pub chain_id: Option<ChainId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExecutionTransaction {
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+    pub hash: TxHash,
+    pub from: Address,
+    pub to: Address,
+    pub success: bool,
 }
