@@ -1,10 +1,10 @@
 use crate::helpers;
 
 use alloy_primitives::Address;
+use arkiv_storage_tx::{Extend, StorageTransaction, Update};
 use blockscout_service_launcher::test_server;
 use bytes::Bytes;
 use golem_base_indexer_logic::{types::EntityKey, Indexer};
-use golem_base_sdk::entity::{EncodableGolemBaseTransaction, Extend, Update};
 
 use crate::helpers::{
     assert_json::{assert_fields, assert_fields_array, assert_has_keys},
@@ -34,11 +34,11 @@ async fn test_get_entity_history_endpoint_works() {
             number: 1,
             transactions: vec![Transaction {
                 sender,
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     updates: vec![Update {
                         entity_key,
                         btl: 100,
-                        data: data.clone(),
+                        payload: data.clone(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -73,7 +73,7 @@ async fn test_get_entity_history_endpoint_works() {
             number: 2,
             transactions: vec![Transaction {
                 sender,
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     extensions: vec![
                         Extend {
                             entity_key,
@@ -102,7 +102,7 @@ async fn test_get_entity_history_endpoint_works() {
             number: 3,
             transactions: vec![Transaction {
                 sender,
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     deletes: vec![entity_key],
                     ..Default::default()
                 },

@@ -6,8 +6,8 @@ use pretty_assertions::assert_eq;
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
-async fn test_expired_entities_annotations_get_deactivated() {
-    let db = helpers::init_db("test", "expired_entities_annotations_get_deactivated").await;
+async fn test_expired_entities_attributes_get_deactivated() {
+    let db = helpers::init_db("test", "expired_entities_attributes_get_deactivated").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
     helpers::load_data(&*client, include_str!("../fixtures/sample_data.sql")).await;
@@ -27,8 +27,8 @@ async fn test_expired_entities_annotations_get_deactivated() {
       "data": null,
       "data_size": null,
       "status": "EXPIRED",
-      "string_annotations": [],
-      "numeric_annotations": [],
+      "string_attributes": [],
+      "numeric_attributes": [],
       "created_at_tx_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
       "created_at_operation_index": "0",
       "created_at_block_number": "6",

@@ -1,7 +1,7 @@
 use crate::helpers;
 
+use arkiv_storage_tx::{StorageTransaction, Update};
 use golem_base_indexer_logic::{repository, types::EntityKey, Indexer};
-use golem_base_sdk::entity::{EncodableGolemBaseTransaction, Update};
 use pretty_assertions::assert_eq;
 
 use crate::helpers::sample::{Block, Transaction};
@@ -20,7 +20,7 @@ async fn test_expired_entities_dont_get_updated() {
         Block {
             number: 2,
             transactions: vec![Transaction {
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     deletes: vec![entity_key],
                     ..Default::default()
                 },
@@ -37,11 +37,11 @@ async fn test_expired_entities_dont_get_updated() {
         Block {
             number: 1,
             transactions: vec![Transaction {
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     updates: vec![Update {
                         entity_key,
                         btl: 100,
-                        data: b"asd".as_slice().into(),
+                        payload: b"asd".as_slice().into(),
                         ..Default::default()
                     }],
                     ..Default::default()

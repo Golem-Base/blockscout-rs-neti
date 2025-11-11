@@ -1,13 +1,10 @@
 use crate::helpers;
 
-use alloy_primitives::TxHash;
+use alloy_primitives::{Address, TxHash};
+use arkiv_storage_tx::{Create, StorageTransaction};
 use blockscout_service_launcher::test_server;
 use bytes::Bytes;
 use golem_base_indexer_logic::Indexer;
-use golem_base_sdk::{
-    entity::{Create, EncodableGolemBaseTransaction},
-    Address,
-};
 use helpers::{
     assert_json::{assert_fields, assert_fields_array},
     sample::{Block, Transaction},
@@ -30,7 +27,7 @@ async fn list_addresses_by_data_owned() {
     let data: Bytes = "10 bytes  ".into();
     let create = Create {
         btl: 10,
-        data: data.clone(),
+        payload: data.clone(),
         ..Default::default()
     };
 
@@ -42,7 +39,7 @@ async fn list_addresses_by_data_owned() {
                 Transaction {
                     sender: owner1,
                     hash: Some(TxHash::random()),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![create.clone()],
                         ..Default::default()
                     },
@@ -51,7 +48,7 @@ async fn list_addresses_by_data_owned() {
                 Transaction {
                     sender: owner2,
                     hash: Some(TxHash::random()),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![create.clone(), create.clone()],
                         ..Default::default()
                     },
@@ -60,7 +57,7 @@ async fn list_addresses_by_data_owned() {
                 Transaction {
                     sender: owner3,
                     hash: Some(TxHash::random()),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![create.clone(), create.clone(), create.clone()],
                         ..Default::default()
                     },

@@ -1,5 +1,5 @@
 pub mod address;
-pub mod annotations;
+pub mod attributes;
 pub mod block;
 pub mod blockscout;
 pub mod entities;

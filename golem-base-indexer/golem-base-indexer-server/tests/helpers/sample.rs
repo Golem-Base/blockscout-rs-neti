@@ -1,12 +1,11 @@
-use alloy_primitives::address;
-use alloy_rlp::encode;
+use alloy_primitives::{address, Bytes};
 use anyhow::Result;
+use arkiv_storage_tx::StorageTransaction;
 use chrono::{DateTime, Utc};
 use golem_base_indexer_logic::{
-    golem_base::block_timestamp,
+    arkiv::block_timestamp,
     types::{Address, BlockHash, BlockNumber, TxHash},
 };
-use golem_base_sdk::entity::EncodableGolemBaseTransaction;
 use sea_orm::{ConnectionTrait, Statement};
 
 #[derive(Default)]
@@ -22,7 +21,7 @@ pub struct Transaction {
     pub hash: Option<TxHash>,
     pub sender: Address,
     pub to: Option<Address>,
-    pub operations: EncodableGolemBaseTransaction,
+    pub operations: StorageTransaction,
 }
 
 pub async fn insert_data<T: ConnectionTrait>(txn: &T, block: Block) -> Result<()> {
@@ -51,11 +50,12 @@ pub async fn insert_data<T: ConnectionTrait>(txn: &T, block: Block) -> Result<()
         ])).await?;
     for (i, tx) in block.transactions.into_iter().enumerate() {
         let tx_hash = tx.hash.unwrap_or_else(|| TxHash::random());
-        let calldata: Vec<u8> = encode(tx.operations);
+        let calldata: Bytes = tx.operations.try_into()?;
+        let calldata: Vec<u8> = calldata.into();
         let index = i as i64;
         let to = tx
             .to
-            .unwrap_or_else(|| address!("0x0000000000000000000000000000000060138453"));
+            .unwrap_or_else(|| address!("0x00000000000000000000000000000061726B6976"));
         txn.execute(Statement::from_sql_and_values(txn.get_database_backend(), r#"
         insert into transactions (gas_used, gas_price, cumulative_gas_used, gas, hash, index, input, nonce, r, s, status, v, value, inserted_at, updated_at, block_hash, block_number, from_address_hash, to_address_hash, block_timestamp)
         values (100, 100, 100, 100, $1, $6, $2, 0, 0, 0, 1, 0, 0, current_timestamp, current_timestamp, $3, $4, $5, $8, $7)

@@ -1,14 +1,12 @@
 use crate::helpers;
 
+use alloy_primitives::Address;
+use arkiv_storage_tx::{Create, StorageTransaction};
 use blockscout_service_launcher::test_server;
 use chrono::{DateTime, Duration, Utc};
 use golem_base_indexer_logic::{
     types::{ChartInfo, ChartPoint, TxHash},
     Indexer,
-};
-use golem_base_sdk::{
-    entity::{Create, EncodableGolemBaseTransaction},
-    Address,
 };
 use helpers::{
     sample::{insert_data, Block, Transaction},
@@ -44,9 +42,21 @@ async fn storage_forecast_hourly_should_work() {
     // Insert test entities
     let utc_current = Utc::now();
     let creates = vec![
-        Create::new(vec![0xff; 1024], 1800), // 1k, will expire in one hour
-        Create::new(vec![0xff; 1024], 3600), // 1k, will expire in two hours
-        Create::new(vec![0xff; 1024], 5400), // 1k, will expire in three hours
+        Create {
+            payload: vec![0xff; 1024].into(),
+            btl: 1800,
+            ..Default::default()
+        },
+        Create {
+            payload: vec![0xff; 1024].into(),
+            btl: 3600,
+            ..Default::default()
+        },
+        Create {
+            payload: vec![0xff; 1024].into(),
+            btl: 5400,
+            ..Default::default()
+        },
     ];
     let block = Block {
         number: 1,
@@ -54,7 +64,7 @@ async fn storage_forecast_hourly_should_work() {
         transactions: vec![Transaction {
             sender: Address::random(),
             hash: Some(TxHash::random()),
-            operations: EncodableGolemBaseTransaction {
+            operations: StorageTransaction {
                 creates,
                 ..Default::default()
             },
@@ -129,9 +139,21 @@ async fn storage_forecast_daily_should_work() {
     // Insert test entities
     let utc_current = Utc::now();
     let creates = vec![
-        Create::new(vec![0xee; 4096], 43200), // 4k, will expire in one day
-        Create::new(vec![0xee; 4096], 86400), // 4k, will expire in two days
-        Create::new(vec![0xdd; 4096], 1944000), // 4k, will expire in 45 days
+        Create {
+            payload: vec![0xee; 4096].into(),
+            btl: 43200,
+            ..Default::default()
+        },
+        Create {
+            payload: vec![0xee; 4096].into(),
+            btl: 86400,
+            ..Default::default()
+        },
+        Create {
+            payload: vec![0xee; 4096].into(),
+            btl: 1944000,
+            ..Default::default()
+        },
     ];
     let block = Block {
         number: 1,
@@ -139,7 +161,7 @@ async fn storage_forecast_daily_should_work() {
         transactions: vec![Transaction {
             sender: Address::random(),
             hash: Some(TxHash::random()),
-            operations: EncodableGolemBaseTransaction {
+            operations: StorageTransaction {
                 creates,
                 ..Default::default()
             },

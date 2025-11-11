@@ -1,12 +1,9 @@
 use crate::helpers;
 
-use alloy_primitives::TxHash;
+use alloy_primitives::{Address, TxHash};
+use arkiv_storage_tx::{Create, Extend, StorageTransaction, Update};
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::{types::EntityKey, Indexer};
-use golem_base_sdk::{
-    entity::{Create, EncodableGolemBaseTransaction, Extend, Update},
-    Address,
-};
 use helpers::{
     assert_json::{assert_fields, assert_fields_array},
     sample::{Block, Transaction},
@@ -40,7 +37,7 @@ async fn test_list_addresses_by_entities_created() {
                 Transaction {
                     sender: owner1,
                     hash: Some(tx_hash),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![Create {
                             btl: 10,
                             ..Default::default()
@@ -48,7 +45,7 @@ async fn test_list_addresses_by_entities_created() {
                         updates: vec![Update {
                             entity_key,
                             btl: 100,
-                            data: b"data".as_slice().into(),
+                            payload: b"data".as_slice().into(),
                             ..Default::default()
                         }],
                         ..Default::default()
@@ -58,7 +55,7 @@ async fn test_list_addresses_by_entities_created() {
                 Transaction {
                     sender: owner2,
                     hash: Some(TxHash::random()),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![
                             Create {
                                 btl: 10,
@@ -80,7 +77,7 @@ async fn test_list_addresses_by_entities_created() {
                 Transaction {
                     sender: owner3,
                     hash: Some(TxHash::random()),
-                    operations: EncodableGolemBaseTransaction {
+                    operations: StorageTransaction {
                         creates: vec![
                             Create {
                                 btl: 1,
@@ -122,11 +119,11 @@ async fn test_list_addresses_by_entities_created() {
             transactions: vec![Transaction {
                 sender: owner1,
                 hash: Some(TxHash::random()),
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     updates: vec![Update {
                         entity_key,
                         btl: 200,
-                        data: b"data".as_slice().into(),
+                        payload: b"data".as_slice().into(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -146,7 +143,7 @@ async fn test_list_addresses_by_entities_created() {
             transactions: vec![Transaction {
                 sender: owner4,
                 hash: Some(TxHash::random()),
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     creates: vec![Create {
                         btl: 10,
                         ..Default::default()

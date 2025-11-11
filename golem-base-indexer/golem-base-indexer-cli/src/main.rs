@@ -34,8 +34,8 @@ async fn list_entity_keys(db: DatabaseConnection) -> Result<()> {
             },
             entities_filter: EntitiesFilter {
                 status: None,
-                string_annotation: None,
-                numeric_annotation: None,
+                string_attribute: None,
+                numeric_attribute: None,
                 owner: None,
             },
         },

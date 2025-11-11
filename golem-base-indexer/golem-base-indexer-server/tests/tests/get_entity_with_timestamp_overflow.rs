@@ -1,12 +1,9 @@
 use crate::helpers;
 
-use alloy_primitives::{BlockHash, TxHash};
+use alloy_primitives::{Address, BlockHash, TxHash};
+use arkiv_storage_tx::{StorageTransaction, Update};
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::{types::EntityKey, well_known::SECS_PER_BLOCK, Indexer};
-use golem_base_sdk::{
-    entity::{EncodableGolemBaseTransaction, Update},
-    Address,
-};
 
 use crate::helpers::{
     assert_json::assert_fields,
@@ -38,11 +35,11 @@ async fn test_get_entity_with_timestamp_overflow() {
             transactions: vec![Transaction {
                 hash: Some(TxHash::random()),
                 sender: Address::random(),
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     updates: vec![Update {
                         entity_key,
                         btl,
-                        data: b"data".as_slice().into(),
+                        payload: b"data".as_slice().into(),
                         ..Default::default()
                     }],
                     ..Default::default()

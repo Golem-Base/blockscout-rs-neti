@@ -1,11 +1,9 @@
 use crate::helpers;
 
+use alloy_primitives::Address;
+use arkiv_storage_tx::{Create, StorageTransaction};
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::{types::TxHash, Indexer};
-use golem_base_sdk::{
-    entity::{Create, EncodableGolemBaseTransaction},
-    Address,
-};
 use helpers::{
     sample::{insert_data, insert_gas_transactions, Block, Transaction},
     utils::refresh_leaderboards,
@@ -39,13 +37,16 @@ async fn address_leaderboard_ranks_should_work() {
     insert_gas_transactions(&*client, address1, 1_000_000_000_000_000_000, 1, 1)
         .await
         .unwrap();
-    let creates = vec![Create::new(vec![], 1000)]; // A single empty entity with a BTL of 1000
+    let creates = vec![Create {
+        btl: 1000,
+        ..Default::default()
+    }];
     let block = Block {
         number: 1,
         transactions: vec![Transaction {
             sender: address1,
             hash: Some(TxHash::random()),
-            operations: EncodableGolemBaseTransaction {
+            operations: StorageTransaction {
                 creates,
                 ..Default::default()
             },
@@ -59,13 +60,20 @@ async fn address_leaderboard_ranks_should_work() {
     insert_gas_transactions(&*client, address2, 1_000_000_000_000_000, 1, 1)
         .await
         .unwrap();
-    let creates = vec![Create::new(vec![0; 4], 1); 100]; // A hundred of 4-byte entities with a BTL of 1
+    let creates = vec![
+        Create {
+            payload: vec![0; 4].into(),
+            btl: 1,
+            ..Default::default()
+        };
+        100
+    ]; // A hundred of 4-byte entities with a BTL of 1
     let block = Block {
         number: 2,
         transactions: vec![Transaction {
             sender: address2,
             hash: Some(TxHash::random()),
-            operations: EncodableGolemBaseTransaction {
+            operations: StorageTransaction {
                 creates,
                 ..Default::default()
             },
@@ -79,13 +87,20 @@ async fn address_leaderboard_ranks_should_work() {
     insert_gas_transactions(&*client, address3, 1_000_000_000_000, 1, 1)
         .await
         .unwrap();
-    let creates = vec![Create::new(vec![0; 16], 4); 10]; // Ten 16-byte entities with BTL of 4
+    let creates = vec![
+        Create {
+            payload: vec![0; 16].into(),
+            btl: 4,
+            ..Default::default()
+        };
+        10
+    ];
     let block = Block {
         number: 3,
         transactions: vec![Transaction {
             sender: address3,
             hash: Some(TxHash::random()),
-            operations: EncodableGolemBaseTransaction {
+            operations: StorageTransaction {
                 creates,
                 ..Default::default()
             },
@@ -99,14 +114,21 @@ async fn address_leaderboard_ranks_should_work() {
     insert_gas_transactions(&*client, address4, 1_000_000_000, 1, 1)
         .await
         .unwrap();
-    let creates = vec![Create::new(vec![0xff; 32768], 256); 2]; // Two 32-kilobyte entities with a
-                                                                // BTL of 256
+    let creates = vec![
+        Create {
+            payload: vec![0xff; 32768].into(),
+            btl: 256,
+            ..Default::default()
+        };
+        2
+    ];
+    // BTL of 256
     let block = Block {
         number: 4,
         transactions: vec![Transaction {
             sender: address4,
             hash: Some(TxHash::random()),
-            operations: EncodableGolemBaseTransaction {
+            operations: StorageTransaction {
                 creates,
                 ..Default::default()
             },

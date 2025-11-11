@@ -1,13 +1,13 @@
 use crate::helpers;
 
 use alloy_primitives::{Address, TxHash};
+use arkiv_storage_tx::{Extend, StorageTransaction, Update};
 use blockscout_service_launcher::test_server;
 use bytes::Bytes;
 use golem_base_indexer_logic::{
     types::{BlockHash, EntityKey},
     Indexer,
 };
-use golem_base_sdk::entity::{EncodableGolemBaseTransaction, Extend, Update};
 
 use crate::helpers::{
     assert_json::assert_fields,
@@ -37,11 +37,11 @@ async fn test_get_operation_endpoint() {
             number: 1,
             transactions: vec![Transaction {
                 sender,
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     updates: vec![Update {
                         entity_key,
                         btl: 100,
-                        data: data.clone(),
+                        payload: data.clone(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -66,7 +66,7 @@ async fn test_get_operation_endpoint() {
             transactions: vec![Transaction {
                 hash: Some(tx_hash),
                 sender,
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     extensions: vec![
                         Extend {
                             entity_key,
@@ -144,11 +144,11 @@ async fn test_get_operation_endpoint() {
             transactions: vec![Transaction {
                 hash: Some(tx_hash),
                 sender,
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     updates: vec![Update {
                         entity_key,
                         btl: 100,
-                        data: update_data.clone(),
+                        payload: update_data.clone(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -173,7 +173,7 @@ async fn test_get_operation_endpoint() {
             transactions: vec![Transaction {
                 hash: Some(tx_hash_2),
                 sender,
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     deletes: vec![entity_key],
                     ..Default::default()
                 },

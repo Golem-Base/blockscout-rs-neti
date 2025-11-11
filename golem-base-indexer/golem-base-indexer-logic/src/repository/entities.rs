@@ -13,7 +13,7 @@ use sea_orm::{
 use tracing::instrument;
 
 use crate::{
-    golem_base::{block_timestamp, block_timestamp_sec},
+    arkiv::{block_timestamp, block_timestamp_sec},
     model::entity_data_size_histogram,
     pagination::{paginate, paginate_try_from},
     repository::sql,
@@ -233,14 +233,14 @@ fn filtered_entities(filter: EntitiesFilter) -> Select<golem_base_entities::Enti
         q = q.filter(golem_base_entities::Column::Status.eq(status));
     }
 
-    if let Some(ann) = filter.string_annotation {
+    if let Some(ann) = filter.string_attribute {
         q = q
             .left_join(golem_base_string_annotations::Entity)
             .filter(golem_base_string_annotations::Column::Key.eq(ann.key))
             .filter(golem_base_string_annotations::Column::Value.eq(ann.value));
     }
 
-    if let Some(ann) = filter.numeric_annotation {
+    if let Some(ann) = filter.numeric_attribute {
         q = q
             .left_join(golem_base_numeric_annotations::Entity)
             .filter(golem_base_numeric_annotations::Column::Key.eq(ann.key))

@@ -1,11 +1,11 @@
 use std::ffi::OsString;
 
-use alloy_rlp::Decodable;
+use alloy_primitives::Bytes;
+use arkiv_storage_tx::StorageTransaction;
 use color_eyre::{Result, eyre::eyre};
-use golem_base_sdk::entity::EncodableGolemBaseTransaction;
 
 const HELP: &str = "\
-Golem Base L3 storagetx parser
+Arkiv L3 storagetx parser
 
 USAGE:
   storage-tx-parser hex-encoded-storage-tx-input
@@ -34,33 +34,34 @@ fn main() -> Result<()> {
     }
 
     let bytes: Vec<u8> = hex::decode(ops.pop().unwrap())?;
-    let tx = EncodableGolemBaseTransaction::decode(&mut bytes.as_slice())?;
+    let bytes: Bytes = bytes.into();
+    let tx: StorageTransaction = (&bytes).try_into()?;
 
     for create in tx.creates {
-        let data: String = String::from_utf8(create.data.as_ref().to_vec())?;
+        let data: String = String::from_utf8(create.payload.as_ref().to_vec())?;
         print!("create:\"{data}\":{}", create.btl);
-        for ann in create.string_annotations {
+        for ann in create.string_attributes {
             print!(":{}={}", ann.key, ann.value);
         }
-        for ann in create.numeric_annotations {
+        for ann in create.numeric_attributes {
             print!(":{}={}", ann.key, ann.value);
         }
-        println!("");
+        println!();
     }
     for update in tx.updates {
-        let data: String = String::from_utf8(update.data.as_ref().to_vec())?;
+        let data: String = String::from_utf8(update.payload.as_ref().to_vec())?;
         print!(
             "update:0x{}:\"{data}\":{}",
             hex::encode(update.entity_key),
             update.btl
         );
-        for ann in update.string_annotations {
+        for ann in update.string_attributes {
             print!(":{}={}", ann.key, ann.value);
         }
-        for ann in update.numeric_annotations {
+        for ann in update.numeric_attributes {
             print!(":{}={}", ann.key, ann.value);
         }
-        println!("");
+        println!();
     }
     for delete in tx.deletes {
         println!("delete:0x{}", hex::encode(delete));
@@ -70,6 +71,13 @@ fn main() -> Result<()> {
             "extend:0x{}:{}",
             hex::encode(extend.entity_key),
             extend.number_of_blocks
+        );
+    }
+    for change_owner in tx.change_owners {
+        println!(
+            "change-owner:0x{}:0x{}",
+            hex::encode(change_owner.entity_key),
+            hex::encode(change_owner.new_owner),
         );
     }
     Ok(())

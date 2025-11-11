@@ -11,10 +11,10 @@ use golem_base_indexer_logic::types::{
     LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
-    ListEntitiesFilter, ListOperationsFilter, NumericAnnotation, NumericAnnotationWithRelations,
+    ListEntitiesFilter, ListOperationsFilter, NumericAttribute, NumericAttributeWithRelations,
     OperationData, OperationFilter, OperationType, OperationView, OperationsCount,
-    OperationsFilter, PaginationMetadata, PaginationParams, StringAnnotation,
-    StringAnnotationWithRelations, Transaction,
+    OperationsFilter, PaginationMetadata, PaginationParams, StringAttribute,
+    StringAttributeWithRelations, Transaction,
 };
 
 pub mod blockscout {
@@ -33,8 +33,8 @@ use blockscout::golem_base_indexer::v1;
 impl v1::FullEntity {
     pub fn new(
         entity: FullEntity,
-        string_annotations: Vec<StringAnnotationWithRelations>,
-        numeric_annotations: Vec<NumericAnnotationWithRelations>,
+        string_attributes: Vec<StringAttributeWithRelations>,
+        numeric_attributes: Vec<NumericAttributeWithRelations>,
     ) -> Self {
         let status: v1::EntityStatus = entity.status.into();
         let data_size = entity.data.as_ref().map(|v| v.len() as u64);
@@ -64,34 +64,34 @@ impl v1::FullEntity {
             fees_paid: entity.fees_paid.to_string(),
             gas_used: entity.gas_used.to_string(),
 
-            string_annotations: string_annotations.into_iter().map(Into::into).collect(),
-            numeric_annotations: numeric_annotations.into_iter().map(Into::into).collect(),
+            string_attributes: string_attributes.into_iter().map(Into::into).collect(),
+            numeric_attributes: numeric_attributes.into_iter().map(Into::into).collect(),
         }
     }
 }
 
-impl From<StringAnnotationWithRelations> for v1::StringAnnotationWithRelations {
-    fn from(value: StringAnnotationWithRelations) -> Self {
+impl From<StringAttributeWithRelations> for v1::StringAttributeWithRelations {
+    fn from(value: StringAttributeWithRelations) -> Self {
         Self {
-            key: value.annotation.key,
-            value: value.annotation.value,
+            key: value.attribute.key,
+            value: value.attribute.value,
             related_entities: value.related_entities,
         }
     }
 }
 
-impl From<NumericAnnotationWithRelations> for v1::NumericAnnotationWithRelations {
-    fn from(value: NumericAnnotationWithRelations) -> Self {
+impl From<NumericAttributeWithRelations> for v1::NumericAttributeWithRelations {
+    fn from(value: NumericAttributeWithRelations) -> Self {
         Self {
-            key: value.annotation.key,
-            value: value.annotation.value,
+            key: value.attribute.key,
+            value: value.attribute.value,
             related_entities: value.related_entities,
         }
     }
 }
 
-impl From<StringAnnotation> for v1::StringAnnotation {
-    fn from(value: StringAnnotation) -> Self {
+impl From<StringAttribute> for v1::StringAttribute {
+    fn from(value: StringAttribute) -> Self {
         Self {
             key: value.key,
             value: value.value,
@@ -99,8 +99,8 @@ impl From<StringAnnotation> for v1::StringAnnotation {
     }
 }
 
-impl From<NumericAnnotation> for v1::NumericAnnotation {
-    fn from(value: NumericAnnotation) -> Self {
+impl From<NumericAttribute> for v1::NumericAttribute {
+    fn from(value: NumericAttribute) -> Self {
         Self {
             key: value.key,
             value: value.value,
@@ -108,8 +108,8 @@ impl From<NumericAnnotation> for v1::NumericAnnotation {
     }
 }
 
-impl From<v1::StringAnnotation> for StringAnnotation {
-    fn from(value: v1::StringAnnotation) -> Self {
+impl From<v1::StringAttribute> for StringAttribute {
+    fn from(value: v1::StringAttribute) -> Self {
         Self {
             key: value.key,
             value: value.value,
@@ -117,8 +117,8 @@ impl From<v1::StringAnnotation> for StringAnnotation {
     }
 }
 
-impl From<v1::NumericAnnotation> for NumericAnnotation {
-    fn from(value: v1::NumericAnnotation) -> Self {
+impl From<v1::NumericAttribute> for NumericAttribute {
+    fn from(value: v1::NumericAttribute) -> Self {
         Self {
             key: value.key,
             value: value.value,
@@ -442,24 +442,22 @@ impl TryFrom<v1::ListEntitiesRequest> for ListEntitiesFilter {
 
     fn try_from(request: v1::ListEntitiesRequest) -> Result<Self> {
         let status: v1::entity_status_filter::EntityStatusFilter = request.status.try_into()?;
-        let string_annotation = match (
-            request.string_annotation_key,
-            request.string_annotation_value,
-        ) {
-            (Some(key), Some(value)) => Some(StringAnnotation { key, value }),
+        let string_attribute = match (request.string_attribute_key, request.string_attribute_value)
+        {
+            (Some(key), Some(value)) => Some(StringAttribute { key, value }),
             (None, None) => None,
-            _ => return Err(anyhow!("Invalid string_annotation filter")),
+            _ => return Err(anyhow!("Invalid string_attribute filter")),
         };
-        let numeric_annotation = match (
-            request.numeric_annotation_key,
-            request.numeric_annotation_value,
+        let numeric_attribute = match (
+            request.numeric_attribute_key,
+            request.numeric_attribute_value,
         ) {
-            (Some(key), Some(value)) => Some(NumericAnnotation {
+            (Some(key), Some(value)) => Some(NumericAttribute {
                 key,
                 value: value.parse()?,
             }),
             (None, None) => None,
-            _ => return Err(anyhow!("Invalid numeric_annotation filter")),
+            _ => return Err(anyhow!("Invalid numeric_attribute filter")),
         };
         Ok(Self {
             pagination: PaginationParams {
@@ -468,8 +466,8 @@ impl TryFrom<v1::ListEntitiesRequest> for ListEntitiesFilter {
             },
             entities_filter: EntitiesFilter {
                 status: status.into(),
-                string_annotation,
-                numeric_annotation,
+                string_attribute,
+                numeric_attribute,
                 owner: request.owner.map(|v| v.parse()).transpose()?,
             },
         })
@@ -481,29 +479,27 @@ impl TryFrom<v1::CountEntitiesRequest> for EntitiesFilter {
 
     fn try_from(request: v1::CountEntitiesRequest) -> Result<Self> {
         let status: v1::entity_status_filter::EntityStatusFilter = request.status.try_into()?;
-        let string_annotation = match (
-            request.string_annotation_key,
-            request.string_annotation_value,
-        ) {
-            (Some(key), Some(value)) => Some(StringAnnotation { key, value }),
+        let string_attribute = match (request.string_attribute_key, request.string_attribute_value)
+        {
+            (Some(key), Some(value)) => Some(StringAttribute { key, value }),
             (None, None) => None,
-            _ => return Err(anyhow!("Invalid string_annotation filter")),
+            _ => return Err(anyhow!("Invalid string_attribute filter")),
         };
-        let numeric_annotation = match (
-            request.numeric_annotation_key,
-            request.numeric_annotation_value,
+        let numeric_attribute = match (
+            request.numeric_attribute_key,
+            request.numeric_attribute_value,
         ) {
-            (Some(key), Some(value)) => Some(NumericAnnotation {
+            (Some(key), Some(value)) => Some(NumericAttribute {
                 key,
                 value: value.parse()?,
             }),
             (None, None) => None,
-            _ => return Err(anyhow!("Invalid numeric_annotation filter")),
+            _ => return Err(anyhow!("Invalid numeric_attribute filter")),
         };
         Ok(Self {
             status: status.into(),
-            string_annotation,
-            numeric_annotation,
+            string_attribute,
+            numeric_attribute,
             owner: request.owner.map(|v| v.parse()).transpose()?,
         })
     }

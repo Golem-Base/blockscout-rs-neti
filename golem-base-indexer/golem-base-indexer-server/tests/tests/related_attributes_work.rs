@@ -1,15 +1,12 @@
 use crate::helpers;
 
 use alloy_primitives::hex::ToHexExt;
+use arkiv_storage_tx::{Create, NumericAttribute, StorageTransaction, StringAttribute};
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::{
     repository,
     types::{EntitiesFilter, EntityStatus, ListEntitiesFilter, PaginationParams},
     Indexer,
-};
-use golem_base_sdk::{
-    entity::{Create, EncodableGolemBaseTransaction},
-    NumericAnnotation, StringAnnotation,
 };
 use pretty_assertions::assert_eq;
 
@@ -20,8 +17,8 @@ use crate::helpers::{
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
-async fn test_related_annotations_work() {
-    let db = helpers::init_db("test", "get_related_annotations_work").await;
+async fn test_related_attributes_work() {
+    let db = helpers::init_db("test", "get_related_attributes_work").await;
     let client = db.client();
     let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
 
@@ -29,33 +26,33 @@ async fn test_related_annotations_work() {
         &*client,
         Block {
             transactions: vec![Transaction {
-                operations: EncodableGolemBaseTransaction {
+                operations: StorageTransaction {
                     creates: vec![
                         Create {
-                            string_annotations: vec![
-                                StringAnnotation {
+                            string_attributes: vec![
+                                StringAttribute {
                                     key: "key1".into(),
                                     value: "val1".into(),
                                 },
-                                StringAnnotation {
+                                StringAttribute {
                                     key: "key1".into(),
                                     value: "val2".into(),
                                 },
-                                StringAnnotation {
+                                StringAttribute {
                                     key: "key2".into(),
                                     value: "val1".into(),
                                 },
                             ],
-                            numeric_annotations: vec![
-                                NumericAnnotation {
+                            numeric_attributes: vec![
+                                NumericAttribute {
                                     key: "key1".into(),
                                     value: 1,
                                 },
-                                NumericAnnotation {
+                                NumericAttribute {
                                     key: "key1".into(),
                                     value: 2,
                                 },
-                                NumericAnnotation {
+                                NumericAttribute {
                                     key: "key2".into(),
                                     value: 1,
                                 },
@@ -63,22 +60,22 @@ async fn test_related_annotations_work() {
                             ..Default::default()
                         },
                         Create {
-                            string_annotations: vec![
-                                StringAnnotation {
+                            string_attributes: vec![
+                                StringAttribute {
                                     key: "key1".into(),
                                     value: "val1".into(),
                                 },
-                                StringAnnotation {
+                                StringAttribute {
                                     key: "key1".into(),
                                     value: "val2".into(),
                                 },
                             ],
-                            numeric_annotations: vec![
-                                NumericAnnotation {
+                            numeric_attributes: vec![
+                                NumericAttribute {
                                     key: "key1".into(),
                                     value: 1,
                                 },
-                                NumericAnnotation {
+                                NumericAttribute {
                                     key: "key1".into(),
                                     value: 2,
                                 },
@@ -86,11 +83,11 @@ async fn test_related_annotations_work() {
                             ..Default::default()
                         },
                         Create {
-                            string_annotations: vec![StringAnnotation {
+                            string_attributes: vec![StringAttribute {
                                 key: "key1".into(),
                                 value: "val1".into(),
                             }],
-                            numeric_annotations: vec![NumericAnnotation {
+                            numeric_attributes: vec![NumericAttribute {
                                 key: "key1".into(),
                                 value: 1,
                             }],
@@ -112,17 +109,17 @@ async fn test_related_annotations_work() {
         .await
         .unwrap();
 
-    // find the first entity with all annotations
+    // find the first entity with all attributes
     let (entities, _) = repository::entities::list_entities(
         &*client,
         ListEntitiesFilter {
             entities_filter: EntitiesFilter {
                 status: Some(EntityStatus::Active),
-                string_annotation: Some(golem_base_indexer_logic::types::StringAnnotation {
+                string_attribute: Some(golem_base_indexer_logic::types::StringAttribute {
                     key: "key2".into(),
                     value: "val1".into(),
                 }),
-                numeric_annotation: None,
+                numeric_attribute: None,
                 owner: None,
             },
             pagination: PaginationParams {
@@ -138,18 +135,18 @@ async fn test_related_annotations_work() {
 
     let response: serde_json::Value =
         test_server::send_get_request(&base, &format!("/api/v1/entity/{key}")).await;
-    let string_annotations = response
+    let string_attributes = response
         .as_object()
         .unwrap()
-        .get("string_annotations")
+        .get("string_attributes")
         .unwrap();
-    let numeric_annotations = response
+    let numeric_attributes = response
         .as_object()
         .unwrap()
-        .get("numeric_annotations")
+        .get("numeric_attributes")
         .unwrap();
     assert_json::assert_fields_array(
-        string_annotations,
+        string_attributes,
         vec![
             serde_json::json!({
                 "key": "key1",
@@ -169,7 +166,7 @@ async fn test_related_annotations_work() {
         ],
     );
     assert_json::assert_fields_array(
-        numeric_annotations,
+        numeric_attributes,
         vec![
             serde_json::json!({
                 "key": "key1",

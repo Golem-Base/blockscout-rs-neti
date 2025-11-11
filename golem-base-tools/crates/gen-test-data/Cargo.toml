@@ -10,6 +10,6 @@ repository.workspace = true
 
 [dependencies]
 alloy-rlp.workspace = true
+arkiv-storage-tx = { path = "../arkiv-storage-tx" }
 color-eyre.workspace = true
-golem-base-sdk.workspace = true
 pico-args.workspace = true

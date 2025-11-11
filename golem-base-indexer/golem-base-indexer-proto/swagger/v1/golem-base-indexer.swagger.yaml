@@ -323,19 +323,19 @@ paths:
             - EXPIRED
             - ALL
           default: ACTIVE
-        - name: string_annotation_key
+        - name: string_attribute_key
           in: query
           required: false
           type: string
-        - name: string_annotation_value
+        - name: string_attribute_value
           in: query
           required: false
           type: string
-        - name: numeric_annotation_key
+        - name: numeric_attribute_key
           in: query
           required: false
           type: string
-        - name: numeric_annotation_value
+        - name: numeric_attribute_value
           in: query
           required: false
           type: string
@@ -382,19 +382,19 @@ paths:
             - EXPIRED
             - ALL
           default: ACTIVE
-        - name: string_annotation_key
+        - name: string_attribute_key
           in: query
           required: false
           type: string
-        - name: string_annotation_value
+        - name: string_attribute_value
           in: query
           required: false
           type: string
-        - name: numeric_annotation_key
+        - name: numeric_attribute_key
           in: query
           required: false
           type: string
-        - name: numeric_annotation_value
+        - name: numeric_attribute_value
           in: query
           required: false
           type: string
@@ -1222,16 +1222,16 @@ definitions:
         format: uint64
       status:
         $ref: '#/definitions/v1EntityStatus'
-      string_annotations:
+      string_attributes:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1StringAnnotationWithRelations'
-      numeric_annotations:
+          $ref: '#/definitions/v1StringAttributeWithRelations'
+      numeric_attributes:
         type: array
         items:
           type: object
-          $ref: '#/definitions/v1NumericAnnotationWithRelations'
+          $ref: '#/definitions/v1NumericAttributeWithRelations'
       created_at_tx_hash:
         type: string
       created_at_operation_index:
@@ -1478,7 +1478,7 @@ definitions:
           $ref: '#/definitions/v1Operation'
       pagination:
         $ref: '#/definitions/v1Pagination'
-  v1NumericAnnotationWithRelations:
+  v1NumericAttributeWithRelations:
     type: object
     properties:
       key:
@@ -1549,7 +1549,7 @@ definitions:
       total_items:
         type: string
         format: uint64
-  v1StringAnnotationWithRelations:
+  v1StringAttributeWithRelations:
     type: object
     properties:
       key:

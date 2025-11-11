@@ -1,80 +1,14 @@
 pub use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::{Statement, TransactionTrait};
 
-mod m20220101_000001_create_table;
-mod m20250802_103147_annotations_pk_fix;
-mod m20250807_143733_annotations_pk_fix2;
-mod m20250811_084027_annotations_pk_fix3;
-mod m20250811_091505_operations_reference_blocks;
-mod m20250812_100925_create_entity_state_history_view;
-mod m20250818_181205_nullable_entity_owner;
-mod m20250827_115015_fix_tracking_expirations_in_view;
-mod m20250904_082310_add_golem_base_events_abi;
-mod m20250909_062255_create_mview_timeseries_data_usage;
-mod m20250915_140948_optimize_history_view;
-mod m20250919_080000_update_indexer_queue_trigger;
-mod m20250920_085525_history_as_table;
-mod m20250922_081148_create_mview_leaderboard_biggest_spenders;
-mod m20250922_110337_create_mview_leaderboard_entities_owned;
-mod m20250922_112804_create_mview_leaderboard_data_owned;
-mod m20250922_112933_create_mview_leaderboard_largest_entities;
-mod m20250922_113500_create_mview_leaderboard_effectively_largest_entities;
-mod m20250922_113754_create_mview_leaderboard_entities_created;
-mod m20250923_081124_create_entity_data_size_histogram_matview;
-mod m20250923_150237_process_txs_in_order;
-mod m20250925_082126_process_expiration_logs_separately;
-mod m20250925_125411_create_mview_timeseries_storage_forecast;
-mod m20250926_110921_create_matview_output_indexes;
-mod m20250926_121733_create_mview_leaderboard_top_accounts;
-mod m20250929_100022_create_storage_forecast_matview_output_indexes;
-mod m20251002_101024_cleanup_processed_logs_from_queueu;
-mod m20251003_112845_create_mview_timeseries_operations_count;
-mod m20251010_082748_create_mview_timeseries_operations_count_by_type;
-mod m20251016_085731_migrate_logs_queue;
-mod m20251021_091030_cleanup_noop_txs_from_tx_queue;
-mod m20251024_100000_create_mview_timeseries_entity_count;
+mod m20251111_170928_v2;
 
 pub struct Migrator;
 
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![
-            Box::new(m20220101_000001_create_table::Migration),
-            Box::new(m20250802_103147_annotations_pk_fix::Migration),
-            Box::new(m20250807_143733_annotations_pk_fix2::Migration),
-            Box::new(m20250811_084027_annotations_pk_fix3::Migration),
-            Box::new(m20250811_091505_operations_reference_blocks::Migration),
-            Box::new(m20250812_100925_create_entity_state_history_view::Migration),
-            Box::new(m20250818_181205_nullable_entity_owner::Migration),
-            Box::new(m20250827_115015_fix_tracking_expirations_in_view::Migration),
-            Box::new(m20250904_082310_add_golem_base_events_abi::Migration),
-            Box::new(m20250915_140948_optimize_history_view::Migration),
-            Box::new(m20250919_080000_update_indexer_queue_trigger::Migration),
-            Box::new(m20250920_085525_history_as_table::Migration),
-            Box::new(m20250923_150237_process_txs_in_order::Migration),
-            Box::new(m20250909_062255_create_mview_timeseries_data_usage::Migration),
-            Box::new(m20250922_081148_create_mview_leaderboard_biggest_spenders::Migration),
-            Box::new(m20250922_110337_create_mview_leaderboard_entities_owned::Migration),
-            Box::new(m20250922_112804_create_mview_leaderboard_data_owned::Migration),
-            Box::new(m20250922_112933_create_mview_leaderboard_largest_entities::Migration),
-            Box::new(
-                m20250922_113500_create_mview_leaderboard_effectively_largest_entities::Migration,
-            ),
-            Box::new(m20250922_113754_create_mview_leaderboard_entities_created::Migration),
-            Box::new(m20250925_082126_process_expiration_logs_separately::Migration),
-            Box::new(m20250926_121733_create_mview_leaderboard_top_accounts::Migration),
-            Box::new(m20250923_081124_create_entity_data_size_histogram_matview::Migration),
-            Box::new(m20250926_110921_create_matview_output_indexes::Migration),
-            Box::new(m20250925_125411_create_mview_timeseries_storage_forecast::Migration),
-            Box::new(m20250929_100022_create_storage_forecast_matview_output_indexes::Migration),
-            Box::new(m20251002_101024_cleanup_processed_logs_from_queueu::Migration),
-            Box::new(m20251003_112845_create_mview_timeseries_operations_count::Migration),
-            Box::new(m20251010_082748_create_mview_timeseries_operations_count_by_type::Migration),
-            Box::new(m20251016_085731_migrate_logs_queue::Migration),
-            Box::new(m20251021_091030_cleanup_noop_txs_from_tx_queue::Migration),
-            Box::new(m20251024_100000_create_mview_timeseries_entity_count::Migration),
-        ]
+        vec![Box::new(m20251111_170928_v2::Migration)]
     }
 
     fn migration_table_name() -> DynIden {
