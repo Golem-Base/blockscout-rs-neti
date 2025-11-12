@@ -25,8 +25,8 @@ pub struct Create {
 #[rlp(trailing)]
 pub struct Update {
     pub entity_key: Hash,
-    pub btl: u64,
     pub content_type: String,
+    pub btl: u64,
     pub payload: Bytes,
     pub string_attributes: Vec<StringAttribute>,
     pub numeric_attributes: Vec<NumericAttribute>,
