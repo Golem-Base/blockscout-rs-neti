@@ -159,6 +159,7 @@ impl TryFrom<golem_base_operations::Model> for Operation {
                     .try_into()?,
             ),
             GolemBaseOperationType::Changeowner => OperationData::ChangeOwner(
+                v.owner.as_slice().try_into()?,
                 v.btl
                     .ok_or(anyhow!("Update operation in db with no btl"))?
                     .try_into()?,
@@ -188,7 +189,7 @@ impl From<&OperationData> for GolemBaseOperationType {
             OperationData::Update(_, _) => GolemBaseOperationType::Update,
             OperationData::Delete => GolemBaseOperationType::Delete,
             OperationData::Extend(_) => GolemBaseOperationType::Extend,
-            OperationData::ChangeOwner(_) => GolemBaseOperationType::Changeowner,
+            OperationData::ChangeOwner(_, _) => GolemBaseOperationType::Changeowner,
         }
     }
 }

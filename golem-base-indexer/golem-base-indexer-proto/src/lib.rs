@@ -133,7 +133,7 @@ impl From<&OperationData> for v1::OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
-            OperationData::ChangeOwner(_) => Self::Changeowner,
+            OperationData::ChangeOwner(_, _) => Self::Changeowner,
         }
     }
 }
@@ -144,7 +144,7 @@ impl From<OperationData> for v1::OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
-            OperationData::ChangeOwner(_) => Self::Changeowner,
+            OperationData::ChangeOwner(_, _) => Self::Changeowner,
         }
     }
 }

@@ -87,7 +87,7 @@ pub enum OperationData {
     Update(Bytes, BlockNumber),
     Delete,
     Extend(BlockNumber),
-    ChangeOwner(BlockNumber),
+    ChangeOwner(Address, BlockNumber),
 }
 
 impl OperationData {
@@ -109,7 +109,7 @@ impl OperationData {
             Self::Update(data, _) => Some(data),
             Self::Delete => None,
             Self::Extend(_) => None,
-            Self::ChangeOwner(_) => None,
+            Self::ChangeOwner(_, _) => None,
         }
     }
     pub fn btl(&self) -> Option<u64> {
@@ -118,7 +118,7 @@ impl OperationData {
             Self::Update(_, btl) => Some(*btl),
             Self::Delete => None,
             Self::Extend(btl) => Some(*btl),
-            Self::ChangeOwner(btl) => Some(*btl),
+            Self::ChangeOwner(_, btl) => Some(*btl),
         }
     }
 }
