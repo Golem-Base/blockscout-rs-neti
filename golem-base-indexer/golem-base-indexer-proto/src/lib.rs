@@ -133,6 +133,7 @@ impl From<&OperationData> for v1::OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
+            OperationData::ChangeOwner(_) => Self::Changeowner,
         }
     }
 }
@@ -143,6 +144,7 @@ impl From<OperationData> for v1::OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
+            OperationData::ChangeOwner(_) => Self::Changeowner,
         }
     }
 }
@@ -154,6 +156,9 @@ impl From<v1::operation_type_filter::OperationTypeFilter> for Option<OperationTy
             v1::operation_type_filter::OperationTypeFilter::Update => Some(OperationType::Update),
             v1::operation_type_filter::OperationTypeFilter::Delete => Some(OperationType::Delete),
             v1::operation_type_filter::OperationTypeFilter::Extend => Some(OperationType::Extend),
+            v1::operation_type_filter::OperationTypeFilter::Changeowner => {
+                Some(OperationType::ChangeOwner)
+            }
             v1::operation_type_filter::OperationTypeFilter::All => None,
         }
     }
@@ -166,6 +171,7 @@ impl From<OperationType> for v1::OperationType {
             OperationType::Update => Self::Update,
             OperationType::Delete => Self::Delete,
             OperationType::Extend => Self::Extend,
+            OperationType::ChangeOwner => Self::Changeowner,
         }
     }
 }
@@ -177,6 +183,7 @@ impl From<v1::OperationType> for OperationType {
             v1::OperationType::Update => Self::Update,
             v1::OperationType::Delete => Self::Delete,
             v1::OperationType::Extend => Self::Extend,
+            v1::OperationType::Changeowner => Self::ChangeOwner,
         }
     }
 }

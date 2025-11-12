@@ -257,6 +257,7 @@ paths:
             - UPDATE
             - DELETE
             - EXTEND
+            - CHANGEOWNER
             - ALL
           default: CREATE
       tags:
@@ -699,6 +700,7 @@ paths:
             - UPDATE
             - DELETE
             - EXTEND
+            - CHANGEOWNER
             - ALL
           default: CREATE
         - name: page
@@ -1524,6 +1526,7 @@ definitions:
       - UPDATE
       - DELETE
       - EXTEND
+      - CHANGEOWNER
     default: CREATE
   v1OperationTypeFilterOperationTypeFilter:
     type: string
@@ -1532,6 +1535,7 @@ definitions:
       - UPDATE
       - DELETE
       - EXTEND
+      - CHANGEOWNER
       - ALL
     default: CREATE
   v1Pagination:

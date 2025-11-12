@@ -237,6 +237,7 @@ enum OperationType {
   UPDATE = 1;
   DELETE = 2;
   EXTEND = 3;
+  CHANGEOWNER = 4;
 }
 
 message Operation {
@@ -409,7 +410,8 @@ message OperationTypeFilter {
     UPDATE = 1;
     DELETE = 2;
     EXTEND = 3;
-    ALL = 4;
+    CHANGEOWNER = 4;
+    ALL = 5;
   }
 }
 

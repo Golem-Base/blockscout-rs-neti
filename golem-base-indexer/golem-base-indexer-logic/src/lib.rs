@@ -222,7 +222,10 @@ impl Indexer {
         let owner = ops
             .iter()
             .find(|v| !matches!(v.op.operation, OperationData::Delete))
-            .map(|v| v.op.metadata.sender);
+            .map(|v| match v.op.operation {
+                OperationData::ChangeOwner(_) => v.op.metadata.owner,
+                _ => v.op.metadata.sender,
+            });
 
         repository::entities::delete_history(txn, entity).await?;
         let mut prev_entry: Option<EntityHistoryEntry> = None;
@@ -239,6 +242,7 @@ impl Indexer {
                         EntityStatus::Deleted
                     }
                 }
+                OperationData::ChangeOwner(_) => EntityStatus::Active,
             };
 
             let expires_at_block_number = match op.op.operation {
@@ -248,6 +252,7 @@ impl Indexer {
                     .as_ref()
                     .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
                 OperationData::Delete => Some(op.op.metadata.block_number),
+                OperationData::ChangeOwner(btl) => Some(op.op.metadata.block_number + btl),
             };
 
             let data = match op.op.operation {
@@ -420,6 +425,7 @@ impl Indexer {
             metadata: OperationMetadata {
                 entity_key: key,
                 sender: tx.from_address_hash,
+                owner: tx.from_address_hash,
                 recipient: tx.to_address_hash,
                 tx_hash: tx.hash,
                 block_hash: tx.block_hash,
@@ -518,6 +524,7 @@ impl Indexer {
                 .as_ref()
                 .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
             OperationData::Delete => Some(tx.block_number),
+            OperationData::ChangeOwner(btl) => Some(tx.block_number + btl),
         };
 
         let reference_block = Block {
@@ -581,6 +588,7 @@ impl Indexer {
             metadata: OperationMetadata {
                 entity_key: update.entity_key,
                 sender: tx.from_address_hash,
+                owner: tx.from_address_hash,
                 recipient: tx.to_address_hash,
                 tx_hash: tx.hash,
                 block_hash: tx.block_hash,
@@ -650,6 +658,7 @@ impl Indexer {
             metadata: OperationMetadata {
                 entity_key: delete,
                 sender: tx.from_address_hash,
+                owner: tx.from_address_hash,
                 recipient: tx.to_address_hash,
                 tx_hash: tx.hash,
                 block_hash: tx.block_hash,
@@ -685,6 +694,7 @@ impl Indexer {
             metadata: OperationMetadata {
                 entity_key: extend.entity_key,
                 sender: tx.from_address_hash,
+                owner: tx.from_address_hash,
                 recipient: tx.to_address_hash,
                 tx_hash: tx.hash,
                 block_hash: tx.block_hash,
@@ -724,15 +734,52 @@ impl Indexer {
         &self,
         txn: &DatabaseTransaction,
         guards: &mut HashMap<EntityKey, Guard>,
-        _tx: &ConsensusTx,
+        tx: &ConsensusTx,
         change_owner: ChangeOwner,
-        _idx: u64,
+        idx: u64,
     ) -> Result<()> {
         if let Entry::Vacant(e) = guards.entry(change_owner.entity_key) {
             e.insert(repository::locks::lock(txn, change_owner.entity_key).await?);
         }
         tracing::info!("Processing ChangeOwner operation");
-        todo!();
+        let op = Operation {
+            metadata: OperationMetadata {
+                entity_key: change_owner.entity_key,
+                sender: tx.from_address_hash,
+                owner: tx.from_address_hash,
+                recipient: tx.to_address_hash,
+                tx_hash: tx.hash,
+                block_hash: tx.block_hash,
+                index: idx,
+                block_number: tx.block_number,
+                tx_index: tx.index,
+            },
+            operation: OperationData::ChangeOwner(0),
+        };
+        repository::operations::insert_operation(txn, op.clone()).await?;
+
+        if repository::entities::get_oldest_entity_history_entry(
+            txn,
+            change_owner.entity_key,
+            FullOperationIndex {
+                block_number: tx.block_number,
+                tx_index: tx.index,
+                op_index: idx,
+            },
+        )
+        .await?
+        .is_some()
+        {
+            self.reindex_entity_with_ops(txn, change_owner.entity_key)
+                .await?;
+        } else {
+            self.insert_history_entry(txn, change_owner.entity_key, tx, op)
+                .await?;
+        }
+
+        repository::entities::refresh_entity_based_on_history(txn, change_owner.entity_key).await?;
+
+        Ok(())
     }
 
     async fn is_latest_update(
@@ -779,6 +826,7 @@ impl Indexer {
             metadata: OperationMetadata {
                 entity_key,
                 sender: tx.from_address_hash,
+                owner: tx.from_address_hash,
                 recipient: tx.to_address_hash,
                 tx_hash: tx.hash,
                 block_hash: tx.block_hash,

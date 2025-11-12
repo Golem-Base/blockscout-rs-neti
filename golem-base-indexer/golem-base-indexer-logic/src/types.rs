@@ -66,6 +66,7 @@ pub struct Operation {
 pub struct OperationMetadata {
     pub entity_key: EntityKey,
     pub sender: Address,
+    pub owner: Address,
     pub recipient: Address,
     pub tx_hash: TxHash,
     pub block_hash: BlockHash,
@@ -86,6 +87,7 @@ pub enum OperationData {
     Update(Bytes, BlockNumber),
     Delete,
     Extend(BlockNumber),
+    ChangeOwner(BlockNumber),
 }
 
 impl OperationData {
@@ -107,6 +109,7 @@ impl OperationData {
             Self::Update(data, _) => Some(data),
             Self::Delete => None,
             Self::Extend(_) => None,
+            Self::ChangeOwner(_) => None,
         }
     }
     pub fn btl(&self) -> Option<u64> {
@@ -115,6 +118,7 @@ impl OperationData {
             Self::Update(_, btl) => Some(*btl),
             Self::Delete => None,
             Self::Extend(btl) => Some(*btl),
+            Self::ChangeOwner(btl) => Some(*btl),
         }
     }
 }
@@ -240,6 +244,7 @@ pub struct OperationsCount {
     pub update_count: u64,
     pub delete_count: u64,
     pub extend_count: u64,
+    pub changeowner_count: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -287,6 +292,7 @@ pub enum OperationType {
     Update,
     Delete,
     Extend,
+    ChangeOwner,
 }
 
 #[derive(Debug, Clone)]

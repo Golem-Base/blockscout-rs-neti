@@ -7,6 +7,7 @@ impl From<OperationData> for OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
+            OperationData::ChangeOwner(_) => Self::ChangeOwner,
         }
     }
 }

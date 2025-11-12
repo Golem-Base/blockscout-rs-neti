@@ -36,6 +36,7 @@ impl OperationType {
             Self::Update => "update",
             Self::Delete => "delete",
             Self::Extend => "extend",
+            Self::ChangeOwner => "changeowner",
         }
     }
 }
