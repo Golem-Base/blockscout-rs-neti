@@ -27,14 +27,14 @@ async fn test_get_entity_endpoint_works() {
       "data": "0x757064617465642064617461207769746820616e6e6f746174696f6e73",
       "data_size": "29",
       "status": "ACTIVE",
-      "string_attributes": [
+      "string_annotations": [
         {
             "key": "key",
             "value": "updated",
             "related_entities": "1",
         }
       ],
-      "numeric_attributes": [
+      "numeric_annotations": [
         {
             "key": "updated",
             "value": "1",
