@@ -64,13 +64,13 @@ impl v1::FullEntity {
             fees_paid: entity.fees_paid.to_string(),
             gas_used: entity.gas_used.to_string(),
 
-            string_attributes: string_attributes.into_iter().map(Into::into).collect(),
-            numeric_attributes: numeric_attributes.into_iter().map(Into::into).collect(),
+            string_annotations: string_attributes.into_iter().map(Into::into).collect(),
+            numeric_annotations: numeric_attributes.into_iter().map(Into::into).collect(),
         }
     }
 }
 
-impl From<StringAttributeWithRelations> for v1::StringAttributeWithRelations {
+impl From<StringAttributeWithRelations> for v1::StringAnnotationWithRelations {
     fn from(value: StringAttributeWithRelations) -> Self {
         Self {
             key: value.attribute.key,
@@ -80,7 +80,7 @@ impl From<StringAttributeWithRelations> for v1::StringAttributeWithRelations {
     }
 }
 
-impl From<NumericAttributeWithRelations> for v1::NumericAttributeWithRelations {
+impl From<NumericAttributeWithRelations> for v1::NumericAnnotationWithRelations {
     fn from(value: NumericAttributeWithRelations) -> Self {
         Self {
             key: value.attribute.key,
@@ -90,7 +90,7 @@ impl From<NumericAttributeWithRelations> for v1::NumericAttributeWithRelations {
     }
 }
 
-impl From<StringAttribute> for v1::StringAttribute {
+impl From<StringAttribute> for v1::StringAnnotation {
     fn from(value: StringAttribute) -> Self {
         Self {
             key: value.key,
@@ -99,7 +99,7 @@ impl From<StringAttribute> for v1::StringAttribute {
     }
 }
 
-impl From<NumericAttribute> for v1::NumericAttribute {
+impl From<NumericAttribute> for v1::NumericAnnotation {
     fn from(value: NumericAttribute) -> Self {
         Self {
             key: value.key,
@@ -108,8 +108,8 @@ impl From<NumericAttribute> for v1::NumericAttribute {
     }
 }
 
-impl From<v1::StringAttribute> for StringAttribute {
-    fn from(value: v1::StringAttribute) -> Self {
+impl From<v1::StringAnnotation> for StringAttribute {
+    fn from(value: v1::StringAnnotation) -> Self {
         Self {
             key: value.key,
             value: value.value,
@@ -117,8 +117,8 @@ impl From<v1::StringAttribute> for StringAttribute {
     }
 }
 
-impl From<v1::NumericAttribute> for NumericAttribute {
-    fn from(value: v1::NumericAttribute) -> Self {
+impl From<v1::NumericAnnotation> for NumericAttribute {
+    fn from(value: v1::NumericAnnotation) -> Self {
         Self {
             key: value.key,
             value: value.value,
@@ -442,15 +442,17 @@ impl TryFrom<v1::ListEntitiesRequest> for ListEntitiesFilter {
 
     fn try_from(request: v1::ListEntitiesRequest) -> Result<Self> {
         let status: v1::entity_status_filter::EntityStatusFilter = request.status.try_into()?;
-        let string_attribute = match (request.string_attribute_key, request.string_attribute_value)
-        {
+        let string_attribute = match (
+            request.string_annotation_key,
+            request.string_annotation_value,
+        ) {
             (Some(key), Some(value)) => Some(StringAttribute { key, value }),
             (None, None) => None,
             _ => return Err(anyhow!("Invalid string_attribute filter")),
         };
         let numeric_attribute = match (
-            request.numeric_attribute_key,
-            request.numeric_attribute_value,
+            request.numeric_annotation_key,
+            request.numeric_annotation_value,
         ) {
             (Some(key), Some(value)) => Some(NumericAttribute {
                 key,
@@ -479,15 +481,17 @@ impl TryFrom<v1::CountEntitiesRequest> for EntitiesFilter {
 
     fn try_from(request: v1::CountEntitiesRequest) -> Result<Self> {
         let status: v1::entity_status_filter::EntityStatusFilter = request.status.try_into()?;
-        let string_attribute = match (request.string_attribute_key, request.string_attribute_value)
-        {
+        let string_attribute = match (
+            request.string_annotation_key,
+            request.string_annotation_value,
+        ) {
             (Some(key), Some(value)) => Some(StringAttribute { key, value }),
             (None, None) => None,
             _ => return Err(anyhow!("Invalid string_attribute filter")),
         };
         let numeric_attribute = match (
-            request.numeric_attribute_key,
-            request.numeric_attribute_value,
+            request.numeric_annotation_key,
+            request.numeric_annotation_value,
         ) {
             (Some(key), Some(value)) => Some(NumericAttribute {
                 key,

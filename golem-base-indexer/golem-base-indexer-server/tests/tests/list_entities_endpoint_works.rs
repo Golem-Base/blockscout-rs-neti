@@ -99,21 +99,21 @@ async fn test_list_entities_endpoint_works() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/entities?status=ACTIVE&string_attribute_key=foo&string_attribute_value=bar",
+        "/api/v1/entities?status=ACTIVE&string_annotation_key=foo&string_annotation_value=bar",
     )
     .await;
     assert_eq!(response["items"].as_array().unwrap().len(), 2);
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/entities/count?status=ACTIVE&string_attribute_key=foo&string_attribute_value=bar",
+        "/api/v1/entities/count?status=ACTIVE&string_annotation_key=foo&string_annotation_value=bar",
     )
     .await;
     assert_eq!(response["count"].as_str().unwrap(), "2");
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/entities?status=ACTIVE&numeric_attribute_key=foo&numeric_attribute_value=123",
+        "/api/v1/entities?status=ACTIVE&numeric_annotation_key=foo&numeric_annotation_value=123",
     )
     .await;
     assert_eq!(response["items"].as_array().unwrap().len(), 2);
@@ -124,21 +124,21 @@ async fn test_list_entities_endpoint_works() {
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/entities/count?status=ACTIVE&numeric_attribute_key=foo&numeric_attribute_value=123",
+        "/api/v1/entities/count?status=ACTIVE&numeric_annotation_key=foo&numeric_annotation_value=123",
     )
     .await;
     assert_eq!(response["count"].as_str().unwrap(), "2");
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/entities?status=ACTIVE&string_attribute_key=foo&string_attribute_value=rab",
+        "/api/v1/entities?status=ACTIVE&string_annotation_key=foo&string_annotation_value=rab",
     )
     .await;
     assert_eq!(response["items"].as_array().unwrap().len(), 1);
 
     let response: serde_json::Value = test_server::send_get_request(
         &base,
-        "/api/v1/entities/count?status=ACTIVE&string_attribute_key=foo&string_attribute_value=rab",
+        "/api/v1/entities/count?status=ACTIVE&string_annotation_key=foo&string_annotation_value=rab",
     )
     .await;
     assert_eq!(response["count"].as_str().unwrap(), "1");

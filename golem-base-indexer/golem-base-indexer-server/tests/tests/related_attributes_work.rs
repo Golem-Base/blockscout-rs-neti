@@ -138,12 +138,12 @@ async fn test_related_attributes_work() {
     let string_attributes = response
         .as_object()
         .unwrap()
-        .get("string_attributes")
+        .get("string_annotations")
         .unwrap();
     let numeric_attributes = response
         .as_object()
         .unwrap()
-        .get("numeric_attributes")
+        .get("numeric_annotations")
         .unwrap();
     assert_json::assert_fields_array(
         string_attributes,
