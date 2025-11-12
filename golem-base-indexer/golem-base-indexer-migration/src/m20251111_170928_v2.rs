@@ -549,12 +549,125 @@ CREATE TRIGGER golem_base_handle_tx_update_for_cleanup
     ) EXECUTE FUNCTION golem_base_queue_transaction_cleanup();
         "#.split(";").collect();
 
+        let initial_data = r#"
+INSERT INTO 
+    smart_contracts (
+        name,
+        abi,
+        address_hash,
+        inserted_at,
+        updated_at,
+        compiler_version,
+        optimization,
+        contract_source_code,
+        contract_code_md5
+    )
+VALUES (
+  'ArkivStorage',
+  '[
+    {
+      "type":"event",
+      "name":"ArkivEntityCreated",
+      "inputs":[
+        {"indexed":true,"name":"entityKey","type":"uint256"},
+        {"indexed":true,"name":"owner","type":"address"},
+        {"indexed":false,"name":"expirationBlock","type":"uint256"},
+        {"indexed":false,"name":"cost","type":"uint256"}
+      ],
+      "anonymous":false
+    },
+    {
+      "type":"event",
+      "name":"ArkivEntityUpdated",
+      "inputs":[
+        {"indexed":true,"name":"entityKey","type":"uint256"},
+        {"indexed":true,"name":"owner","type":"address"},
+        {"indexed":false,"name":"oldExpirationBlock","type":"uint256"},
+        {"indexed":false,"name":"newExpirationBlock","type":"uint256"},
+        {"indexed":false,"name":"cost","type":"uint256"}
+      ],
+      "anonymous":false
+    },
+    {
+      "type":"event",
+      "name":"ArkivEntityDeleted",
+      "inputs":[
+        {"indexed":true,"name":"entityKey","type":"uint256"},
+        {"indexed":true,"name":"owner","type":"address"}
+      ],
+      "anonymous":false
+    },
+    {
+      "type":"event",
+      "name":"ArkivEntityBTLExtended",
+      "inputs":[
+        {"indexed":true,"name":"entityKey","type":"uint256"},
+        {"indexed":true,"name":"owner","type":"address"},
+        {"indexed":false,"name":"oldExpirationBlock","type":"uint256"},
+        {"indexed":false,"name":"newExpirationBlock","type":"uint256"},
+        {"indexed":false,"name":"cost","type":"uint256"}
+      ],
+      "anonymous":false
+    },
+    {
+      "type":"event",
+      "name":"ArkivEntityOwnerChanged",
+      "inputs":[
+        {"indexed":true,"name":"entityKey","type":"uint256"},
+        {"indexed":true,"name":"oldOwner","type":"address"},
+        {"indexed":true,"name":"newOwner","type":"address"}
+      ],
+      "anonymous":false
+    },
+    {
+      "type":"event",
+      "name":"ArkivEntityExpired",
+      "inputs":[
+        {"indexed":true,"name":"entityKey","type":"uint256"},
+        {"indexed":true,"name":"owner","type":"address"}
+      ],
+      "anonymous":false
+    }
+  ]'::jsonb,
+  decode('00000000000000000000000000000061726B6976','hex'),
+  NOW(), 
+  NOW(),
+  '0.0.0', 
+  false, 
+  'ArkivStorage', 
+  '0x00'
+);
+
+
+insert into golem_base_pending_logs_operations (transaction_hash, block_hash, index, block_number)
+select
+    txs.hash,
+    txs.block_hash,
+    logs.index,
+    txs.block_number
+from golem_base_pending_transaction_operations tx_queue
+inner join transactions txs on tx_queue.hash = txs.hash
+inner join logs on txs.hash = logs.transaction_hash
+where txs.to_address_hash = '\x4200000000000000000000000000000000000015';
+
+
+insert into golem_base_pending_transaction_operations (hash)
+select hash from transactions
+where
+    to_address_hash = '\x00000000000000000000000000000061726B6976'
+    and block_hash is not null
+    and status = 1;
+        "#
+        .split(";")
+        .collect();
+
         let stmts: Vec<Statement> = [
             create_types,
             create_functions,
             create_tables,
             create_mat_views,
             create_indices_and_triggers,
+            initial_data,
         ]
         .concat()
         .into_iter()
