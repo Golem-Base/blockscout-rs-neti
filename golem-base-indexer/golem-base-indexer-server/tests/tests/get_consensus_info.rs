@@ -51,8 +51,8 @@ async fn test_get_consensus_info() {
     sleep(std::time::Duration::from_secs(1));
 
     fn gen_block_resp(block_number: u64, timestamp: u64, rpc_id: usize) -> serde_json::Value {
-        let block_number_hex = format!("0x{:x}", block_number);
-        let timestamp_hex = format!("0x{:x}", timestamp);
+        let block_number_hex = format!("0x{block_number:x}");
+        let timestamp_hex = format!("0x{timestamp:x}");
 
         serde_json::json!({
             "jsonrpc": "2.0",

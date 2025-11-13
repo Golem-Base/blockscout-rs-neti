@@ -904,6 +904,9 @@ definitions:
       extend_count:
         type: string
         format: uint64
+      changeowner_count:
+        type: string
+        format: uint64
   v1BlockStatsCounts:
     type: object
     properties:
@@ -920,6 +923,9 @@ definitions:
         type: string
         format: uint64
       extend_count:
+        type: string
+        format: uint64
+      changeowner_count:
         type: string
         format: uint64
   v1BlockStatsResponse:
@@ -1082,6 +1088,9 @@ definitions:
       extend_count:
         type: string
         format: uint64
+      changeowner_count:
+        type: string
+        format: uint64
   v1EntitiesAveragesResponse:
     type: object
     properties:
@@ -1176,6 +1185,10 @@ definitions:
       prev_expires_at_timestamp_sec:
         type: string
         format: uint64
+      prev_owner:
+        type: string
+      owner:
+        type: string
   v1EntityStatus:
     type: string
     enum:

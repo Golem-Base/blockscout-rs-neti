@@ -1,4 +1,7 @@
-use crate::types::{OperationData, OperationType};
+use crate::{
+    types::{Address, Operation, OperationData, OperationType},
+    well_known,
+};
 
 impl From<OperationData> for OperationType {
     fn from(value: OperationData) -> Self {
@@ -7,7 +10,21 @@ impl From<OperationData> for OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
-            OperationData::ChangeOwner(_, _) => Self::ChangeOwner,
+            OperationData::ChangeOwner(_) => Self::ChangeOwner,
+        }
+    }
+}
+
+impl Operation {
+    pub fn owner(&self) -> Option<Address> {
+        match self.operation {
+            OperationData::Delete
+                if self.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
+            {
+                None
+            }
+            OperationData::ChangeOwner(new_owner) => Some(new_owner),
+            _ => Some(self.metadata.sender),
         }
     }
 }

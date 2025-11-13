@@ -139,6 +139,7 @@ message CountOperationsResponse {
   uint64 update_count = 2;
   uint64 delete_count = 3;
   uint64 extend_count = 4;
+  uint64 changeowner_count = 5;
 }
 
 message CountEntitiesRequest {
@@ -282,6 +283,8 @@ message EntityHistoryEntry {
   optional string prev_expires_at_timestamp = 20;
   optional uint64 expires_at_timestamp_sec = 21;
   optional uint64 prev_expires_at_timestamp_sec = 22;
+  optional string prev_owner = 23;
+  optional string owner = 24;
 }
 
 message BlockStatsRequest {
@@ -299,6 +302,7 @@ message BlockStatsCounts {
   uint64 expire_count = 3;
   uint64 delete_count = 4;
   uint64 extend_count = 5;
+  uint64 changeowner_count = 6;
 }
 
 message BlockStatsStorage {
@@ -464,6 +468,7 @@ message BlockOperationPoint {
   uint64 update_count = 3;
   uint64 delete_count = 4;
   uint64 extend_count = 5;
+  uint64 changeowner_count = 6;
 }
 
 message ChartBlockGasUsageLimitRequest {

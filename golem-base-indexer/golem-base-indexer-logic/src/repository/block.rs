@@ -13,6 +13,7 @@ struct DbBlockEntitiesCount {
     pub expire_count: i64,
     pub delete_count: i64,
     pub extend_count: i64,
+    pub changeowner_count: i64,
 }
 
 impl TryFrom<DbBlockEntitiesCount> for BlockEntitiesCount {
@@ -25,6 +26,7 @@ impl TryFrom<DbBlockEntitiesCount> for BlockEntitiesCount {
             expire_count: value.expire_count.try_into()?,
             delete_count: value.delete_count.try_into()?,
             extend_count: value.extend_count.try_into()?,
+            changeowner_count: value.changeowner_count.try_into()?,
         })
     }
 }

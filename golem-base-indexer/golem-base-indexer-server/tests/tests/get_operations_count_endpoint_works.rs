@@ -21,6 +21,7 @@ async fn test_get_operations_count_endpoint_works() {
         (
             "/api/v1/operations/count",
             serde_json::json!({
+                "changeowner_count": "1",
                 "create_count": "6",
                 "delete_count": "2",
                 "extend_count": "1",
@@ -30,6 +31,7 @@ async fn test_get_operations_count_endpoint_works() {
         (
             "/api/v1/operations/count?sender=0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
             serde_json::json!({
+                "changeowner_count": "1",
                 "create_count": "6",
                 "delete_count": "1",
                 "extend_count": "1",
@@ -39,6 +41,7 @@ async fn test_get_operations_count_endpoint_works() {
         (
             "/api/v1/operations/count?transaction_hash=0x1b7b3d0ac4b9636a34c72e6ab55a115a2abaa74dfcbf492d5b0b58fe13a04a96",
             serde_json::json!({
+                "changeowner_count": "0",
                 "create_count": "0",
                 "delete_count": "1",
                 "extend_count": "0",
@@ -48,6 +51,7 @@ async fn test_get_operations_count_endpoint_works() {
         (
             "/api/v1/operations/count?block_number_or_hash=0xe6f06416be4859119817b2f1d3d0f8c8fa2729804c4795452c5810e3c54b67d2",
             serde_json::json!({
+                "changeowner_count": "0",
                 "create_count": "2",
                 "delete_count": "1",
                 "extend_count": "1",
@@ -57,6 +61,7 @@ async fn test_get_operations_count_endpoint_works() {
         (
             "/api/v1/operations/count?block_number_or_hash=6",
             serde_json::json!({
+                "changeowner_count": "0",
                 "create_count": "2",
                 "delete_count": "1",
                 "extend_count": "1",
@@ -66,6 +71,7 @@ async fn test_get_operations_count_endpoint_works() {
         (
             "/api/v1/operations/count?entity_key=0x901799b2f558af736716b4dc4427424e1d07d420cbb8bc53ba15489c5727e84b",
             serde_json::json!({
+                "changeowner_count": "0",
                 "create_count": "1",
                 "delete_count": "0",
                 "extend_count": "1",
@@ -75,6 +81,7 @@ async fn test_get_operations_count_endpoint_works() {
         (
             "/api/v1/operations/count?transaction_hash=0x0000000000000000000000000000000000000000000000000000000000000000",
             serde_json::json!({
+                "changeowner_count": "0",
                 "create_count": "0",
                 "delete_count": "0",
                 "extend_count": "0",

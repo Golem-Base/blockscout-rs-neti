@@ -129,7 +129,7 @@ limit 1;
 
 pub const COUNT_ENTITIES_BY_OWNER: &str = r#"
 select
-    count(*) as total_entities,
+    (select count(*) from golem_base_operations where operation = 'create' and sender = $1) as created_entities,
     count(*) filter (where status = 'active') as active_entities,
     coalesce(sum(length(data)) filter (where status = 'active'), 0) as size_of_active_entities
 from golem_base_entities
@@ -152,7 +152,8 @@ SELECT
     COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
     COUNT(*) FILTER (WHERE operation = 'delete' AND recipient = '\x4200000000000000000000000000000000000015') AS expire_count,
     COUNT(*) FILTER (WHERE operation = 'delete' AND recipient != '\x4200000000000000000000000000000000000015') AS delete_count,
-    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count
+    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count,
+    COUNT(*) FILTER (WHERE operation = 'changeowner') AS changeowner_count
 FROM golem_base_operations
 INNER JOIN blocks on blocks.hash = golem_base_operations.block_hash
 WHERE blocks.number = $1 and blocks.consensus
@@ -193,7 +194,7 @@ WITH current_state AS (
     status,
     length(data) size
   FROM golem_base_entity_history
-  WHERE block_number <= $1 AND operation != 'extend'
+  WHERE block_number <= $1 AND operation != 'extend' AND operation != 'changeowner'
   ORDER BY entity_key, block_number DESC
 )
 SELECT
@@ -214,7 +215,8 @@ SELECT
     COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
     COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
     COUNT(*) FILTER (WHERE operation = 'delete') AS delete_count,
-    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count
+    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count,
+    COUNT(*) FILTER (WHERE operation = 'changeowner') AS changeowner_count
 FROM golem_base_operations
 GROUP BY block_number
 ORDER BY block_number DESC

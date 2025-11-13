@@ -133,7 +133,7 @@ impl From<&OperationData> for v1::OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
-            OperationData::ChangeOwner(_, _) => Self::Changeowner,
+            OperationData::ChangeOwner(_) => Self::Changeowner,
         }
     }
 }
@@ -144,7 +144,7 @@ impl From<OperationData> for v1::OperationType {
             OperationData::Update(_, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
-            OperationData::ChangeOwner(_, _) => Self::Changeowner,
+            OperationData::ChangeOwner(_) => Self::Changeowner,
         }
     }
 }
@@ -280,6 +280,7 @@ impl From<OperationsCount> for v1::CountOperationsResponse {
             update_count: counts.update_count,
             delete_count: counts.delete_count,
             extend_count: counts.extend_count,
+            changeowner_count: counts.changeowner_count,
         }
     }
 }
@@ -426,6 +427,8 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             prev_expires_at_timestamp_sec: v.prev_expires_at_timestamp_sec,
             gas_used: "0".into(),  // FIXME
             fees_paid: "0".into(), // FIXME
+            prev_owner: v.prev_owner.map(|v| v.to_checksum(None)),
+            owner: v.owner.map(|v| v.to_checksum(None)),
         }
     }
 }
@@ -535,6 +538,7 @@ impl From<BlockEntitiesCount> for v1::BlockStatsCounts {
             expire_count: value.expire_count,
             delete_count: value.delete_count,
             extend_count: value.extend_count,
+            changeowner_count: value.changeowner_count,
         }
     }
 }
@@ -647,6 +651,7 @@ impl From<BlockOperationPoint> for v1::BlockOperationPoint {
             update_count: v.update_count,
             delete_count: v.delete_count,
             extend_count: v.extend_count,
+            changeowner_count: v.changeowner_count,
         }
     }
 }
