@@ -19,8 +19,7 @@ fn chart_info() -> Value {
 
 fn endpoint_for_resolution_and_dates(resolution: &str, from: &str, to: &str) -> String {
     format!(
-        "/api/v1/chart/entity-count?resolution={}&from={}&to={}",
-        resolution, from, to
+        "/api/v1/chart/entity-count?resolution={resolution}&from={from}&to={to}"
     )
 }
 

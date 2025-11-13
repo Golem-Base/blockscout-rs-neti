@@ -17,8 +17,7 @@ use std::sync::Arc;
 
 fn endpoint_for_resolution_and_to(resolution: &str, to: &str) -> String {
     format!(
-        "/api/v1/chart/storage-forecast?resolution={}&to={}",
-        resolution, to,
+        "/api/v1/chart/storage-forecast?resolution={resolution}&to={to}",
     )
 }
 
