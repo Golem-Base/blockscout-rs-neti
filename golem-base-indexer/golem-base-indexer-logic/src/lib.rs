@@ -221,8 +221,9 @@ impl Indexer {
         .await?;
         let owner = ops
             .iter()
+            .rev()
             .find(|v| !matches!(v.op.operation, OperationData::Delete))
-            .map(|v| v.op.metadata.sender);
+            .and_then(|v| v.op.owner());
 
         repository::entities::delete_history(txn, entity).await?;
         let mut prev_entry: Option<EntityHistoryEntry> = None;
@@ -239,6 +240,7 @@ impl Indexer {
                         EntityStatus::Deleted
                     }
                 }
+                OperationData::ChangeOwner(_) => EntityStatus::Active,
             };
 
             let expires_at_block_number = match op.op.operation {
@@ -248,10 +250,16 @@ impl Indexer {
                     .as_ref()
                     .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
                 OperationData::Delete => Some(op.op.metadata.block_number),
+                OperationData::ChangeOwner(_) => {
+                    prev_entry.as_ref().and_then(|v| v.expires_at_block_number)
+                }
             };
 
             let data = match op.op.operation {
                 OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.data.to_owned()),
+                OperationData::ChangeOwner(_) => {
+                    prev_entry.as_ref().and_then(|v| v.data.to_owned())
+                }
                 _ => op.op.operation.data().cloned(),
             };
 
@@ -280,6 +288,9 @@ impl Indexer {
                 op_index: op.op.metadata.index,
                 block_timestamp: op.block_timestamp,
                 owner,
+                prev_owner: prev_entry
+                    .as_ref()
+                    .and_then(|prev_entry| prev_entry.prev_owner),
                 sender: op.op.metadata.sender,
                 data,
                 prev_data: prev_entry
@@ -504,10 +515,12 @@ impl Indexer {
             {
                 prev_entry.as_ref().and_then(|v| v.owner)
             }
+            OperationData::ChangeOwner(new_owner) => Some(new_owner),
             _ => Some(tx.from_address_hash),
         };
         let data = match op.operation {
             OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.data.clone()),
+            OperationData::ChangeOwner(_) => prev_entry.as_ref().and_then(|v| v.data.clone()),
             _ => op.operation.data().map(ToOwned::to_owned),
         };
 
@@ -518,6 +531,9 @@ impl Indexer {
                 .as_ref()
                 .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
             OperationData::Delete => Some(tx.block_number),
+            OperationData::ChangeOwner(_) => {
+                prev_entry.as_ref().and_then(|v| v.expires_at_block_number)
+            }
         };
 
         let reference_block = Block {
@@ -538,6 +554,7 @@ impl Indexer {
             op_index: op.metadata.index,
             block_timestamp: tx.block_timestamp,
             owner,
+            prev_owner: prev_entry.as_ref().and_then(|prev_entry| prev_entry.owner),
             sender: tx.from_address_hash,
             data,
             prev_data: prev_entry
@@ -724,15 +741,52 @@ impl Indexer {
         &self,
         txn: &DatabaseTransaction,
         guards: &mut HashMap<EntityKey, Guard>,
-        _tx: &ConsensusTx,
+        tx: &ConsensusTx,
         change_owner: ChangeOwner,
-        _idx: u64,
+        idx: u64,
     ) -> Result<()> {
         if let Entry::Vacant(e) = guards.entry(change_owner.entity_key) {
             e.insert(repository::locks::lock(txn, change_owner.entity_key).await?);
         }
         tracing::info!("Processing ChangeOwner operation");
-        todo!();
+
+        let op = Operation {
+            metadata: OperationMetadata {
+                entity_key: change_owner.entity_key,
+                sender: tx.from_address_hash,
+                recipient: tx.to_address_hash,
+                tx_hash: tx.hash,
+                block_hash: tx.block_hash,
+                index: idx,
+                block_number: tx.block_number,
+                tx_index: tx.index,
+            },
+            operation: OperationData::ChangeOwner(change_owner.new_owner),
+        };
+        repository::operations::insert_operation(txn, op.clone()).await?;
+
+        if repository::entities::get_oldest_entity_history_entry(
+            txn,
+            change_owner.entity_key,
+            FullOperationIndex {
+                block_number: tx.block_number,
+                tx_index: tx.index,
+                op_index: idx,
+            },
+        )
+        .await?
+        .is_some()
+        {
+            self.reindex_entity_with_ops(txn, change_owner.entity_key)
+                .await?;
+        } else {
+            self.insert_history_entry(txn, change_owner.entity_key, tx, op)
+                .await?;
+        }
+
+        repository::entities::refresh_entity_based_on_history(txn, change_owner.entity_key).await?;
+
+        Ok(())
     }
 
     async fn is_latest_update(

@@ -10,7 +10,7 @@ use super::sql;
 
 #[derive(Debug, FromQueryResult)]
 struct DbAddressEntitiesCount {
-    pub total_entities: i64,
+    pub created_entities: i64,
     pub size_of_active_entities: i64,
     pub active_entities: i64,
 }
@@ -54,7 +54,7 @@ impl TryFrom<DbAddressEntitiesCount> for AddressEntitiesCount {
 
     fn try_from(value: DbAddressEntitiesCount) -> Result<Self> {
         Ok(Self {
-            total_entities: value.total_entities.try_into()?,
+            created_entities: value.created_entities.try_into()?,
             size_of_active_entities: value.size_of_active_entities.try_into()?,
             active_entities: value.active_entities.try_into()?,
         })

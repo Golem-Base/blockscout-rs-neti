@@ -30,7 +30,7 @@ pub(super) fn parse_date_range(
     let from_date = match from {
         Some(date_str) => Some(
             NaiveDate::parse_from_str(&date_str, "%Y-%m-%d")
-                .map_err(|e| anyhow!("Invalid from date format: {}", e))?,
+                .map_err(|e| anyhow!("Invalid from date format: {e}"))?,
         ),
         None => None,
     };
@@ -38,7 +38,7 @@ pub(super) fn parse_date_range(
     let to_date = match to {
         Some(date_str) => Some(
             NaiveDate::parse_from_str(&date_str, "%Y-%m-%d")
-                .map_err(|e| anyhow!("Invalid to date format: {}", e))?,
+                .map_err(|e| anyhow!("Invalid to date format: {e}"))?,
         ),
         None => None,
     };
@@ -65,7 +65,7 @@ pub(super) fn parse_datetime_range(
     let from_datetime = match from {
         Some(datetime_str) => Some(
             NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%d %H:%M")
-                .map_err(|e| anyhow!("Invalid from datetime format: {}", e))?,
+                .map_err(|e| anyhow!("Invalid from datetime format: {e}"))?,
         ),
         None => None,
     };
@@ -73,7 +73,7 @@ pub(super) fn parse_datetime_range(
     let to_datetime = match to {
         Some(datetime_str) => {
             let parsed = NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%d %H:%M")
-                .map_err(|e| anyhow!("Invalid to datetime format: {}", e))?;
+                .map_err(|e| anyhow!("Invalid to datetime format: {e}"))?;
 
             Some(if from_datetime.is_some() && parsed > current_datetime {
                 current_datetime

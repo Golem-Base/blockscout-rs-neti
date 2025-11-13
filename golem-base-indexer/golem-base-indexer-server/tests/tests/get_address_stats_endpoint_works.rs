@@ -25,17 +25,18 @@ async fn test_get_address_stats_endpoint_works() {
     .await;
 
     let expected: serde_json::Value = serde_json::json!({
-        "active_entities": "4",
+        "active_entities": "3",
         "created_entities": "6",
         "failed_transactions": "1",
         "operations_counts": {
+            "changeowner_count": "1",
             "create_count": "6",
             "delete_count": "1",
             "extend_count": "1",
             "update_count": "2",
         },
-        "size_of_active_entities": "88",
-        "total_transactions": "6",
+        "size_of_active_entities": "76",
+        "total_transactions": "7",
         "first_seen_timestamp": "2025-07-22T11:31:28+00:00",
         "last_seen_timestamp": "2025-07-22T11:31:35+00:00",
         "first_seen_block": "1",
@@ -54,6 +55,7 @@ async fn test_get_address_stats_endpoint_works() {
         "created_entities": "0",
         "failed_transactions": "0",
         "operations_counts": {
+            "changeowner_count": "0",
             "create_count": "0",
             "delete_count": "0",
             "extend_count": "0",
@@ -77,6 +79,7 @@ async fn test_get_address_stats_endpoint_works() {
         "created_entities": "0",
         "failed_transactions": "0",
         "operations_counts": {
+            "changeowner_count": "0",
             "create_count": "0",
             "delete_count": "0",
             "extend_count": "0",

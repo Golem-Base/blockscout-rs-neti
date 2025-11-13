@@ -245,7 +245,7 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
         })?;
 
         Ok(Response::new(AddressStatsResponse {
-            created_entities: entities_counts.total_entities,
+            created_entities: entities_counts.created_entities,
             active_entities: entities_counts.active_entities,
             size_of_active_entities: entities_counts.size_of_active_entities,
             total_transactions: tx_counts.total_transactions,

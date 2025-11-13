@@ -257,6 +257,7 @@ paths:
             - UPDATE
             - DELETE
             - EXTEND
+            - CHANGEOWNER
             - ALL
           default: CREATE
       tags:
@@ -699,6 +700,7 @@ paths:
             - UPDATE
             - DELETE
             - EXTEND
+            - CHANGEOWNER
             - ALL
           default: CREATE
         - name: page
@@ -902,6 +904,9 @@ definitions:
       extend_count:
         type: string
         format: uint64
+      changeowner_count:
+        type: string
+        format: uint64
   v1BlockStatsCounts:
     type: object
     properties:
@@ -918,6 +923,9 @@ definitions:
         type: string
         format: uint64
       extend_count:
+        type: string
+        format: uint64
+      changeowner_count:
         type: string
         format: uint64
   v1BlockStatsResponse:
@@ -1080,6 +1088,9 @@ definitions:
       extend_count:
         type: string
         format: uint64
+      changeowner_count:
+        type: string
+        format: uint64
   v1EntitiesAveragesResponse:
     type: object
     properties:
@@ -1174,6 +1185,10 @@ definitions:
       prev_expires_at_timestamp_sec:
         type: string
         format: uint64
+      prev_owner:
+        type: string
+      owner:
+        type: string
   v1EntityStatus:
     type: string
     enum:
@@ -1524,6 +1539,7 @@ definitions:
       - UPDATE
       - DELETE
       - EXTEND
+      - CHANGEOWNER
     default: CREATE
   v1OperationTypeFilterOperationTypeFilter:
     type: string
@@ -1532,6 +1548,7 @@ definitions:
       - UPDATE
       - DELETE
       - EXTEND
+      - CHANGEOWNER
       - ALL
     default: CREATE
   v1Pagination:

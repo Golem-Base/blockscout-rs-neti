@@ -17,6 +17,8 @@ pub struct Model {
     pub data: Option<Vec<u8>>,
     #[sea_orm(column_type = "Decimal(Some((21, 0)))", nullable)]
     pub btl: Option<Decimal>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
+    pub new_owner: Option<Vec<u8>>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub block_hash: Vec<u8>,
     #[sea_orm(

@@ -31,4 +31,6 @@ pub enum GolemBaseOperationType {
     Delete,
     #[sea_orm(string_value = "extend")]
     Extend,
+    #[sea_orm(string_value = "changeowner")]
+    Changeowner,
 }

@@ -41,7 +41,7 @@ async fn chart_block_transactions_should_work() {
     assert_eq!(block_1.unwrap()["tx_count"], "2");
 
     let block_7 = chart.iter().find(|item| item["block_number"] == "7");
-    assert_eq!(block_7.unwrap()["tx_count"], "2");
+    assert_eq!(block_7.unwrap()["tx_count"], "3");
 
     // Verify chart is ordered by block number (ascending)
     let first_block = chart[0]["block_number"]

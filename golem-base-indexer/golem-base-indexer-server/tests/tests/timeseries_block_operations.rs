@@ -42,6 +42,7 @@ async fn chart_block_operations_should_work() {
         assert!(entry.get("update_count").is_some());
         assert!(entry.get("delete_count").is_some());
         assert!(entry.get("extend_count").is_some());
+        assert!(entry.get("changeowner_count").is_some());
     }
 
     // Verify chart is ordered by block number (ascending)
@@ -101,12 +102,23 @@ async fn chart_block_operations_should_work() {
                 .unwrap()
         })
         .sum();
+    let total_changeowners: u64 = chart
+        .iter()
+        .map(|item| {
+            item["changeowner_count"]
+                .as_str()
+                .unwrap()
+                .parse::<u64>()
+                .unwrap()
+        })
+        .sum();
 
     // Based on sample_data.sql and the indexer logic, we expect operations
     assert!(total_creates > 0, "should have create operations");
     assert!(total_updates > 0, "should have update operations");
     assert!(total_deletes > 0, "should have delete operations");
     assert!(total_extends > 0, "should have extend operations");
+    assert!(total_changeowners > 0, "should have changeowner operations");
 }
 
 #[tokio::test]

@@ -25,7 +25,8 @@ CREATE TYPE golem_base_operation_type AS ENUM (
     'create',
     'update',
     'delete',
-    'extend'
+    'extend',
+    'changeowner'
 );
         "#
         .split(';')
@@ -94,6 +95,7 @@ CREATE TABLE golem_base_operations (
     operation golem_base_operation_type NOT NULL,
     data bytea,
     btl numeric(21,0),
+    new_owner bytea,
     block_hash bytea NOT NULL references blocks(hash),
     transaction_hash bytea NOT NULL references transactions(hash),
     index bigint NOT NULL,
@@ -103,9 +105,10 @@ CREATE TABLE golem_base_operations (
 
     primary key (transaction_hash, index),
 
-    CONSTRAINT golem_base_operations_check CHECK (((operation <> 'create'::golem_base_operation_type) OR (operation <> 'update'::golem_base_operation_type) OR ((data IS NOT NULL) AND (btl IS NOT NULL)))),
-    CONSTRAINT golem_base_operations_check1 CHECK (((operation <> 'delete'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NULL)))),
-    CONSTRAINT golem_base_operations_check2 CHECK (((operation <> 'extend'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NOT NULL))))
+    CONSTRAINT golem_base_operations_check_create CHECK (((operation <> 'create'::golem_base_operation_type) OR (operation <> 'update'::golem_base_operation_type) OR ((data IS NOT NULL) AND (btl IS NOT NULL) AND (new_owner IS NULL)))),
+    CONSTRAINT golem_base_operations_check_delete CHECK (((operation <> 'delete'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NULL) AND (new_owner IS NULL)))),
+    CONSTRAINT golem_base_operations_check_extend CHECK (((operation <> 'extend'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NOT NULL) AND (new_owner IS NULL)))),
+    CONSTRAINT golem_base_operations_check_changeowner CHECK (((operation <> 'changeowner'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NULL) AND (new_owner IS NOT NULL))))
 );
 
 CREATE TABLE golem_base_entity_history (
@@ -117,6 +120,7 @@ CREATE TABLE golem_base_entity_history (
     op_index bigint NOT NULL,
     block_timestamp timestamp without time zone NOT NULL,
     owner bytea,
+    prev_owner bytea,
     sender bytea NOT NULL,
     operation golem_base_operation_type NOT NULL,
     data bytea,
@@ -651,8 +655,8 @@ inner join logs on txs.hash = logs.transaction_hash
 where txs.to_address_hash = '\x4200000000000000000000000000000000000015';
 
 
-insert into golem_base_pending_transaction_operations (hash)
-select hash from transactions
+insert into golem_base_pending_transaction_operations (hash, block_number, index)
+select hash, block_number, index from transactions
 where
     to_address_hash = '\x00000000000000000000000000000061726B6976'
     and block_hash is not null
@@ -674,8 +678,6 @@ where
         .map(|v| Statement::from_string(DatabaseBackend::Postgres, v))
         .collect();
 
-        // FIXME COPY DATA!!!!
-
         let txn = manager.get_connection().begin().await?;
 
         for st in stmts {
@@ -686,7 +688,55 @@ where
         txn.commit().await
     }
 
-    async fn down(&self, _: &SchemaManager) -> Result<(), DbErr> {
-        todo!();
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let db = manager.get_connection();
+
+        db.execute_unprepared(r#"
+        -- delete ArkivStorage from smart_contracts
+        DELETE FROM smart_contracts WHERE name = 'ArkivStorage' AND contract_source_code = 'ArkivStorage';
+
+        -- drop triggers
+        DROP TRIGGER IF EXISTS golem_base_handle_tx_update_for_cleanup ON transactions;
+        DROP TRIGGER IF EXISTS golem_base_handle_tx_update ON transactions;
+        DROP TRIGGER IF EXISTS golem_base_handle_tx_insert ON transactions;
+        DROP TRIGGER IF EXISTS golem_base_handle_logs_update ON logs;
+        DROP TRIGGER IF EXISTS golem_base_handle_logs_insert ON logs;
+
+        -- drop materialized views
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_entity_data_size_histogram;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_leaderboard_biggest_spenders;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_leaderboard_data_owned;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_leaderboard_effectively_largest_entities;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_leaderboard_entities_created;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_leaderboard_entities_owned;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_leaderboard_largest_entities;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_leaderboard_top_accounts;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_timeseries_data_usage;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_timeseries_entity_count;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_timeseries_operation_count;
+        DROP MATERIALIZED VIEW IF EXISTS golem_base_timeseries_storage_forecast;
+
+        -- drop tables
+        DROP TABLE IF EXISTS golem_base_string_annotations;
+        DROP TABLE IF EXISTS golem_base_pending_transaction_operations;
+        DROP TABLE IF EXISTS golem_base_pending_transaction_cleanups;
+        DROP TABLE IF EXISTS golem_base_pending_logs_operations;
+        DROP TABLE IF EXISTS golem_base_numeric_annotations;
+        DROP TABLE IF EXISTS golem_base_entity_history;
+        DROP TABLE IF EXISTS golem_base_operations;
+        DROP TABLE IF EXISTS golem_base_entity_locks;
+        DROP TABLE IF EXISTS golem_base_entities;
+
+        -- drop functions
+        DROP FUNCTION IF EXISTS golem_base_queue_transaction_processing();
+        DROP FUNCTION IF EXISTS golem_base_queue_transaction_cleanup();
+        DROP FUNCTION IF EXISTS golem_base_queue_logs_processing();
+
+        -- drop types
+        DROP TYPE IF EXISTS golem_base_operation_type;
+        DROP TYPE IF EXISTS golem_base_entity_status_type;
+        "#).await?;
+
+        Ok(())
     }
 }
