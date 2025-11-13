@@ -66,7 +66,6 @@ pub struct Operation {
 pub struct OperationMetadata {
     pub entity_key: EntityKey,
     pub sender: Address,
-    pub owner: Address,
     pub recipient: Address,
     pub tx_hash: TxHash,
     pub block_hash: BlockHash,
@@ -87,7 +86,7 @@ pub enum OperationData {
     Update(Bytes, BlockNumber),
     Delete,
     Extend(BlockNumber),
-    ChangeOwner(Address, BlockNumber),
+    ChangeOwner(Address),
 }
 
 impl OperationData {
@@ -109,7 +108,7 @@ impl OperationData {
             Self::Update(data, _) => Some(data),
             Self::Delete => None,
             Self::Extend(_) => None,
-            Self::ChangeOwner(_, _) => None,
+            Self::ChangeOwner(_) => None,
         }
     }
     pub fn btl(&self) -> Option<u64> {
@@ -118,7 +117,14 @@ impl OperationData {
             Self::Update(_, btl) => Some(*btl),
             Self::Delete => None,
             Self::Extend(btl) => Some(*btl),
-            Self::ChangeOwner(_, btl) => Some(*btl),
+            Self::ChangeOwner(_) => None,
+        }
+    }
+    pub fn new_owner(&self) -> Option<Address> {
+        if let Self::ChangeOwner(owner) = self {
+            Some(*owner)
+        } else {
+            None
         }
     }
 }

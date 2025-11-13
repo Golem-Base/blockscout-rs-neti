@@ -158,19 +158,15 @@ impl TryFrom<golem_base_operations::Model> for Operation {
                     .ok_or(anyhow!("Extend operation in db with no btl"))?
                     .try_into()?,
             ),
-            GolemBaseOperationType::Changeowner => OperationData::ChangeOwner(
-                v.owner.as_slice().try_into()?,
-                v.btl
-                    .ok_or(anyhow!("Update operation in db with no btl"))?
-                    .try_into()?,
-            ),
+            GolemBaseOperationType::Changeowner => {
+                OperationData::ChangeOwner(v.owner.as_slice().try_into()?)
+            }
         };
         Ok(Self {
             operation: data,
             metadata: OperationMetadata {
                 entity_key: v.entity_key.as_slice().try_into()?,
                 sender: v.sender.as_slice().try_into()?,
-                owner: v.owner.as_slice().try_into()?,
                 recipient: v.recipient.as_slice().try_into()?,
                 tx_hash: v.transaction_hash.as_slice().try_into()?,
                 block_hash: v.block_hash.as_slice().try_into()?,
@@ -189,7 +185,7 @@ impl From<&OperationData> for GolemBaseOperationType {
             OperationData::Update(_, _) => GolemBaseOperationType::Update,
             OperationData::Delete => GolemBaseOperationType::Delete,
             OperationData::Extend(_) => GolemBaseOperationType::Extend,
-            OperationData::ChangeOwner(_, _) => GolemBaseOperationType::Changeowner,
+            OperationData::ChangeOwner(_) => GolemBaseOperationType::Changeowner,
         }
     }
 }
@@ -209,11 +205,12 @@ impl From<GolemBaseOperationType> for OperationType {
 impl TryFrom<Operation> for golem_base_operations::ActiveModel {
     type Error = anyhow::Error;
     fn try_from(op: Operation) -> std::result::Result<Self, Self::Error> {
+        let owner = op.owner();
         let md = op.metadata;
         Ok(Self {
             entity_key: Set(md.entity_key.as_slice().into()),
             sender: Set(md.sender.as_slice().into()),
-            owner: Set(md.owner.as_slice().into()),
+            owner: Set(owner.as_slice().into()),
             recipient: Set(md.recipient.as_slice().into()),
             operation: Set((&op.operation).into()),
             data: Set(op.operation.data().map(|v| v.to_owned().into())),
