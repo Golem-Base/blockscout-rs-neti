@@ -152,7 +152,8 @@ SELECT
     COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
     COUNT(*) FILTER (WHERE operation = 'delete' AND recipient = '\x4200000000000000000000000000000000000015') AS expire_count,
     COUNT(*) FILTER (WHERE operation = 'delete' AND recipient != '\x4200000000000000000000000000000000000015') AS delete_count,
-    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count
+    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count,
+    COUNT(*) FILTER (WHERE operation = 'changeowner') AS changeowner_count
 FROM golem_base_operations
 INNER JOIN blocks on blocks.hash = golem_base_operations.block_hash
 WHERE blocks.number = $1 and blocks.consensus
@@ -214,7 +215,8 @@ SELECT
     COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
     COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
     COUNT(*) FILTER (WHERE operation = 'delete') AS delete_count,
-    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count
+    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count,
+    COUNT(*) FILTER (WHERE operation = 'changeowner') AS changeowner_count
 FROM golem_base_operations
 GROUP BY block_number
 ORDER BY block_number DESC

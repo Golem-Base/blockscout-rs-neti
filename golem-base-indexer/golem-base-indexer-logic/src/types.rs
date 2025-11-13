@@ -358,6 +358,7 @@ pub struct BlockEntitiesCount {
     pub expire_count: u64,
     pub delete_count: u64,
     pub extend_count: u64,
+    pub changeowner_count: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -439,6 +440,7 @@ pub struct BlockOperationPoint {
     pub update_count: u64,
     pub delete_count: u64,
     pub extend_count: u64,
+    pub changeowner_count: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

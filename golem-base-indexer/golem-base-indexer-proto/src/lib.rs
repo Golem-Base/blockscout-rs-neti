@@ -280,6 +280,7 @@ impl From<OperationsCount> for v1::CountOperationsResponse {
             update_count: counts.update_count,
             delete_count: counts.delete_count,
             extend_count: counts.extend_count,
+            changeowner_count: counts.changeowner_count,
         }
     }
 }
@@ -537,6 +538,7 @@ impl From<BlockEntitiesCount> for v1::BlockStatsCounts {
             expire_count: value.expire_count,
             delete_count: value.delete_count,
             extend_count: value.extend_count,
+            changeowner_count: value.changeowner_count,
         }
     }
 }
@@ -649,6 +651,7 @@ impl From<BlockOperationPoint> for v1::BlockOperationPoint {
             update_count: v.update_count,
             delete_count: v.delete_count,
             extend_count: v.extend_count,
+            changeowner_count: v.changeowner_count,
         }
     }
 }

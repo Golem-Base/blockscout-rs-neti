@@ -14,6 +14,7 @@ struct DbChartBlockOperations {
     pub update_count: i64,
     pub delete_count: i64,
     pub extend_count: i64,
+    pub changeowner_count: i64,
 }
 
 #[instrument(skip(db))]
@@ -54,6 +55,7 @@ fn generate_points_block_operations(
             update_count: row.update_count as u64,
             delete_count: row.delete_count as u64,
             extend_count: row.extend_count as u64,
+            changeowner_count: row.changeowner_count as u64,
         })
         .collect();
 

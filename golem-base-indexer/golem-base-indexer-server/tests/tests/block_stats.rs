@@ -26,6 +26,7 @@ async fn block_stats_should_work() {
         "expire_count": "0",
         "delete_count": "0",
         "extend_count": "0",
+        "changeowner_count": "0",
     });
     let storage: Value = json!({
         "block_bytes": "0",
@@ -45,6 +46,7 @@ async fn block_stats_should_work() {
         "expire_count": "0",
         "delete_count": "0",
         "extend_count": "0",
+        "changeowner_count": "0",
     });
     let storage: Value = json!({
         "block_bytes": "25",
@@ -64,6 +66,7 @@ async fn block_stats_should_work() {
         "expire_count": "0",
         "delete_count": "0",
         "extend_count": "0",
+        "changeowner_count": "0",
     });
     let storage: Value = json!({
         "block_bytes": "25",
@@ -83,6 +86,7 @@ async fn block_stats_should_work() {
         "expire_count": "0",
         "delete_count": "0",
         "extend_count": "0",
+        "changeowner_count": "0",
     });
     let storage: Value = json!({
         "block_bytes": "42",
@@ -102,6 +106,7 @@ async fn block_stats_should_work() {
         "expire_count": "0",
         "delete_count": "0",
         "extend_count": "0",
+        "changeowner_count": "0",
     });
     let storage: Value = json!({
         "block_bytes": "26",
@@ -121,6 +126,7 @@ async fn block_stats_should_work() {
         "expire_count": "0",
         "delete_count": "1",
         "extend_count": "1",
+        "changeowner_count": "0",
     });
     let storage: Value = json!({
         "block_bytes": "95",
@@ -140,6 +146,7 @@ async fn block_stats_should_work() {
         "expire_count": "1",
         "delete_count": "0",
         "extend_count": "0",
+        "changeowner_count": "0",
     });
     let storage: Value = json!({
         "block_bytes": "0",
@@ -159,6 +166,7 @@ async fn block_stats_should_work() {
         "expire_count": "0",
         "delete_count": "0",
         "extend_count": "0",
+        "changeowner_count": "1",
     });
     let storage: Value = json!({
         "block_bytes": "0",
