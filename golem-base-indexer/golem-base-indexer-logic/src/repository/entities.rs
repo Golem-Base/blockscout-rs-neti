@@ -180,6 +180,10 @@ impl EntityHistoryEntry {
             op_index: value.op_index.try_into()?,
             block_timestamp: value.block_timestamp.and_utc(),
             owner: value.owner.map(|v| v.as_slice().try_into()).transpose()?,
+            prev_owner: value
+                .prev_owner
+                .map(|v| v.as_slice().try_into())
+                .transpose()?,
             sender: value.sender.as_slice().try_into()?,
             operation: value.operation.into(),
             data: value.data.map(|v| v.into()),
@@ -506,6 +510,7 @@ pub async fn insert_history_entry<T: ConnectionTrait>(
         op_index: Set(entry.op_index.try_into()?),
         block_timestamp: Set(entry.block_timestamp.naive_utc()),
         owner: Set(entry.owner.map(|v| v.as_slice().into())),
+        prev_owner: Set(entry.prev_owner.map(|v| v.as_slice().into())),
         sender: Set(entry.sender.as_slice().into()),
         operation: Set(entry.operation.into()),
         data: Set(entry.data.map(|v| v.into())),

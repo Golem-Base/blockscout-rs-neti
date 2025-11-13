@@ -221,8 +221,10 @@ impl Indexer {
         .await?;
         let owner = ops
             .iter()
+            .rev()
             .find(|v| !matches!(v.op.operation, OperationData::Delete))
-            .map(|v| v.op.owner());
+            .map(|v| v.op.owner())
+            .flatten();
 
         repository::entities::delete_history(txn, entity).await?;
         let mut prev_entry: Option<EntityHistoryEntry> = None;
@@ -287,6 +289,9 @@ impl Indexer {
                 op_index: op.op.metadata.index,
                 block_timestamp: op.block_timestamp,
                 owner,
+                prev_owner: prev_entry
+                    .as_ref()
+                    .and_then(|prev_entry| prev_entry.prev_owner.clone()),
                 sender: op.op.metadata.sender,
                 data,
                 prev_data: prev_entry
@@ -550,6 +555,9 @@ impl Indexer {
             op_index: op.metadata.index,
             block_timestamp: tx.block_timestamp,
             owner,
+            prev_owner: prev_entry
+                .as_ref()
+                .and_then(|prev_entry| prev_entry.owner.clone()),
             sender: tx.from_address_hash,
             data,
             prev_data: prev_entry

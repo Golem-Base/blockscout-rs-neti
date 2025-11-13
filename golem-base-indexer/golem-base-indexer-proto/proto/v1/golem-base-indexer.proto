@@ -282,6 +282,8 @@ message EntityHistoryEntry {
   optional string prev_expires_at_timestamp = 20;
   optional uint64 expires_at_timestamp_sec = 21;
   optional uint64 prev_expires_at_timestamp_sec = 22;
+  optional string prev_owner = 23;
+  optional string owner = 24;
 }
 
 message BlockStatsRequest {

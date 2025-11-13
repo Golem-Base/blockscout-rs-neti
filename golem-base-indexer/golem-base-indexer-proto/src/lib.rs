@@ -426,6 +426,8 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             prev_expires_at_timestamp_sec: v.prev_expires_at_timestamp_sec,
             gas_used: "0".into(),  // FIXME
             fees_paid: "0".into(), // FIXME
+            prev_owner: v.prev_owner.map(|v| v.to_checksum(None)),
+            owner: v.owner.map(|v| v.to_checksum(None)),
         }
     }
 }

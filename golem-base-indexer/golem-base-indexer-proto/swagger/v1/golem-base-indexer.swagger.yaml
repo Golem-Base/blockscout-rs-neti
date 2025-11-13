@@ -1176,6 +1176,10 @@ definitions:
       prev_expires_at_timestamp_sec:
         type: string
         format: uint64
+      prev_owner:
+        type: string
+      owner:
+        type: string
   v1EntityStatus:
     type: string
     enum:

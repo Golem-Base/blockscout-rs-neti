@@ -335,6 +335,7 @@ pub struct EntityHistoryEntry {
     pub op_index: u64,
     pub block_timestamp: Timestamp,
     pub owner: Option<Address>,
+    pub prev_owner: Option<Address>,
     pub sender: Address,
     pub data: Option<Bytes>,
     pub prev_data: Option<Bytes>,

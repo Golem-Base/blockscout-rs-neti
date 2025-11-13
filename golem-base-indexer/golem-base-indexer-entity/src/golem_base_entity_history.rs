@@ -23,6 +23,8 @@ pub struct Model {
     pub block_timestamp: DateTime,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub owner: Option<Vec<u8>>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
+    pub prev_owner: Option<Vec<u8>>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub sender: Vec<u8>,
     pub operation: GolemBaseOperationType,

@@ -25,7 +25,8 @@ CREATE TYPE golem_base_operation_type AS ENUM (
     'create',
     'update',
     'delete',
-    'extend'
+    'extend',
+    'changeowner'
 );
         "#
         .split(';')
@@ -94,6 +95,7 @@ CREATE TABLE golem_base_operations (
     operation golem_base_operation_type NOT NULL,
     data bytea,
     btl numeric(21,0),
+    new_owner bytea,
     block_hash bytea NOT NULL references blocks(hash),
     transaction_hash bytea NOT NULL references transactions(hash),
     index bigint NOT NULL,
@@ -103,9 +105,10 @@ CREATE TABLE golem_base_operations (
 
     primary key (transaction_hash, index),
 
-    CONSTRAINT golem_base_operations_check CHECK (((operation <> 'create'::golem_base_operation_type) OR (operation <> 'update'::golem_base_operation_type) OR ((data IS NOT NULL) AND (btl IS NOT NULL)))),
-    CONSTRAINT golem_base_operations_check1 CHECK (((operation <> 'delete'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NULL)))),
-    CONSTRAINT golem_base_operations_check2 CHECK (((operation <> 'extend'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NOT NULL))))
+    CONSTRAINT golem_base_operations_check_create CHECK (((operation <> 'create'::golem_base_operation_type) OR (operation <> 'update'::golem_base_operation_type) OR ((data IS NOT NULL) AND (btl IS NOT NULL) AND (new_owner IS NULL)))),
+    CONSTRAINT golem_base_operations_check_delete CHECK (((operation <> 'delete'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NULL) AND (new_owner IS NULL)))),
+    CONSTRAINT golem_base_operations_check_extend CHECK (((operation <> 'extend'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NOT NULL) AND (new_owner IS NULL)))),
+    CONSTRAINT golem_base_operations_check_changeowner CHECK (((operation <> 'changeowner'::golem_base_operation_type) OR ((data IS NULL) AND (btl IS NULL) AND (new_owner IS NOT NULL))))
 );
 
 CREATE TABLE golem_base_entity_history (
@@ -117,6 +120,7 @@ CREATE TABLE golem_base_entity_history (
     op_index bigint NOT NULL,
     block_timestamp timestamp without time zone NOT NULL,
     owner bytea,
+    prev_owner bytea,
     sender bytea NOT NULL,
     operation golem_base_operation_type NOT NULL,
     data bytea,

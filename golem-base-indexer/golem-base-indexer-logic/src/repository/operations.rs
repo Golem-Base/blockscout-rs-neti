@@ -158,9 +158,12 @@ impl TryFrom<golem_base_operations::Model> for Operation {
                     .ok_or(anyhow!("Extend operation in db with no btl"))?
                     .try_into()?,
             ),
-            GolemBaseOperationType::Changeowner => {
-                OperationData::ChangeOwner(v.owner.as_slice().try_into()?)
-            }
+            GolemBaseOperationType::Changeowner => OperationData::ChangeOwner(
+                v.new_owner
+                    .ok_or(anyhow!("ChangeOwner operation in db with no new_owner"))?
+                    .as_slice()
+                    .try_into()?,
+            ),
         };
         Ok(Self {
             operation: data,
@@ -205,12 +208,11 @@ impl From<GolemBaseOperationType> for OperationType {
 impl TryFrom<Operation> for golem_base_operations::ActiveModel {
     type Error = anyhow::Error;
     fn try_from(op: Operation) -> std::result::Result<Self, Self::Error> {
-        let owner = op.owner();
         let md = op.metadata;
         Ok(Self {
             entity_key: Set(md.entity_key.as_slice().into()),
             sender: Set(md.sender.as_slice().into()),
-            owner: Set(owner.as_slice().into()),
+            new_owner: Set(op.operation.new_owner().map(|v| v.as_slice().into())),
             recipient: Set(md.recipient.as_slice().into()),
             operation: Set((&op.operation).into()),
             data: Set(op.operation.data().map(|v| v.to_owned().into())),
