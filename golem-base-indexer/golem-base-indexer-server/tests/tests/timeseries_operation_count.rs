@@ -38,7 +38,7 @@ async fn chart_operation_count_should_work() {
             {
                 "date": "2025-07-22 11:00",
                 "date_to": "2025-07-22 12:00",
-                "value": "11",
+                "value": "12",
             }
         ]
     });
@@ -62,7 +62,7 @@ async fn chart_operation_count_should_work() {
             {
                 "date": "2025-07-22",
                 "date_to": "2025-07-23",
-                "value": "11",
+                "value": "12",
             }
         ]
     });

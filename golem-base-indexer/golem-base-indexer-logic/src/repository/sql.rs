@@ -129,7 +129,7 @@ limit 1;
 
 pub const COUNT_ENTITIES_BY_OWNER: &str = r#"
 select
-    count(*) as total_entities,
+    (select count(*) from golem_base_operations where operation = 'create' and sender = $1) as created_entities,
     count(*) filter (where status = 'active') as active_entities,
     coalesce(sum(length(data)) filter (where status = 'active'), 0) as size_of_active_entities
 from golem_base_entities
@@ -194,7 +194,7 @@ WITH current_state AS (
     status,
     length(data) size
   FROM golem_base_entity_history
-  WHERE block_number <= $1 AND operation != 'extend'
+  WHERE block_number <= $1 AND operation != 'extend' AND operation != 'changeowner'
   ORDER BY entity_key, block_number DESC
 )
 SELECT

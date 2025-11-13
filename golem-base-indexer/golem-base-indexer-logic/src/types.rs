@@ -314,7 +314,7 @@ pub struct AddressFilter {
 
 #[derive(Debug, Clone)]
 pub struct AddressEntitiesCount {
-    pub total_entities: u64,
+    pub created_entities: u64,
     pub size_of_active_entities: u64,
     pub active_entities: u64,
 }

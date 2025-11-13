@@ -19,7 +19,7 @@ async fn test_list_operations_endpoint_works() {
 
     let response: serde_json::Value =
         test_server::send_get_request(&base, "/api/v1/operations?operation=ALL").await;
-    let expected_count = 11;
+    let expected_count = 12;
     assert_eq!(response["items"].as_array().unwrap().len(), expected_count);
 
     let response: serde_json::Value =
