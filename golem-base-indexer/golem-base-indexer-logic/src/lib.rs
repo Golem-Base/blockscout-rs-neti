@@ -554,9 +554,7 @@ impl Indexer {
             op_index: op.metadata.index,
             block_timestamp: tx.block_timestamp,
             owner,
-            prev_owner: prev_entry
-                .as_ref()
-                .and_then(|prev_entry| prev_entry.owner),
+            prev_owner: prev_entry.as_ref().and_then(|prev_entry| prev_entry.owner),
             sender: tx.from_address_hash,
             data,
             prev_data: prev_entry
