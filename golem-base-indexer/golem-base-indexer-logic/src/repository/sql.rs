@@ -46,6 +46,7 @@ where
 order by
     pendings.block_number asc,
     pendings.index asc
+limit 100
 "#;
 
 pub const GET_UNPROCESSED_TX_HASHES: &str = r#"
@@ -61,6 +62,7 @@ where
 order by
     pendings.block_number asc,
     pendings.index asc
+limit 100
 "#;
 
 pub const GET_TX_BY_HASH: &str = r#"
@@ -352,4 +354,16 @@ FROM
     golem_base_leaderboard_effectively_largest_entities
 ORDER BY
     rank ASC
+"#;
+
+pub const QUEUE_REINDEX: &str = r#"
+insert into golem_base_entities_to_reindex (key) values ($1)
+"#;
+
+pub const GET_ENTITIES_TO_REINDEX: &str = r#"
+select distinct key from golem_base_entities_to_reindex
+"#;
+
+pub const FINISH_REINDEX: &str = r#"
+delete from golem_base_entities_to_reindex where key = $1
 "#;

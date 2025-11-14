@@ -1,13 +1,13 @@
 use anyhow::{anyhow, Context, Result};
 use arkiv_storage_tx::{ChangeOwner, Create, Delete, Extend, StorageTransaction, Update};
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
 use lazy_static::lazy_static;
 use prometheus::{opts, register_counter, register_gauge, Counter, Gauge};
 use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, TransactionTrait};
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::HashSet,
     sync::Arc,
     time::{self, Duration},
 };
@@ -16,7 +16,6 @@ use tracing::{instrument, warn};
 
 use crate::{
     arkiv::{block_timestamp, block_timestamp_sec, entity_key},
-    repository::locks::Guard,
     types::{
         Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAttribute,
         FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogIndex, NumericAttribute,
@@ -102,7 +101,6 @@ impl Indexer {
 
     #[instrument(skip_all)]
     pub async fn run(self) -> Result<()> {
-        repository::locks::clear(&*self.db).await?;
         loop {
             self.tick().await.inspect_err(|e| {
                 tracing::error!(
@@ -129,19 +127,41 @@ impl Indexer {
         }
     }
 
-    #[instrument(skip_all)]
-    pub async fn tick(&self) -> Result<()> {
+    pub async fn process_batch_of_transactions(&self) -> Result<()> {
         repository::blockscout::stream_unprocessed_tx_hashes(&*self.db)
             .await?
-            .for_each_concurrent(self.settings.concurrency, |tx| async move {
-                // ignore errors, it's most likely just a deadlock anyway, we'll just retry.
-                let _ = self
-                    .handle_tx(tx)
+            .map(|tx| async move {
+                self.handle_tx(tx)
                     .await
-                    .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx failed"));
+                    .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx failed"))
+                    .unwrap_or_default() // ignore error, it will be retried
             })
+            .buffer_unordered(self.settings.concurrency)
+            .collect::<Vec<_>>()
             .await;
 
+        Ok(())
+    }
+
+    pub async fn process_reindexes(&self) -> Result<()> {
+        repository::entities::stream_entities_to_reindex(&*self.db)
+            .await?
+            .map(|key| {
+                async move {
+                    self.reindex_entity(key)
+                        .await
+                        .inspect_err(|e| tracing::warn!(?e, ?key, "Handling tx reindex failed"))
+                        .unwrap_or_default() // ignore error, it will be retried
+                }
+            })
+            .buffer_unordered(self.settings.concurrency)
+            .collect::<Vec<_>>()
+            .await;
+
+        Ok(())
+    }
+
+    pub async fn process_delete_logs(&self) -> Result<()> {
         repository::blockscout::stream_unprocessed_logs(&*self.db)
             .await?
             .for_each_concurrent(self.settings.concurrency, |log| async move {
@@ -151,52 +171,70 @@ impl Indexer {
                     .inspect_err(|e| tracing::warn!(?e, ?log, "Handling log failed"));
             })
             .await;
-
-        repository::blockscout::stream_tx_hashes_for_cleanup(&*self.db)
+        Ok(())
+    }
+    pub async fn process_tx_cleanups(&self) -> Result<()> {
+        let txn = self.db.begin().await?;
+        let affected_entities = repository::blockscout::stream_tx_hashes_for_cleanup(&*self.db)
             .await?
-            .for_each_concurrent(self.settings.concurrency, |tx| async move {
-                // ignore errors, it's most likely just a deadlock anyway, we'll just retry.
-                let _ = self
-                    .handle_tx_cleanup(tx)
-                    .await
-                    .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx cleanup failed"));
+            .map(|tx| {
+                let txn = &txn;
+                async move {
+                    self.handle_tx_cleanup(txn, tx)
+                        .await
+                        .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx cleanup failed"))
+                        .unwrap_or_default() // ignore error, it will be retried
+                }
             })
+            .buffer_unordered(self.settings.concurrency)
+            .collect::<Vec<_>>()
             .await;
+
+        futures::stream::iter(affected_entities.into_iter().flatten())
+            .map(|key| repository::entities::queue_reindex(&*self.db, key))
+            .buffered(self.settings.concurrency)
+            .try_collect::<()>()
+            .await?;
+
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    pub async fn tick(&self) -> Result<()> {
+        self.process_batch_of_transactions().await?;
+        self.process_delete_logs().await?;
+        self.process_tx_cleanups().await?;
+        self.process_reindexes().await?;
 
         Ok(())
     }
 
-    #[instrument(skip(self))]
-    async fn handle_tx_cleanup(&self, tx_hash: TxHash) -> Result<()> {
+    #[instrument(skip(self, txn))]
+    async fn handle_tx_cleanup(
+        &self,
+        txn: &DatabaseTransaction,
+        tx_hash: TxHash,
+    ) -> Result<HashSet<EntityKey>> {
         tracing::info!("Processing tx cleanup after reorg");
-        let txn = self.db.begin().await?;
 
-        let affected_entities: Vec<EntityKey> =
-            repository::entities::find_by_tx_hash(&txn, tx_hash)
-                .await
-                .with_context(|| format!("Finding entities for tx hash {tx_hash}"))?
-                .into_iter()
-                .map(|e| e.key)
-                .collect();
+        let affected_entities: Vec<EntityKey> = repository::entities::find_by_tx_hash(txn, tx_hash)
+            .await
+            .with_context(|| format!("Finding entities for tx hash {tx_hash}"))?
+            .into_iter()
+            .map(|e| e.key)
+            .collect();
 
-        repository::operations::delete_by_tx_hash(&txn, tx_hash)
+        repository::operations::delete_by_tx_hash(txn, tx_hash)
             .await
             .with_context(|| format!("Deleting operations for tx hash {tx_hash}"))?;
 
-        let mut guards = HashMap::<_, _>::new();
-        for entity in affected_entities {
-            self.reindex_entity(&txn, Some(&mut guards), entity).await?;
-        }
+        repository::transactions::finish_tx_processing(txn, tx_hash).await?;
+        repository::transactions::finish_tx_cleanup(txn, tx_hash).await?;
 
-        repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
-        repository::transactions::finish_tx_cleanup(&txn, tx_hash).await?;
-
-        for guard in guards.into_values() {
-            guard.unlock(&txn).await?;
-        }
-        txn.commit().await?;
         TX_REORG_COUNTER.inc();
-        Ok(())
+
+        Ok(affected_entities.into_iter().collect())
     }
 
     async fn reindex_entity_with_ops<T: ConnectionTrait>(
@@ -325,29 +363,21 @@ impl Indexer {
     }
 
     #[instrument(skip_all, fields(entity))]
-    pub async fn reindex_entity<T: ConnectionTrait>(
-        &self,
-        txn: &T,
-        guards: Option<&mut HashMap<EntityKey, Guard>>,
-        entity: EntityKey,
-    ) -> Result<()> {
-        if let Some(guards) = guards {
-            if let Entry::Vacant(e) = guards.entry(entity) {
-                e.insert(repository::locks::lock(txn, entity).await?);
-            }
+    pub async fn reindex_entity(&self, entity: EntityKey) -> Result<()> {
+        let txn = self.db.begin().await?;
+        match repository::operations::find_latest_operation(&txn, entity).await? {
+            Some(_) => self.reindex_entity_with_ops(&txn, entity).await?,
+            None => repository::entities::drop_entity(&txn, entity).await?,
         }
-        match repository::operations::find_latest_operation(txn, entity).await? {
-            Some(_) => self.reindex_entity_with_ops(txn, entity).await?,
-            None => repository::entities::drop_entity(txn, entity).await?,
-        }
-        repository::entities::refresh_entity_based_on_history(txn, entity).await?;
+        repository::entities::refresh_entity_based_on_history(&txn, entity).await?;
+        repository::entities::finish_reindex(&txn, entity).await?;
+        txn.commit().await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
     async fn handle_tx(&self, tx_hash: TxHash) -> Result<()> {
         tracing::info!("Processing tx");
-
         let txn = self.db.begin().await?;
 
         let tx = repository::blockscout::get_tx(&txn, tx_hash)
@@ -357,43 +387,42 @@ impl Indexer {
         let tx: ConsensusTx = tx.try_into()?;
 
         let mut op_idx = 0;
-        let mut guards = HashMap::<_, _>::new();
         let storagetx: StorageTransaction = match (&tx.input).try_into() {
             Ok(storagetx) => storagetx,
             Err(e) => {
                 tracing::warn!(?e, "Storage tx with undecodable data");
-                return Ok(());
+                return Ok(Default::default());
             }
         };
 
         // following operations are a good candidate for optimization when needed
         // possible improvements include parallelization and batching
         for create in storagetx.creates {
-            self.handle_create(&txn, &mut guards, &tx, create, op_idx)
+            self.handle_create(&txn, &tx, create, op_idx)
                 .await
                 .with_context(|| format!("Handling create op tx_hash={tx_hash} op_idx={op_idx}"))?;
             op_idx += 1;
         }
         for delete in storagetx.deletes {
-            self.handle_delete(&txn, &mut guards, &tx, delete, op_idx)
+            self.handle_delete(&txn, &tx, delete, op_idx)
                 .await
                 .with_context(|| format!("Handling delete op tx_hash={tx_hash} op_idx={op_idx}"))?;
             op_idx += 1;
         }
         for update in storagetx.updates {
-            self.handle_update(&txn, &mut guards, &tx, update, op_idx)
+            self.handle_update(&txn, &tx, update, op_idx)
                 .await
                 .with_context(|| format!("Handling update op tx_hash={tx_hash} op_idx={op_idx}"))?;
             op_idx += 1;
         }
         for extend in storagetx.extensions {
-            self.handle_extend(&txn, &mut guards, &tx, extend, op_idx)
+            self.handle_extend(&txn, &tx, extend, op_idx)
                 .await
                 .with_context(|| format!("Handling extend op tx_hash={tx_hash} op_idx={op_idx}"))?;
             op_idx += 1;
         }
         for change_owner in storagetx.change_owners {
-            self.handle_change_owner(&txn, &mut guards, &tx, change_owner, op_idx)
+            self.handle_change_owner(&txn, &tx, change_owner, op_idx)
                 .await
                 .with_context(|| {
                     format!("Handling change_owner op tx_hash={tx_hash} op_idx={op_idx}")
@@ -402,9 +431,6 @@ impl Indexer {
         }
 
         repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
-        for guard in guards.into_values() {
-            guard.unlock(&txn).await?;
-        }
         txn.commit().await?;
 
         TX_COUNTER.inc();
@@ -416,15 +442,11 @@ impl Indexer {
     async fn handle_create(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         create: Create,
         idx: u64,
     ) -> Result<()> {
         let key = entity_key(tx.hash, create.payload.clone(), idx);
-        if let Entry::Vacant(e) = guards.entry(key) {
-            e.insert(repository::locks::lock(txn, key).await?);
-        }
         tracing::info!("Processing Create operation");
 
         let op = Operation {
@@ -441,25 +463,6 @@ impl Indexer {
             operation: OperationData::create(create.payload.clone(), create.btl),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
-
-        if repository::entities::get_oldest_entity_history_entry(
-            txn,
-            key,
-            FullOperationIndex {
-                block_number: tx.block_number,
-                tx_index: tx.index,
-                op_index: idx,
-            },
-        )
-        .await?
-        .is_some()
-        {
-            self.reindex_entity_with_ops(txn, key).await?;
-        } else {
-            self.insert_history_entry(txn, key, tx, op).await?;
-        }
-
-        repository::entities::refresh_entity_based_on_history(txn, key).await?;
 
         self.store_attributes(
             txn,
@@ -479,6 +482,7 @@ impl Indexer {
         )
         .await?;
 
+        repository::entities::queue_reindex(txn, key).await?;
         Ok(())
     }
 
@@ -584,14 +588,10 @@ impl Indexer {
     async fn handle_update(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         update: Update,
         idx: u64,
     ) -> Result<()> {
-        if let Entry::Vacant(e) = guards.entry(update.entity_key) {
-            e.insert(repository::locks::lock(txn, update.entity_key).await?);
-        }
         tracing::info!("Processing Update operation");
 
         let op = Operation {
@@ -608,26 +608,6 @@ impl Indexer {
             operation: OperationData::update(update.payload.clone(), update.btl),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
-
-        if repository::entities::get_oldest_entity_history_entry(
-            txn,
-            update.entity_key,
-            FullOperationIndex {
-                block_number: tx.block_number,
-                tx_index: tx.index,
-                op_index: idx,
-            },
-        )
-        .await?
-        .is_some()
-        {
-            self.reindex_entity_with_ops(txn, update.entity_key).await?;
-        } else {
-            self.insert_history_entry(txn, update.entity_key, tx, op)
-                .await?;
-        }
-
-        repository::entities::refresh_entity_based_on_history(txn, update.entity_key).await?;
 
         self.store_attributes(
             txn,
@@ -647,6 +627,7 @@ impl Indexer {
         )
         .await?;
 
+        repository::entities::queue_reindex(txn, update.entity_key).await?;
         Ok(())
     }
 
@@ -654,14 +635,10 @@ impl Indexer {
     async fn handle_delete(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         delete: Delete,
         idx: u64,
     ) -> Result<()> {
-        if let Entry::Vacant(e) = guards.entry(delete) {
-            e.insert(repository::locks::lock(txn, delete).await?);
-        }
         tracing::info!("Processing Delete operation");
         let op = Operation {
             metadata: OperationMetadata {
@@ -677,11 +654,7 @@ impl Indexer {
             operation: OperationData::delete(),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
-
-        self.insert_history_entry(txn, delete, tx, op).await?;
-        repository::entities::refresh_entity_based_on_history(txn, delete).await?;
-
-        repository::attributes::deactivate_attributes(txn, delete).await?;
+        repository::entities::queue_reindex(txn, delete).await?;
         Ok(())
     }
 
@@ -689,14 +662,10 @@ impl Indexer {
     async fn handle_extend(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         extend: Extend,
         idx: u64,
     ) -> Result<()> {
-        if let Entry::Vacant(e) = guards.entry(extend.entity_key) {
-            e.insert(repository::locks::lock(txn, extend.entity_key).await?);
-        }
         tracing::info!("Processing Extend operation");
         let op = Operation {
             metadata: OperationMetadata {
@@ -712,26 +681,7 @@ impl Indexer {
             operation: OperationData::extend(extend.number_of_blocks),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
-
-        if repository::entities::get_oldest_entity_history_entry(
-            txn,
-            extend.entity_key,
-            FullOperationIndex {
-                block_number: tx.block_number,
-                tx_index: tx.index,
-                op_index: idx,
-            },
-        )
-        .await?
-        .is_some()
-        {
-            self.reindex_entity_with_ops(txn, extend.entity_key).await?;
-        } else {
-            self.insert_history_entry(txn, extend.entity_key, tx, op)
-                .await?;
-        }
-
-        repository::entities::refresh_entity_based_on_history(txn, extend.entity_key).await?;
+        repository::entities::queue_reindex(txn, extend.entity_key).await?;
 
         Ok(())
     }
@@ -740,14 +690,10 @@ impl Indexer {
     async fn handle_change_owner(
         &self,
         txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         change_owner: ChangeOwner,
         idx: u64,
     ) -> Result<()> {
-        if let Entry::Vacant(e) = guards.entry(change_owner.entity_key) {
-            e.insert(repository::locks::lock(txn, change_owner.entity_key).await?);
-        }
         tracing::info!("Processing ChangeOwner operation");
 
         let op = Operation {
@@ -764,49 +710,9 @@ impl Indexer {
             operation: OperationData::ChangeOwner(change_owner.new_owner),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
-
-        if repository::entities::get_oldest_entity_history_entry(
-            txn,
-            change_owner.entity_key,
-            FullOperationIndex {
-                block_number: tx.block_number,
-                tx_index: tx.index,
-                op_index: idx,
-            },
-        )
-        .await?
-        .is_some()
-        {
-            self.reindex_entity_with_ops(txn, change_owner.entity_key)
-                .await?;
-        } else {
-            self.insert_history_entry(txn, change_owner.entity_key, tx, op)
-                .await?;
-        }
-
-        repository::entities::refresh_entity_based_on_history(txn, change_owner.entity_key).await?;
+        repository::entities::queue_reindex(txn, change_owner.entity_key).await?;
 
         Ok(())
-    }
-
-    async fn is_latest_update(
-        &self,
-        txn: &DatabaseTransaction,
-        entity_key: EntityKey,
-        index: FullOperationIndex,
-    ) -> Result<bool> {
-        let entity = repository::entities::get_entity(txn, entity_key).await?;
-
-        if let Some(entity) = entity {
-            if !matches!(entity.status, EntityStatus::Active) {
-                return Ok(false);
-            }
-        }
-
-        match repository::operations::get_latest_update(txn, entity_key).await? {
-            Some(latest_stored_index) => Ok(index >= latest_stored_index),
-            None => Ok(true),
-        }
     }
 
     #[instrument(skip_all, fields(log))]
@@ -826,7 +732,6 @@ impl Indexer {
             tracing::warn!("Delete Log event with no second topic?");
             return Ok(());
         };
-        let guard = repository::locks::lock(&txn, entity_key).await?;
         tracing::info!("Processing delete log for entity {entity_key}");
 
         let op = Operation {
@@ -849,7 +754,6 @@ impl Indexer {
 
         repository::attributes::deactivate_attributes(&txn, entity_key).await?;
         repository::logs::finish_log_processing(&txn, tx.hash, tx.block_hash, log.index).await?;
-        guard.unlock(&txn).await?;
         txn.commit().await?;
         OP_COUNTER.inc();
 
@@ -866,22 +770,6 @@ impl Indexer {
         string_attributes: Vec<StringAttribute>,
         numeric_attributes: Vec<NumericAttribute>,
     ) -> Result<()> {
-        let latest_update = self
-            .is_latest_update(
-                txn,
-                entity_key,
-                FullOperationIndex {
-                    block_number: tx.block_number,
-                    tx_index: tx.index,
-                    op_index,
-                },
-            )
-            .await?;
-
-        if latest_update {
-            repository::attributes::deactivate_attributes(txn, entity_key).await?;
-        }
-
         for attribute in string_attributes {
             repository::attributes::insert_string_attribute(
                 txn,
@@ -894,7 +782,7 @@ impl Indexer {
                         value: attribute.value,
                     },
                 },
-                latest_update,
+                false,
             )
             .await?;
         }
@@ -911,7 +799,7 @@ impl Indexer {
                         value: attribute.value,
                     },
                 },
-                latest_update,
+                false,
             )
             .await?;
         }

@@ -3,6 +3,7 @@ use sea_orm_migration::sea_orm::{Statement, TransactionTrait};
 
 mod m20251111_170928_v2;
 mod m20251114_120643_add_golem_base_operations_block_number_idx;
+mod m20251114_121336_lockless;
 
 pub struct Migrator;
 
@@ -12,6 +13,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20251111_170928_v2::Migration),
             Box::new(m20251114_120643_add_golem_base_operations_block_number_idx::Migration),
+            Box::new(m20251114_121336_lockless::Migration),
         ]
     }
 

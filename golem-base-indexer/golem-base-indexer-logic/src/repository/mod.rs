@@ -4,7 +4,6 @@ pub mod block;
 pub mod blockscout;
 pub mod entities;
 pub mod leaderboards;
-pub mod locks;
 pub mod logs;
 pub mod operations;
 mod sql;
