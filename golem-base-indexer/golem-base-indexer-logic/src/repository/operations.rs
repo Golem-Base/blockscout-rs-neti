@@ -460,3 +460,18 @@ pub async fn find_latest_operation<T: ConnectionTrait>(
     .map(Operation::try_from)
     .transpose()
 }
+
+#[instrument(skip(db))]
+pub async fn batch_insert_operation<T: ConnectionTrait>(db: &T, ops: Vec<Operation>) -> Result<()> {
+    let models = ops
+        .into_iter()
+        .map(golem_base_operations::ActiveModel::try_from)
+        .collect::<Result<Vec<_>>>()?;
+
+    golem_base_operations::Entity::insert_many(models)
+        .exec(db)
+        .await
+        .with_context(|| "Failed to insert operations")?;
+
+    Ok(())
+}
