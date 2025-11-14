@@ -16,6 +16,10 @@ create index golem_base_entities_to_reindex_key on golem_base_entities_to_reinde
 alter table golem_base_string_annotations drop constraint golem_base_string_annotations_entity_key_fkey;
 alter table golem_base_numeric_annotations drop constraint golem_base_numeric_annotations_entity_key_fkey;
 drop table golem_base_entity_locks;
+
+create index golem_base_string_annotations_entity_active_idx on golem_base_string_annotations (entity_key) where active;
+create index golem_base_numeric_annotations_entity_active_idx on golem_base_numeric_annotations (entity_key) where active;
+
 "#;
         from_sql(manager, sql).await
     }
@@ -28,6 +32,9 @@ alter table golem_base_numeric_annotations add constraint golem_base_numeric_ann
 CREATE TABLE golem_base_entity_locks (
     key bytea NOT NULL primary key
 );
+
+drop index golem_base_string_annotations_entity_active_idx on golem_base_string_annotations;
+drop index golem_base_numeric_annotations_entity_active_idx on golem_base_numeric_annotations;
 "#;
         from_sql(manager, sql).await
     }

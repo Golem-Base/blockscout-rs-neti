@@ -212,6 +212,38 @@ impl EntityHistoryEntry {
     }
 }
 
+impl TryFrom<EntityHistoryEntry> for golem_base_entity_history::ActiveModel {
+    type Error = anyhow::Error;
+    fn try_from(entry: EntityHistoryEntry) -> Result<Self> {
+        Ok(Self {
+            entity_key: Set(entry.entity_key.as_slice().into()),
+            block_number: Set(entry.block_number.try_into()?),
+            block_hash: Set(entry.block_hash.as_slice().into()),
+            transaction_hash: Set(entry.transaction_hash.as_slice().into()),
+            tx_index: Set(entry.tx_index.try_into()?),
+            op_index: Set(entry.op_index.try_into()?),
+            block_timestamp: Set(entry.block_timestamp.naive_utc()),
+            owner: Set(entry.owner.map(|v| v.as_slice().into())),
+            prev_owner: Set(entry.prev_owner.map(|v| v.as_slice().into())),
+            sender: Set(entry.sender.as_slice().into()),
+            operation: Set(entry.operation.into()),
+            data: Set(entry.data.map(|v| v.into())),
+            prev_data: Set(entry.prev_data.map(|v| v.into())),
+            btl: Set(entry.btl.map(|v| v.into())),
+            status: Set(entry.status.into()),
+            prev_status: Set(entry.prev_status.map(|v| v.into())),
+            expires_at_block_number: Set(entry
+                .expires_at_block_number
+                .map(|v| v.try_into())
+                .transpose()?),
+            prev_expires_at_block_number: Set(entry
+                .prev_expires_at_block_number
+                .map(|v| v.try_into())
+                .transpose()?),
+        })
+    }
+}
+
 #[derive(Debug, FromQueryResult)]
 pub struct DbEntitiesAverages {
     pub average_entity_size: i64,
@@ -508,40 +540,19 @@ pub async fn get_entity_operation<T: ConnectionTrait>(
 }
 
 #[instrument(skip(db))]
-pub async fn insert_history_entry<T: ConnectionTrait>(
+pub async fn batch_insert_history_entry<T: ConnectionTrait>(
     db: &T,
-    entry: EntityHistoryEntry,
+    entries: Vec<EntityHistoryEntry>,
 ) -> Result<()> {
-    let entry = golem_base_entity_history::ActiveModel {
-        entity_key: Set(entry.entity_key.as_slice().into()),
-        block_number: Set(entry.block_number.try_into()?),
-        block_hash: Set(entry.block_hash.as_slice().into()),
-        transaction_hash: Set(entry.transaction_hash.as_slice().into()),
-        tx_index: Set(entry.tx_index.try_into()?),
-        op_index: Set(entry.op_index.try_into()?),
-        block_timestamp: Set(entry.block_timestamp.naive_utc()),
-        owner: Set(entry.owner.map(|v| v.as_slice().into())),
-        prev_owner: Set(entry.prev_owner.map(|v| v.as_slice().into())),
-        sender: Set(entry.sender.as_slice().into()),
-        operation: Set(entry.operation.into()),
-        data: Set(entry.data.map(|v| v.into())),
-        prev_data: Set(entry.prev_data.map(|v| v.into())),
-        btl: Set(entry.btl.map(|v| v.into())),
-        status: Set(entry.status.into()),
-        prev_status: Set(entry.prev_status.map(|v| v.into())),
-        expires_at_block_number: Set(entry
-            .expires_at_block_number
-            .map(|v| v.try_into())
-            .transpose()?),
-        prev_expires_at_block_number: Set(entry
-            .prev_expires_at_block_number
-            .map(|v| v.try_into())
-            .transpose()?),
-    };
-    golem_base_entity_history::Entity::insert(entry)
+    let models = entries
+        .into_iter()
+        .map(golem_base_entity_history::ActiveModel::try_from)
+        .collect::<Result<Vec<_>>>()?;
+
+    golem_base_entity_history::Entity::insert_many(models)
         .exec(db)
         .await
-        .context("Failed to insert history entry")?;
+        .context("Failed to insert history entries")?;
     Ok(())
 }
 
@@ -624,12 +635,20 @@ pub async fn entities_averages<T: ConnectionTrait>(db: &T) -> Result<EntitiesAve
 }
 
 #[instrument(skip(db))]
-pub async fn queue_reindex<T: ConnectionTrait>(db: &T, key: EntityKey) -> Result<()> {
-    let key: Vec<u8> = key.as_slice().into();
+pub async fn batch_queue_reindex<T: ConnectionTrait>(db: &T, keys: Vec<EntityKey>) -> Result<()> {
+    let keys: Vec<Vec<u8>> = keys.into_iter().map(|v| v.as_slice().into()).collect();
+
+    let values_placeholders = (1..=keys.len())
+        .map(|i| format!("(${i})"))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    let query = format!("{} {values_placeholders}", sql::QUEUE_REINDEX_PREFIX);
+    let keys: Vec<sea_orm::Value> = keys.into_iter().map(|v| v.into()).collect();
     db.execute(Statement::from_sql_and_values(
         DbBackend::Postgres,
-        sql::QUEUE_REINDEX,
-        [key.into()],
+        query,
+        keys,
     ))
     .await?;
 

@@ -356,8 +356,8 @@ ORDER BY
     rank ASC
 "#;
 
-pub const QUEUE_REINDEX: &str = r#"
-insert into golem_base_entities_to_reindex (key) values ($1)
+pub const QUEUE_REINDEX_PREFIX: &str = r#"
+insert into golem_base_entities_to_reindex (key) values
 "#;
 
 pub const GET_ENTITIES_TO_REINDEX: &str = r#"

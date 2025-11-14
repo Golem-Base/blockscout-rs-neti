@@ -161,6 +161,7 @@ pub async fn deactivate_attributes<T: ConnectionTrait>(
             Expr::value(false),
         )
         .filter(golem_base_string_annotations::Column::EntityKey.eq(entity_key.clone()))
+        .filter(golem_base_string_annotations::Column::Active.eq(true))
         .exec(db)
         .await;
 
@@ -178,6 +179,7 @@ pub async fn deactivate_attributes<T: ConnectionTrait>(
             Expr::value(false),
         )
         .filter(golem_base_numeric_annotations::Column::EntityKey.eq(entity_key))
+        .filter(golem_base_numeric_annotations::Column::Active.eq(true))
         .exec(db)
         .await;
 
@@ -276,6 +278,40 @@ pub async fn activate_attributes<T: ConnectionTrait>(
             return Err(e).context("Deactivating numeric attributes");
         }
     };
+
+    Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn batch_insert_string_attribute<T: ConnectionTrait>(
+    db: &T,
+    attributes: Vec<FullStringAttribute>,
+) -> Result<()> {
+    let models = attributes
+        .into_iter()
+        .map(golem_base_string_annotations::ActiveModel::try_from)
+        .collect::<Result<Vec<_>>>()?;
+    golem_base_string_annotations::Entity::insert_many(models)
+        .exec(db)
+        .await
+        .with_context(|| "Failed to insert string attributes")?;
+
+    Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn batch_insert_numeric_attribute<T: ConnectionTrait>(
+    db: &T,
+    attributes: Vec<FullNumericAttribute>,
+) -> Result<()> {
+    let models = attributes
+        .into_iter()
+        .map(golem_base_numeric_annotations::ActiveModel::try_from)
+        .collect::<Result<Vec<_>>>()?;
+    golem_base_numeric_annotations::Entity::insert_many(models)
+        .exec(db)
+        .await
+        .with_context(|| "Failed to insert numeric attributes")?;
 
     Ok(())
 }
