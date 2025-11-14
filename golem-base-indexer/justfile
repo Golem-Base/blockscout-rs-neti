@@ -31,6 +31,8 @@ run:
     GOLEM_BASE_INDEXER__METRICS__ENABLED=true \
     GOLEM_BASE_INDEXER__SERVER__HTTP__CORS__ENABLED=true \
     GOLEM_BASE_INDEXER__SERVER__HTTP__CORS__ALLOWED_ORIGIN='*' \
+    GOLEM_BASE_INDEXER__INDEXER__CONCURRENCY=50 \
+    GOLEM_BASE_INDEXER__DATABASE__CONNECT_OPTIONS__MAX_CONNECTIONS=200 \
     RUST_LOG=debug,sqlx=info,tracing::span=info \
     cargo run --bin golem-base-indexer-server
 
@@ -40,7 +42,7 @@ generate-entities:
   sleep 3
   docker exec -i golem-base-indexer-postgres psql postgres://admin:admin@localhost:5432/postgres < golem-base-indexer-server/tests/fixtures/blockscout_tables.sql;
   env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli migrate -d golem-base-indexer-migration up
-  env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli generate entity --ignore-tables golem_base_indexer_migrations,smart_contracts,internal_transactions --lib -o golem-base-indexer-entity/src
+  env DATABASE_URL={{TEST_DATABASE_URL}}/postgres sea-orm-cli generate entity --ignore-tables golem_base_indexer_migrations,smart_contracts,internal_transactions,golem_base_entities_to_reindex --lib -o golem-base-indexer-entity/src
   cargo fmt -p golem-base-indexer-entity -- --config imports_granularity=Crate
   docker stop golem-base-indexer-postgres
 

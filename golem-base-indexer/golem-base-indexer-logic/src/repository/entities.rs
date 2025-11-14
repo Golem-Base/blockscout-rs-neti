@@ -1,14 +1,15 @@
 use anyhow::{anyhow, Context, Result};
+use futures::{Stream, StreamExt};
 use golem_base_indexer_entity::{
     golem_base_entities, golem_base_entity_history, golem_base_numeric_annotations,
     golem_base_string_annotations, sea_orm_active_enums::GolemBaseEntityStatusType,
 };
 use sea_orm::{
-    prelude::*,
+    entity::prelude::*,
     sea_query::OnConflict,
     sqlx::types::chrono::Utc,
     ActiveValue::{NotSet, Set},
-    Condition, DbBackend, FromQueryResult, Iterable, QueryOrder, Statement,
+    Condition, DbBackend, FromQueryResult, Iterable, QueryOrder, Statement, StreamTrait,
 };
 use tracing::instrument;
 
@@ -24,6 +25,11 @@ use crate::{
         OperationFilter, PaginationMetadata, TxHash,
     },
 };
+
+#[derive(Copy, Clone, Debug, EnumIter)]
+pub enum Relation {
+    StringAnnotation,
+}
 
 #[derive(Debug)]
 pub struct GolemBaseEntityCreate {
@@ -58,6 +64,11 @@ pub struct GolemBaseEntityExtend {
     pub sender: Address,
     pub extended_at: TxHash,
     pub expires_at: BlockNumber,
+}
+
+#[derive(FromQueryResult)]
+pub struct DbKey {
+    pub key: Vec<u8>,
 }
 
 impl From<EntityStatus> for GolemBaseEntityStatusType {
@@ -626,4 +637,53 @@ pub async fn entities_averages<T: ConnectionTrait>(db: &T) -> Result<EntitiesAve
     .context("Failed to get entities averages")?
     .expect("Entity averages will always return a row")
     .try_into()
+}
+
+#[instrument(skip(db))]
+pub async fn queue_reindex<T: ConnectionTrait>(db: &T, key: EntityKey) -> Result<()> {
+    let key: Vec<u8> = key.as_slice().into();
+    db.execute(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::QUEUE_REINDEX,
+        [key.into()],
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn stream_entities_to_reindex<T: StreamTrait + ConnectionTrait>(
+    db: &T,
+) -> Result<impl Stream<Item = EntityKey> + '_> {
+    Ok(DbKey::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::GET_ENTITIES_TO_REINDEX,
+        [],
+    ))
+    .stream(db)
+    .await
+    .context("Failed to get entitites to reindex")?
+    .filter_map(|key| async {
+        match key {
+            Ok(key) => Some(key.key.as_slice().try_into().ok()?),
+            Err(err) => {
+                tracing::error!(error = ?err, "error during entity reindex retrieval");
+                None
+            }
+        }
+    }))
+}
+
+#[instrument(skip(db))]
+pub async fn finish_reindex<T: ConnectionTrait>(db: &T, key: EntityKey) -> Result<()> {
+    let key: Vec<u8> = key.as_slice().into();
+    db.execute(Statement::from_sql_and_values(
+        DbBackend::Postgres,
+        sql::FINISH_REINDEX,
+        [key.into()],
+    ))
+    .await?;
+
+    Ok(())
 }
