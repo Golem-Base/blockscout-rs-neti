@@ -158,7 +158,7 @@ pub async fn stream_tx_hashes_for_cleanup<T: StreamTrait + ConnectionTrait>(
     db: &T,
 ) -> Result<impl Stream<Item = TxHash> + '_> {
     Ok(golem_base_pending_transaction_cleanups::Entity::find()
-        .limit(500)
+        .limit(100)
         .stream(db)
         .await
         .context("Failed to get tx hashes for cleanup")?

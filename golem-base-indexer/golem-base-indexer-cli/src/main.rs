@@ -6,7 +6,7 @@ use golem_base_indexer_logic::{
     Indexer, repository,
     types::{EntitiesFilter, EntityKey, ListEntitiesFilter, PaginationParams},
 };
-use sea_orm::{DatabaseConnection, TransactionTrait};
+use sea_orm::DatabaseConnection;
 
 #[derive(Parser)]
 struct Cli {
@@ -52,11 +52,7 @@ async fn list_entity_keys(db: DatabaseConnection) -> Result<()> {
 async fn reindex_entity(db: DatabaseConnection, key: EntityKey) -> Result<()> {
     let db = Arc::new(db);
     let indexer = Indexer::new(db.clone(), Default::default());
-    db.transaction::<_, (), anyhow::Error>(|txn| {
-        Box::pin(async move { indexer.reindex_entity(txn, None, key).await })
-    })
-    .await
-    .map_err(Into::into)
+    indexer.reindex_entity(key).await
 }
 
 async fn tick(db: DatabaseConnection) -> Result<()> {
