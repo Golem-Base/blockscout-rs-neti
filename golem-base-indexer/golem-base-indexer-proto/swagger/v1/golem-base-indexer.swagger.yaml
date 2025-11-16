@@ -1191,6 +1191,10 @@ definitions:
         type: string
       owner:
         type: string
+      content_type:
+        type: string
+      prev_content_type:
+        type: string
   v1EntityStatus:
     type: string
     enum:

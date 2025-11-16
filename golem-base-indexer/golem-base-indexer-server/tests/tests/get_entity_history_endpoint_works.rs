@@ -38,6 +38,7 @@ async fn test_get_entity_history_endpoint_works() {
                     updates: vec![Update {
                         entity_key,
                         btl: 100,
+                        content_type: "text/plain".to_string(),
                         payload: data.clone(),
                         ..Default::default()
                     }],
@@ -148,6 +149,9 @@ async fn test_get_entity_history_endpoint_works() {
             "prev_status",
             "expires_at_block_number",
             "prev_expires_at_block_number",
+            "owner",
+            "content_type",
+            "prev_content_type",
         ],
     );
 
@@ -165,6 +169,9 @@ async fn test_get_entity_history_endpoint_works() {
                 "btl": "100",
                 "expires_at_block_number": "101",
                 "prev_expires_at_block_number": null,
+                "owner": sender.to_string(),
+                "content_type": "text/plain",
+                "prev_content_type": null,
             }),
             serde_json::json!({
                 "entity_key": entity_key.to_string(),
@@ -174,6 +181,9 @@ async fn test_get_entity_history_endpoint_works() {
                 "prev_data": data_hex,
                 "expires_at_block_number": format!("{}", 101 + extend_by),
                 "prev_expires_at_block_number": "101",
+                "owner": sender.to_string(),
+                "content_type": "text/plain",
+                "prev_content_type": "text/plain",
             }),
             serde_json::json!({
                 "entity_key": entity_key.to_string(),
@@ -183,6 +193,9 @@ async fn test_get_entity_history_endpoint_works() {
                 "prev_data": data_hex,
                 "expires_at_block_number": format!("{}", 101 + extend_by + extend_by),
                 "prev_expires_at_block_number": format!("{}", 101 + extend_by),
+                "owner": sender.to_string(),
+                "content_type": "text/plain",
+                "prev_content_type": "text/plain",
             }),
             serde_json::json!({
                 "entity_key": entity_key.to_string(),
@@ -195,6 +208,9 @@ async fn test_get_entity_history_endpoint_works() {
                 "btl": null,
                 "expires_at_block_number": "3",
                 "prev_expires_at_block_number": format!("{}", 101 + extend_by + extend_by),
+                "owner": sender.to_string(),
+                "content_type": "text/plain",
+                "prev_content_type": "text/plain",
             }),
         ],
     );

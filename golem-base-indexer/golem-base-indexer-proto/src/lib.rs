@@ -432,6 +432,8 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             fees_paid: "0".into(), // FIXME
             prev_owner: v.prev_owner.map(|v| v.to_checksum(None)),
             owner: v.owner.map(|v| v.to_checksum(None)),
+            content_type: v.content_type,
+            prev_content_type: v.prev_content_type,
         }
     }
 }
