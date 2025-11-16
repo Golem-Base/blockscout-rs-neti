@@ -86,6 +86,7 @@ impl TryFrom<golem_base_entities::Model> for Entity {
     fn try_from(value: golem_base_entities::Model) -> Result<Self> {
         Ok(Self {
             key: value.key.as_slice().try_into()?,
+            content_type: value.content_type,
             data: value.data.map(|v| v.into()),
             status: value.status.into(),
             owner: value.owner.map(|v| v.as_slice().try_into()).transpose()?,
@@ -127,6 +128,7 @@ impl EntityWithExpTimestamp {
 
         Ok(Self {
             key: entity_base.key,
+            content_type: entity_base.content_type,
             data: entity_base.data,
             owner: entity_base.owner,
             status: entity_base.status,
@@ -197,6 +199,8 @@ impl EntityHistoryEntry {
             prev_expires_at_timestamp,
             prev_expires_at_timestamp_sec,
             btl: value.btl.map(|v| v.try_into()).transpose()?,
+            content_type: value.content_type,
+            prev_content_type: value.prev_content_type,
         })
     }
 }
@@ -317,6 +321,7 @@ pub async fn get_full_entity<T: ConnectionTrait>(
 
     Ok(Some(FullEntity {
         key: entity.key.as_slice().try_into()?,
+        content_type: entity.content_type,
         data: entity.data.map(|v| v.into()),
         status: entity.status.into(),
         created_at_tx_hash: entity
@@ -526,6 +531,8 @@ pub async fn insert_history_entry<T: ConnectionTrait>(
             .prev_expires_at_block_number
             .map(|v| v.try_into())
             .transpose()?),
+        content_type: Set(entry.content_type),
+        prev_content_type: Set(entry.prev_content_type),
     };
     golem_base_entity_history::Entity::insert(entry)
         .exec(db)
@@ -567,6 +574,7 @@ pub async fn refresh_entity_based_on_history<T: ConnectionTrait>(
                 .transpose()?),
             inserted_at: NotSet,
             updated_at: Set(Utc::now().naive_utc()),
+            content_type: Set(latest_entry.content_type),
         };
         golem_base_entities::Entity::insert(entity)
             .on_conflict(

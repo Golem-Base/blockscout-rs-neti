@@ -2,13 +2,17 @@ pub use sea_orm_migration::prelude::*;
 use sea_orm_migration::sea_orm::{Statement, TransactionTrait};
 
 mod m20251111_170928_v2;
+mod m20251113_115456_add_content_type;
 
 pub struct Migrator;
 
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![Box::new(m20251111_170928_v2::Migration)]
+        vec![
+            Box::new(m20251111_170928_v2::Migration),
+            Box::new(m20251113_115456_add_content_type::Migration),
+        ]
     }
 
     fn migration_table_name() -> DynIden {

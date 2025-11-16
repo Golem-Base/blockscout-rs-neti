@@ -1105,6 +1105,8 @@ definitions:
     properties:
       key:
         type: string
+      content_type:
+        type: string
       data:
         type: string
       status:
@@ -1209,6 +1211,8 @@ definitions:
     properties:
       key:
         type: string
+      content_type:
+        type: string
       data:
         type: string
       status:
@@ -1229,6 +1233,8 @@ definitions:
     type: object
     properties:
       key:
+        type: string
+      content_type:
         type: string
       data:
         type: string

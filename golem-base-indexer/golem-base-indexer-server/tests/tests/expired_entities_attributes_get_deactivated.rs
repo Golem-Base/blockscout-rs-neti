@@ -24,6 +24,7 @@ async fn test_expired_entities_attributes_get_deactivated() {
     .await;
     let expected: serde_json::Value = serde_json::json!({
       "key": "0x4455e54a419991f302a495eea0be0fe37c121aae1f9c0048e7a1ec45900cd0cf",
+      "content_type": "text/plain",
       "data": null,
       "data_size": null,
       "status": "EXPIRED",

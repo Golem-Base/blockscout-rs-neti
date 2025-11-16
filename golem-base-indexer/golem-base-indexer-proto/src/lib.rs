@@ -40,6 +40,7 @@ impl v1::FullEntity {
         let data_size = entity.data.as_ref().map(|v| v.len() as u64);
         Self {
             key: entity.key.to_string(),
+            content_type: entity.content_type,
             data: entity.data.map(|v| v.encode_hex_with_prefix()),
             data_size,
             status: status.into(),
@@ -129,8 +130,8 @@ impl From<v1::NumericAnnotation> for NumericAttribute {
 impl From<&OperationData> for v1::OperationType {
     fn from(value: &OperationData) -> Self {
         match value {
-            OperationData::Create(_, _) => Self::Create,
-            OperationData::Update(_, _) => Self::Update,
+            OperationData::Create(_, _, _) => Self::Create,
+            OperationData::Update(_, _, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
             OperationData::ChangeOwner(_) => Self::Changeowner,
@@ -140,8 +141,8 @@ impl From<&OperationData> for v1::OperationType {
 impl From<OperationData> for v1::OperationType {
     fn from(value: OperationData) -> Self {
         match value {
-            OperationData::Create(_, _) => Self::Create,
-            OperationData::Update(_, _) => Self::Update,
+            OperationData::Create(_, _, _) => Self::Create,
+            OperationData::Update(_, _, _) => Self::Update,
             OperationData::Delete => Self::Delete,
             OperationData::Extend(_) => Self::Extend,
             OperationData::ChangeOwner(_) => Self::Changeowner,
@@ -347,6 +348,7 @@ impl From<Entity> for v1::Entity {
 
         Self {
             key: entity.key.to_string(),
+            content_type: entity.content_type,
             data: entity.data.as_ref().map(ToHexExt::encode_hex_with_prefix),
             status: status.into(),
             created_at_tx_hash: entity.created_at_tx_hash.map(|v| v.to_string()),
@@ -362,6 +364,7 @@ impl From<EntityWithExpTimestamp> for v1::EntityWithExpTimestamp {
 
         Self {
             key: entity.key.to_string(),
+            content_type: entity.content_type,
             data: entity.data.as_ref().map(ToHexExt::encode_hex_with_prefix),
             status: status.into(),
             created_at_tx_hash: entity.created_at_tx_hash.map(|v| v.to_string()),

@@ -24,6 +24,7 @@ async fn test_get_entity_endpoint_works() {
     .await;
     let expected: serde_json::Value = serde_json::json!({
       "key": "0xc9e98b00f26835a3a6de7d268e5f64dba739e3730e52b84019f1bb4e73ed2296",
+      "content_type": "text/plain",
       "data": "0x757064617465642064617461207769746820616e6e6f746174696f6e73",
       "data_size": "29",
       "status": "ACTIVE",
