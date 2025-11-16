@@ -2,7 +2,7 @@
   "items": [
     {
       "key": "0x4455e54a419991f302a495eea0be0fe37c121aae1f9c0048e7a1ec45900cd0cf",
-      "content_type": "text/plain",
+      "content_type": null,
       "data": null,
       "status": "EXPIRED",
       "created_at_tx_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",

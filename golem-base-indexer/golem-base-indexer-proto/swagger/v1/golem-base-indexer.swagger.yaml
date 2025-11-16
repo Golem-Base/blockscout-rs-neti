@@ -1542,6 +1542,8 @@ definitions:
       block_number:
         type: string
         format: uint64
+      content_type:
+        type: string
   v1OperationType:
     type: string
     enum:

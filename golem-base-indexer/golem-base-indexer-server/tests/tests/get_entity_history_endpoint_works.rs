@@ -209,7 +209,7 @@ async fn test_get_entity_history_endpoint_works() {
                 "expires_at_block_number": "3",
                 "prev_expires_at_block_number": format!("{}", 101 + extend_by + extend_by),
                 "owner": sender.to_string(),
-                "content_type": "text/plain",
+                "content_type": null,
                 "prev_content_type": "text/plain",
             }),
         ],

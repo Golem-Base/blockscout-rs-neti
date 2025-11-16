@@ -307,6 +307,7 @@ impl From<OperationView> for v1::Operation {
             index: v.op.metadata.index,
             gas_used: "0".into(),  // FIXME
             fees_paid: "0".into(), // FIXME
+            content_type: v.op.operation.content_type(),
         }
     }
 }

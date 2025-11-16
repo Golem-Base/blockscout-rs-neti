@@ -2,7 +2,7 @@
   "items": [
     {
       "key": "0x4227ab83962832bd79b22d7dd0dd694a3f29ce4f2c53594f703980c31fba8c51",
-      "content_type": "text/plain",
+      "content_type": null,
       "data": null,
       "status": "DELETED",
       "created_at_tx_hash": "0xfa8bf8be71819ab01a6fa57f280540398bac5c8b74429c6f35e2eeb3c751f884",

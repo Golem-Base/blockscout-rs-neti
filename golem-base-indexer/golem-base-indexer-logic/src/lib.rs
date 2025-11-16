@@ -560,9 +560,11 @@ impl Indexer {
         let expires_at_timestamp_sec =
             expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
         let content_type = match op.operation {
-            OperationData::Create(_, _, ref content_type) => Some(content_type.clone()),
-            OperationData::Update(_, _, ref content_type) => Some(content_type.clone()),
-            _ => prev_entry.as_ref().and_then(|v| v.content_type.to_owned()),
+            OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.content_type.clone()),
+            OperationData::ChangeOwner(_) => {
+                prev_entry.as_ref().and_then(|v| v.content_type.clone())
+            }
+            _ => op.operation.content_type(),
         };
 
         let entry = EntityHistoryEntry {
