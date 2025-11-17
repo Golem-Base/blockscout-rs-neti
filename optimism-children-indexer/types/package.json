@@ -1,6 +1,6 @@
 {
   "name": "@golembase/optimism-children-indexer-types",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "description": "TypeScript definitions for Optimism Children Indexer microservice",
   "main": "./dist/optimism-children-indexer-proto/proto/v1/optimism-children-indexer.js",
   "types": "./dist/optimism-children-indexer-proto/proto/v1/optimism-children-indexer.d.ts",
