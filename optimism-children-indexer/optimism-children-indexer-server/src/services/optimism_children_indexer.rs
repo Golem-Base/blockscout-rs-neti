@@ -28,7 +28,7 @@ impl OptimismChildrenIndexer for OptimismChildrenIndexerService {
             tracing::error!(?err, "Invalid pagination params");
             Status::invalid_argument("Invalid pagination params")
         })?;
-        let (deposits, pagination) = repository::deposits::list_deposits(&*self.db, pagination)
+        let (deposits, pagination_md) = repository::deposits::list_deposits(&*self.db, pagination)
             .await
             .map_err(|err| {
                 tracing::error!(?err, "failed to query deposits");
@@ -36,10 +36,12 @@ impl OptimismChildrenIndexer for OptimismChildrenIndexerService {
             })?;
 
         let items = deposits.into_iter().map(Into::into).collect();
-        let pagination = pagination.into();
+        let pagination = pagination_md.clone().into();
+
         Ok(Response::new(DepositsResponse {
             items,
             pagination: Some(pagination),
+            next_page_params: pagination_md.next_page.map(Into::into),
         }))
     }
 }

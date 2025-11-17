@@ -29,6 +29,15 @@ impl From<PaginationMetadata> for v1::Pagination {
     }
 }
 
+impl From<PaginationParams> for v1::PaginationNextPage {
+    fn from(value: PaginationParams) -> Self {
+        Self {
+            page: value.page,
+            page_size: value.page_size,
+        }
+    }
+}
+
 impl TryFrom<v1::PaginationRequest> for PaginationParams {
     type Error = anyhow::Error;
 

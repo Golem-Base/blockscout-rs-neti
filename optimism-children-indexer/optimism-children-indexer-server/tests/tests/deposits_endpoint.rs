@@ -8,7 +8,7 @@ use serde_json::json;
 #[tokio::test]
 #[ignore = "Needs database to run"]
 async fn test_deposits_endpoint() {
-    let db = helpers::init_db("test", "deposits_endpoint").await;
+    let db = helpers::init_db("test", "test_deposits_endpoint").await;
     let client = db.client();
 
     let base = helpers::init_optimism_children_indexer_server(db, |x| x).await;
@@ -113,6 +113,66 @@ async fn test_deposits_endpoint() {
                 "total_items": "3",
                 "total_pages": "1",
             },
+            "next_page_params": null,
         })
     );
+}
+
+#[tokio::test]
+#[ignore = "Needs database to run"]
+async fn test_deposits_endpoint_pagination() {
+    let db = helpers::init_db("test", "test_deposits_endpoint_pagination").await;
+    let client = db.client();
+    let base = helpers::init_optimism_children_indexer_server(db, |x| x).await;
+    let indexer = Indexer::new(client.clone(), Default::default());
+
+    // load txs first, then logs, to simulate how it really happens in blockscout and to test we
+    // handle such race condition correctly
+    helpers::load_data(
+        &*client,
+        include_str!("../fixtures/sample_l2_deposit_data.sql"),
+    )
+    .await;
+    indexer.tick().await.unwrap();
+
+    // load L3 sample data
+    helpers::load_data(
+        &*client,
+        include_str!("../fixtures/sample_l3_deposit_data.sql"),
+    )
+    .await;
+
+    // Test first page
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, "/api/v1/deposits?page=1&page_size=2").await;
+    assert_eq!(
+        response["pagination"],
+        json!({
+            "page": 1.to_string(),
+            "page_size": 2.to_string(),
+            "total_items": 3.to_string(),
+            "total_pages": 2.to_string(),
+        })
+    );
+    assert_eq!(
+        response["next_page_params"],
+        json!({
+            "page": 2.to_string(),
+            "page_size": 1.to_string(),
+        })
+    );
+
+    // Test second page
+    let response: serde_json::Value =
+        test_server::send_get_request(&base, "/api/v1/deposits?page=2&page_size=2").await;
+    assert_eq!(
+        response["pagination"],
+        json!({
+            "page": 2.to_string(),
+            "page_size": 2.to_string(),
+            "total_items": 3.to_string(),
+            "total_pages": 2.to_string(),
+        })
+    );
+    assert!(response["next_page_params"].is_null());
 }

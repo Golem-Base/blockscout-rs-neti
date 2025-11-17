@@ -25,12 +25,26 @@ where
         .await
         .context("Failed to fetch page")?;
 
+    let next_page = if pagination.page < total_pages {
+        let items_fetched_so_far = pagination.page * pagination.page_size;
+        let remaining_items = total_items.saturating_sub(items_fetched_so_far);
+        let next_page_size = remaining_items.min(pagination.page_size);
+
+        Some(PaginationParams {
+            page: pagination.page.saturating_add(1),
+            page_size: next_page_size,
+        })
+    } else {
+        None
+    };
+
     let pagination_metadata = PaginationMetadata {
         pagination,
-
+        next_page,
         total_pages,
         total_items,
     };
+
     Ok((items, pagination_metadata))
 }
 
