@@ -41,3 +41,6 @@ blockscout-service-launcher = { workspace = true, features = [
 ] }
 pretty_assertions.workspace = true
 golem-base-indexer-migration = { path = "../golem-base-indexer-migration" }
+
+[features]
+test-utils = ["alloy-primitives/rand"]

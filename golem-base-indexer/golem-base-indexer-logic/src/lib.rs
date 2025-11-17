@@ -24,6 +24,9 @@ use crate::{
     },
 };
 
+#[cfg(feature = "test-utils")]
+pub mod test_utils;
+
 pub mod arkiv;
 mod attributes;
 mod consensus_tx;
@@ -528,7 +531,6 @@ impl Indexer {
             expires_at_timestamp,
             expires_at_timestamp_sec,
             prev_expires_at_timestamp: prev_entry
-                .clone()
                 .and_then(|prev_entry| prev_entry.expires_at_timestamp),
             prev_expires_at_timestamp_sec: prev_entry
                 .and_then(|prev_entry| prev_entry.expires_at_timestamp_sec),

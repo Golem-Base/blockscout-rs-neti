@@ -33,8 +33,8 @@ CREATE TABLE golem_base_entity_locks (
     key bytea NOT NULL primary key
 );
 
-drop index golem_base_string_annotations_entity_active_idx on golem_base_string_annotations;
-drop index golem_base_numeric_annotations_entity_active_idx on golem_base_numeric_annotations;
+drop index golem_base_string_annotations_entity_active_idx;
+drop index golem_base_numeric_annotations_entity_active_idx;
 "#;
         from_sql(manager, sql).await
     }
