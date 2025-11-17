@@ -82,19 +82,19 @@ pub struct OperationView {
 
 #[derive(Clone, Debug)]
 pub enum OperationData {
-    Create(Bytes, BlockNumber),
-    Update(Bytes, BlockNumber),
+    Create(Bytes, BlockNumber, String),
+    Update(Bytes, BlockNumber, String),
     Delete,
     Extend(BlockNumber),
     ChangeOwner(Address),
 }
 
 impl OperationData {
-    pub fn create(data: Bytes, btl: BlockNumber) -> Self {
-        Self::Create(data, btl)
+    pub fn create(data: Bytes, btl: BlockNumber, content_type: &str) -> Self {
+        Self::Create(data, btl, content_type.to_string())
     }
-    pub fn update(data: Bytes, btl: BlockNumber) -> Self {
-        Self::Update(data, btl)
+    pub fn update(data: Bytes, btl: BlockNumber, content_type: &str) -> Self {
+        Self::Update(data, btl, content_type.to_string())
     }
     pub fn delete() -> Self {
         Self::Delete
@@ -104,8 +104,8 @@ impl OperationData {
     }
     pub fn data(&self) -> Option<&Bytes> {
         match self {
-            Self::Create(data, _) => Some(data),
-            Self::Update(data, _) => Some(data),
+            Self::Create(data, _, _) => Some(data),
+            Self::Update(data, _, _) => Some(data),
             Self::Delete => None,
             Self::Extend(_) => None,
             Self::ChangeOwner(_) => None,
@@ -113,8 +113,8 @@ impl OperationData {
     }
     pub fn btl(&self) -> Option<u64> {
         match self {
-            Self::Create(_, btl) => Some(*btl),
-            Self::Update(_, btl) => Some(*btl),
+            Self::Create(_, btl, _) => Some(*btl),
+            Self::Update(_, btl, _) => Some(*btl),
             Self::Delete => None,
             Self::Extend(btl) => Some(*btl),
             Self::ChangeOwner(_) => None,
@@ -125,6 +125,14 @@ impl OperationData {
             Some(*owner)
         } else {
             None
+        }
+    }
+
+    pub fn content_type(&self) -> Option<String> {
+        match self {
+            Self::Create(_, _, content_type) => Some(content_type.clone()),
+            Self::Update(_, _, content_type) => Some(content_type.clone()),
+            _ => None,
         }
     }
 }
@@ -163,6 +171,7 @@ pub enum EntityStatus {
 #[derive(Debug, Clone)]
 pub struct Entity {
     pub key: EntityKey,
+    pub content_type: Option<String>,
     pub data: Option<Bytes>,
     pub owner: Option<Address>,
     pub status: EntityStatus,
@@ -174,6 +183,7 @@ pub struct Entity {
 #[derive(Debug, Clone)]
 pub struct EntityWithExpTimestamp {
     pub key: EntityKey,
+    pub content_type: Option<String>,
     pub data: Option<Bytes>,
     pub owner: Option<Address>,
     pub status: EntityStatus,
@@ -187,6 +197,7 @@ pub struct EntityWithExpTimestamp {
 #[derive(Debug, Clone)]
 pub struct FullEntity {
     pub key: EntityKey,
+    pub content_type: Option<String>,
     pub data: Option<Bytes>,
     pub status: EntityStatus,
 
@@ -349,6 +360,8 @@ pub struct EntityHistoryEntry {
     pub prev_expires_at_timestamp: Option<Timestamp>,
     pub prev_expires_at_timestamp_sec: Option<u64>,
     pub btl: Option<u64>,
+    pub content_type: Option<String>,
+    pub prev_content_type: Option<String>,
 }
 
 #[derive(Debug, Clone)]

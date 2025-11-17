@@ -138,11 +138,13 @@ impl TryFrom<golem_base_operations::Model> for Operation {
         let data = match v.operation {
             GolemBaseOperationType::Create => OperationData::create(
                 v.data
-                    .ok_or(anyhow!("Update operation in db with no data"))?
+                    .ok_or(anyhow!("Create operation in db with no data"))?
                     .into(),
                 v.btl
-                    .ok_or(anyhow!("Update operation in db with no btl"))?
+                    .ok_or(anyhow!("Create operation in db with no btl"))?
                     .try_into()?,
+                &v.content_type
+                    .ok_or(anyhow!("Create operation in db with no content-type"))?,
             ),
             GolemBaseOperationType::Update => OperationData::update(
                 v.data
@@ -151,6 +153,8 @@ impl TryFrom<golem_base_operations::Model> for Operation {
                 v.btl
                     .ok_or(anyhow!("Update operation in db with no btl"))?
                     .try_into()?,
+                &v.content_type
+                    .ok_or(anyhow!("Update operation in db with no content-type"))?,
             ),
             GolemBaseOperationType::Delete => OperationData::delete(),
             GolemBaseOperationType::Extend => OperationData::extend(
@@ -184,8 +188,8 @@ impl TryFrom<golem_base_operations::Model> for Operation {
 impl From<&OperationData> for GolemBaseOperationType {
     fn from(value: &OperationData) -> Self {
         match value {
-            OperationData::Create(_, _) => GolemBaseOperationType::Create,
-            OperationData::Update(_, _) => GolemBaseOperationType::Update,
+            OperationData::Create(_, _, _) => GolemBaseOperationType::Create,
+            OperationData::Update(_, _, _) => GolemBaseOperationType::Update,
             OperationData::Delete => GolemBaseOperationType::Delete,
             OperationData::Extend(_) => GolemBaseOperationType::Extend,
             OperationData::ChangeOwner(_) => GolemBaseOperationType::Changeowner,
@@ -223,6 +227,7 @@ impl TryFrom<Operation> for golem_base_operations::ActiveModel {
             block_number: Set(md.block_number.try_into()?),
             tx_index: Set(md.tx_index.try_into()?),
             inserted_at: NotSet,
+            content_type: Set(op.operation.content_type()),
         })
     }
 }

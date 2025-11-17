@@ -163,23 +163,25 @@ enum EntityStatus {
 
 message Entity {
   string key = 1;
-  optional string data = 2;
-  EntityStatus status = 3;
+  optional string content_type = 2;
+  optional string data = 3;
+  EntityStatus status = 4;
 
-  optional string created_at_tx_hash = 4;
-  string last_updated_at_tx_hash = 5;
-  optional uint64 expires_at_block_number = 6;
+  optional string created_at_tx_hash = 5;
+  string last_updated_at_tx_hash = 6;
+  optional uint64 expires_at_block_number = 7;
 }
 
 message EntityWithExpTimestamp {
   string key = 1;
-  optional string data = 2;
-  EntityStatus status = 3;
-  optional string created_at_tx_hash = 4;
-  string last_updated_at_tx_hash = 5;
-  optional uint64 expires_at_block_number = 6;
-  optional string expires_at_timestamp = 7;
-  optional uint64 expires_at_timestamp_sec = 8;
+  optional string content_type = 2;
+  optional string data = 3;
+  EntityStatus status = 4;
+  optional string created_at_tx_hash = 5;
+  string last_updated_at_tx_hash = 6;
+  optional uint64 expires_at_block_number = 7;
+  optional string expires_at_timestamp = 8;
+  optional uint64 expires_at_timestamp_sec = 9;
 }
 
 message StringAnnotation {
@@ -206,31 +208,32 @@ message NumericAnnotationWithRelations {
 
 message FullEntity {
   string key = 1;
-  optional string data = 2;
-  optional uint64 data_size = 3;
-  EntityStatus status = 4;
+  optional string content_type = 2;
+  optional string data = 3;
+  optional uint64 data_size = 4;
+  EntityStatus status = 5;
 
-  repeated StringAnnotationWithRelations string_annotations = 5;
-  repeated NumericAnnotationWithRelations numeric_annotations = 6;
+  repeated StringAnnotationWithRelations string_annotations = 6;
+  repeated NumericAnnotationWithRelations numeric_annotations = 7;
 
-  optional string created_at_tx_hash = 7;
-  optional string created_at_operation_index = 8;
-  optional uint64 created_at_block_number = 9;
-  optional string created_at_timestamp = 10;
+  optional string created_at_tx_hash = 8;
+  optional string created_at_operation_index = 9;
+  optional uint64 created_at_block_number = 10;
+  optional string created_at_timestamp = 11;
 
-  optional uint64 expires_at_block_number = 11;
-  optional string expires_at_timestamp = 12;
+  optional uint64 expires_at_block_number = 12;
+  optional string expires_at_timestamp = 13;
 
-  optional string owner = 13;
-  string gas_used = 14;
-  string fees_paid = 15;
+  optional string owner = 14;
+  string gas_used = 15;
+  string fees_paid = 16;
 
-  string updated_at_tx_hash = 16;
-  string updated_at_operation_index = 17;
-  uint64 updated_at_block_number = 18;
-  string updated_at_timestamp = 19;
+  string updated_at_tx_hash = 17;
+  string updated_at_operation_index = 18;
+  uint64 updated_at_block_number = 19;
+  string updated_at_timestamp = 20;
 
-  optional string expires_at_timestamp_sec = 20;
+  optional string expires_at_timestamp_sec = 21;
 }
 
 enum OperationType {
@@ -253,6 +256,7 @@ message Operation {
   string gas_used = 9;
   string fees_paid = 10;
   uint64 block_number = 11;
+  optional string content_type = 12;
 }
 
 message GetEntityHistoryResponse {
@@ -285,6 +289,8 @@ message EntityHistoryEntry {
   optional uint64 prev_expires_at_timestamp_sec = 22;
   optional string prev_owner = 23;
   optional string owner = 24;
+  optional string content_type = 25;
+  optional string prev_content_type = 26;
 }
 
 message BlockStatsRequest {

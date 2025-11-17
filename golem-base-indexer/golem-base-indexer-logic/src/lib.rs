@@ -230,8 +230,8 @@ impl Indexer {
         let mut active_attributes_index = None;
         for op in ops {
             let status = match op.op.operation {
-                OperationData::Create(_, _) => EntityStatus::Active,
-                OperationData::Update(_, _) => EntityStatus::Active,
+                OperationData::Create(_, _, _) => EntityStatus::Active,
+                OperationData::Update(_, _, _) => EntityStatus::Active,
                 OperationData::Extend(_) => EntityStatus::Active,
                 OperationData::Delete => {
                     if op.op.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS {
@@ -244,8 +244,8 @@ impl Indexer {
             };
 
             let expires_at_block_number = match op.op.operation {
-                OperationData::Create(_, btl) => Some(op.op.metadata.block_number + btl),
-                OperationData::Update(_, btl) => Some(op.op.metadata.block_number + btl),
+                OperationData::Create(_, btl, _) => Some(op.op.metadata.block_number + btl),
+                OperationData::Update(_, btl, _) => Some(op.op.metadata.block_number + btl),
                 OperationData::Extend(extend_btl) => prev_entry
                     .as_ref()
                     .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
@@ -279,6 +279,12 @@ impl Indexer {
                 _ => Some((op.op.metadata.tx_hash, op.op.metadata.index)),
             };
 
+            let content_type = match op.op.operation {
+                OperationData::Create(_, _, ref content_type) => Some(content_type.clone()),
+                OperationData::Update(_, _, ref content_type) => Some(content_type.clone()),
+                _ => prev_entry.as_ref().and_then(|v| v.content_type.to_owned()),
+            };
+
             let entry = EntityHistoryEntry {
                 entity_key: entity,
                 block_number: op.op.metadata.block_number,
@@ -309,8 +315,12 @@ impl Indexer {
                     .clone()
                     .and_then(|prev_entry| prev_entry.expires_at_timestamp),
                 prev_expires_at_timestamp_sec: prev_entry
+                    .as_ref()
                     .and_then(|prev_entry| prev_entry.expires_at_timestamp_sec),
                 btl: op.op.operation.btl(),
+                content_type,
+                prev_content_type: prev_entry
+                    .and_then(|prev_entry| prev_entry.content_type.clone()),
             };
             repository::entities::insert_history_entry(txn, entry.clone()).await?;
             prev_entry = Some(entry);
@@ -438,7 +448,11 @@ impl Indexer {
                 tx_index: tx.index,
                 block_number: tx.block_number,
             },
-            operation: OperationData::create(create.payload.clone(), create.btl),
+            operation: OperationData::create(
+                create.payload.clone(),
+                create.btl,
+                &create.content_type,
+            ),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
 
@@ -525,8 +539,8 @@ impl Indexer {
         };
 
         let expires_at_block_number = match op.operation {
-            OperationData::Create(_, btl) => Some(tx.block_number + btl),
-            OperationData::Update(_, btl) => Some(tx.block_number + btl),
+            OperationData::Create(_, btl, _) => Some(tx.block_number + btl),
+            OperationData::Update(_, btl, _) => Some(tx.block_number + btl),
             OperationData::Extend(extend_btl) => prev_entry
                 .as_ref()
                 .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
@@ -545,6 +559,14 @@ impl Indexer {
             expires_at_block_number.and_then(|v| block_timestamp(v, &reference_block));
         let expires_at_timestamp_sec =
             expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
+        let content_type = match op.operation {
+            OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.content_type.clone()),
+            OperationData::ChangeOwner(_) => {
+                prev_entry.as_ref().and_then(|v| v.content_type.clone())
+            }
+            _ => op.operation.content_type(),
+        };
+
         let entry = EntityHistoryEntry {
             entity_key,
             block_number: tx.block_number,
@@ -573,8 +595,11 @@ impl Indexer {
                 .clone()
                 .and_then(|prev_entry| prev_entry.expires_at_timestamp),
             prev_expires_at_timestamp_sec: prev_entry
+                .as_ref()
                 .and_then(|prev_entry| prev_entry.expires_at_timestamp_sec),
             btl: op.operation.btl(),
+            content_type,
+            prev_content_type: prev_entry.and_then(|prev_entry| prev_entry.content_type),
         };
         repository::entities::insert_history_entry(txn, entry.clone()).await?;
         Ok(())
@@ -605,7 +630,11 @@ impl Indexer {
                 block_number: tx.block_number,
                 tx_index: tx.index,
             },
-            operation: OperationData::update(update.payload.clone(), update.btl),
+            operation: OperationData::update(
+                update.payload.clone(),
+                update.btl,
+                &update.content_type,
+            ),
         };
         repository::operations::insert_operation(txn, op.clone()).await?;
 

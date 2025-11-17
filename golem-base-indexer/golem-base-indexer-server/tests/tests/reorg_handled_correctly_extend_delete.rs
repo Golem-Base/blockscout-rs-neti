@@ -23,6 +23,7 @@ async fn test_extend_delete_reorg_handling_works() {
     let expected: serde_json::Value = serde_json::json!([
             {
       "key": "0xfa9a092a3b2b2ac68357798634030f86e018cfacea23783429b3101caaebe95d",
+      "content_type": "text/plain",
       "data": "0x74657374",
       "status": "ACTIVE",
       "created_at_tx_hash": "0xae9430e348f74284c3c91443b134b835961901862dd6ef24f32e646f346449a1",
@@ -48,6 +49,7 @@ async fn test_extend_delete_reorg_handling_works() {
        [
             {
       "key": "0xfa9a092a3b2b2ac68357798634030f86e018cfacea23783429b3101caaebe95d",
+      "content_type": "text/plain",
       "data": null,
       "status": "DELETED",
       "created_at_tx_hash": "0xae9430e348f74284c3c91443b134b835961901862dd6ef24f32e646f346449a1",
