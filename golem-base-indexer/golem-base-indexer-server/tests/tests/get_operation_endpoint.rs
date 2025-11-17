@@ -30,6 +30,7 @@ async fn test_get_operation_endpoint() {
     let data: Bytes = b"data".as_slice().into();
     let data_hex = bytes_to_hex(&data);
     let extend_by = 123;
+    let content_type = "application/ogg".to_string();
 
     helpers::sample::insert_data(
         &*client,
@@ -42,6 +43,7 @@ async fn test_get_operation_endpoint() {
                         entity_key,
                         btl: 100,
                         payload: data.clone(),
+                        content_type: content_type.clone(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -107,6 +109,8 @@ async fn test_get_operation_endpoint() {
             "operation": "EXTEND",
             "expires_at_block_number": format!("{}", 101 + extend_by),
             "prev_expires_at_block_number": "101",
+            "content_type": content_type.clone(),
+            "prev_content_type": content_type.clone(),
         }),
     );
 
@@ -128,11 +132,14 @@ async fn test_get_operation_endpoint() {
             "operation": "EXTEND",
             "expires_at_block_number": format!("{}", 101 + extend_by + extend_by),
             "prev_expires_at_block_number": format!("{}", 101 + extend_by),
+            "content_type": content_type.clone(),
+            "prev_content_type": content_type.clone(),
         }),
     );
 
     let update_data: Bytes = b"data".as_slice().into();
     let update_data_hex = bytes_to_hex(&update_data);
+    let update_content_type = "application/x-www-form-urlencoded".to_string();
 
     let block_hash = BlockHash::random();
     let tx_hash = TxHash::random();
@@ -149,6 +156,7 @@ async fn test_get_operation_endpoint() {
                         entity_key,
                         btl: 100,
                         payload: update_data.clone(),
+                        content_type: update_content_type.clone(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -209,6 +217,8 @@ async fn test_get_operation_endpoint() {
             "expires_at_timestamp_sec": "1539434006",
             "prev_expires_at_timestamp": "2018-10-13T12:41:34+00:00",
             "prev_expires_at_timestamp_sec": "1539434494",
+            "content_type": update_content_type.clone(),
+            "prev_content_type": content_type.clone(),
         }),
     );
 
@@ -234,6 +244,8 @@ async fn test_get_operation_endpoint() {
             "expires_at_timestamp_sec": "1539433808",
             "prev_expires_at_timestamp": "2018-10-13T12:33:26+00:00",
             "prev_expires_at_timestamp_sec": "1539434006",
+            "content_type": null,
+            "prev_content_type": update_content_type.clone(),
         }),
     );
 }
