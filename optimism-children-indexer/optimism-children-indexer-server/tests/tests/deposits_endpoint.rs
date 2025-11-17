@@ -107,9 +107,9 @@ async fn test_deposits_endpoint() {
                     "value": "1000000000000000",
                 },
             ],
-            "pagination": {
+            "next_page_params": {
                 "page": "1",
-                "page_size": "100",
+                "items_count": "100",
                 "total_items": "3",
                 "total_pages": "1",
             },

@@ -39,7 +39,7 @@ impl OptimismChildrenIndexer for OptimismChildrenIndexerService {
         let pagination = pagination.into();
         Ok(Response::new(DepositsResponse {
             items,
-            pagination: Some(pagination),
+            next_page_params: Some(pagination),
         }))
     }
 }

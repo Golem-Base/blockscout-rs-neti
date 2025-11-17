@@ -28,7 +28,7 @@ paths:
           required: false
           type: string
           format: uint64
-        - name: page_size
+        - name: items_count
           in: query
           required: false
           type: string
@@ -105,7 +105,6 @@ definitions:
         type: boolean
       execution_tx:
         $ref: '#/definitions/v1TxInfo'
-        title: string calldata = 8;
       destination_chain_id:
         type: string
   v1DepositsResponse:
@@ -116,7 +115,7 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1Deposit'
-      pagination:
+      next_page_params:
         $ref: '#/definitions/v1Pagination'
   v1HealthCheckResponse:
     type: object
@@ -129,7 +128,7 @@ definitions:
       page:
         type: string
         format: uint64
-      page_size:
+      items_count:
         type: string
         format: uint64
       total_pages:

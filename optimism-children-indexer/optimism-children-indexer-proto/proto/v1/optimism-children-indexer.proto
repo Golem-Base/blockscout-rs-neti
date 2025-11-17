@@ -11,7 +11,7 @@ service OptimismChildrenIndexerService {
 
 message DepositsResponse {
   repeated Deposit items = 1;
-  Pagination pagination = 2;
+  Pagination next_page_params = 2;
 }
 
 message Deposit {
@@ -22,9 +22,8 @@ message Deposit {
   string value = 5;
   string gas_limit = 6;
   bool is_creation = 7;
-  // string calldata = 8;
-  optional TxInfo execution_tx = 9;
-  optional string destination_chain_id = 10;
+  optional TxInfo execution_tx = 8;
+  optional string destination_chain_id = 9;
 }
 
 message TxInfo {
@@ -38,12 +37,12 @@ message TxInfo {
 
 message PaginationRequest {
   optional uint64 page = 1;
-  optional uint64 page_size = 2;
+  optional uint64 items_count = 2;
 }
 
 message Pagination {
   uint64 page = 1;
-  uint64 page_size = 2;
+  uint64 items_count = 2;
   uint64 total_pages = 3;
   uint64 total_items = 4;
 }
