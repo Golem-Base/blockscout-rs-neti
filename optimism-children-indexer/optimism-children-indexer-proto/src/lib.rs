@@ -22,9 +22,18 @@ impl From<PaginationMetadata> for v1::Pagination {
     fn from(value: PaginationMetadata) -> Self {
         Self {
             page: value.pagination.page,
-            items_count: value.pagination.page_size,
+            page_size: value.pagination.page_size,
             total_pages: value.total_pages,
             total_items: value.total_items,
+        }
+    }
+}
+
+impl From<PaginationParams> for v1::PaginationNextPage {
+    fn from(value: PaginationParams) -> Self {
+        Self {
+            page: value.page,
+            page_size: value.page_size,
         }
     }
 }
@@ -35,7 +44,7 @@ impl TryFrom<v1::PaginationRequest> for PaginationParams {
     fn try_from(request: v1::PaginationRequest) -> Result<Self> {
         Ok(Self {
             page: request.page.unwrap_or(1).max(1),
-            page_size: request.items_count.unwrap_or(100).clamp(1, 100),
+            page_size: request.page_size.unwrap_or(100).clamp(1, 100),
         })
     }
 }

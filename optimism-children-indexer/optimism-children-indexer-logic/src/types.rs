@@ -74,6 +74,7 @@ impl core::str::FromStr for BlockNumberOrHashFilter {
 #[derive(Debug, Clone)]
 pub struct PaginationMetadata {
     pub pagination: PaginationParams,
+    pub next_page: Option<PaginationParams>,
     pub total_pages: u64,
     pub total_items: u64,
 }

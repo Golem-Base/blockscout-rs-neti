@@ -28,7 +28,7 @@ paths:
           required: false
           type: string
           format: uint64
-        - name: items_count
+        - name: page_size
           in: query
           required: false
           type: string
@@ -115,8 +115,10 @@ definitions:
         items:
           type: object
           $ref: '#/definitions/v1Deposit'
-      next_page_params:
+      pagination:
         $ref: '#/definitions/v1Pagination'
+      next_page_params:
+        $ref: '#/definitions/v1PaginationNextPage'
   v1HealthCheckResponse:
     type: object
     properties:
@@ -128,13 +130,22 @@ definitions:
       page:
         type: string
         format: uint64
-      items_count:
+      page_size:
         type: string
         format: uint64
       total_pages:
         type: string
         format: uint64
       total_items:
+        type: string
+        format: uint64
+  v1PaginationNextPage:
+    type: object
+    properties:
+      page:
+        type: string
+        format: uint64
+      page_size:
         type: string
         format: uint64
   v1TxInfo:
