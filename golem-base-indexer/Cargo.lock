@@ -2831,6 +2831,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "golem-base-indexer-perf-test"
+version = "0.1.0"
+
+[[package]]
 name = "golem-base-indexer-proto"
 version = "0.1.0"
 dependencies = [

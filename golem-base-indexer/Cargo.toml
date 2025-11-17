@@ -6,7 +6,7 @@ members = [
   "golem-base-indexer-migration",
   "golem-base-indexer-proto",
   "golem-base-indexer-server",
-  "golem-base-indexer-cli",
+  "golem-base-indexer-cli", "golem-base-indexer-perf-test",
 ]
 
 [workspace.dependencies]
