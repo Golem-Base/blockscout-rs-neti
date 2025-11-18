@@ -15,6 +15,17 @@ impl MigrationTrait for Migration {
         WHERE 
             content_type IS NULL
             AND operation IN ('create', 'update');
+
+        UPDATE golem_base_entities
+        SET content_type = ''
+        WHERE
+            content_type IS NULL
+            AND status = 'active';
+
+        UPDATE golem_base_entity_history
+        SET content_type = ''
+        WHERE
+            status = 'active';
         "#,
         )
         .await?;
