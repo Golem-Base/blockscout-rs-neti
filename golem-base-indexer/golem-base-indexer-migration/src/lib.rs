@@ -4,6 +4,7 @@ use sea_orm_migration::sea_orm::{Statement, TransactionTrait};
 mod m20251111_170928_v2;
 mod m20251113_115456_add_content_type;
 mod m20251114_120643_add_golem_base_operations_block_number_idx;
+mod m20251118_084413_backfill_content_type;
 
 pub struct Migrator;
 
@@ -14,6 +15,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251111_170928_v2::Migration),
             Box::new(m20251113_115456_add_content_type::Migration),
             Box::new(m20251114_120643_add_golem_base_operations_block_number_idx::Migration),
+            Box::new(m20251118_084413_backfill_content_type::Migration),
         ]
     }
 
