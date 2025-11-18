@@ -63,6 +63,8 @@ async fn test_list_operations_endpoint_works() {
                 "index": "0",
                 "gas_used": "0",
                 "fees_paid": "0",
+                "expires_at_timestamp": null,
+                "expires_at_timestamp_sec": null,
             }
         ],
         "pagination": {
@@ -94,6 +96,8 @@ async fn test_list_operations_endpoint_works() {
             "index": "5",
             "gas_used": "0",
             "fees_paid": "0",
+            "expires_at_timestamp": "2025-07-22T12:38:16Z",
+            "expires_at_timestamp_sec": "1750592296",
         },
         ],
         "pagination": {
@@ -146,6 +150,8 @@ async fn test_list_operations_endpoint_works() {
                 "index": "5",
                 "gas_used": "0",
                 "fees_paid": "0",
+                "expires_at_timestamp": "2025-07-22T12:38:16Z",
+                "expires_at_timestamp_sec": "1750592296",
             },
         ],
         "pagination": {

@@ -1544,6 +1544,11 @@ definitions:
         format: uint64
       content_type:
         type: string
+      expires_at_timestamp:
+        type: string
+      expires_at_timestamp_sec:
+        type: string
+        format: uint64
   v1OperationType:
     type: string
     enum:

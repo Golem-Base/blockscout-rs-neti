@@ -308,6 +308,8 @@ impl From<OperationView> for v1::Operation {
             gas_used: "0".into(),  // FIXME
             fees_paid: "0".into(), // FIXME
             content_type: v.op.operation.content_type(),
+            expires_at_timestamp: v.expires_at_timestamp.map(|v| v.to_rfc3339()),
+            expires_at_timestamp_sec: v.expires_at_timestamp_sec,
         }
     }
 }
