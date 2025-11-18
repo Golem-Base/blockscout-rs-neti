@@ -11,10 +11,11 @@ use sea_orm::{
 use tracing::instrument;
 
 use crate::{
+    arkiv::{block_timestamp, block_timestamp_sec},
     pagination::paginate_try_from,
     types::{
-        BlockNumberOrHashFilter, EntityKey, FullOperationIndex, ListOperationsFilter, Operation,
-        OperationData, OperationMetadata, OperationType, OperationView, OperationsCount,
+        Block, BlockNumberOrHashFilter, EntityKey, FullOperationIndex, ListOperationsFilter,
+        Operation, OperationData, OperationMetadata, OperationType, OperationView, OperationsCount,
         OperationsFilter, PaginationMetadata, PaginationParams, TxHash,
     },
 };
@@ -346,9 +347,32 @@ impl TryFrom<(golem_base_operations::Model, Option<blocks::Model>)> for Operatio
         value: (golem_base_operations::Model, Option<blocks::Model>),
     ) -> Result<Self, Self::Error> {
         if let (op, Some(block)) = value {
+            let operation: Operation = op.try_into()?;
+            let block_ts = block.timestamp.and_utc();
+
+            let reference_block = Block {
+                hash: operation.metadata.block_hash,
+                number: operation.metadata.block_number,
+                timestamp: block_ts,
+            };
+
+            // Calculate expires_at_block_number from BTL
+            let expires_at_block_number = operation
+                .operation
+                .btl()
+                .map(|btl| operation.metadata.block_number.saturating_add(btl));
+
+            let expires_at_timestamp =
+                expires_at_block_number.and_then(|v| block_timestamp(v, &reference_block));
+
+            let expires_at_timestamp_sec =
+                expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
+
             Ok(Self {
-                op: op.try_into()?,
-                block_timestamp: block.timestamp.and_utc(),
+                op: operation,
+                block_timestamp: block_ts,
+                expires_at_timestamp,
+                expires_at_timestamp_sec,
             })
         } else {
             bail!("Operation with no block");

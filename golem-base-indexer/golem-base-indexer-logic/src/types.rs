@@ -78,6 +78,8 @@ pub struct OperationMetadata {
 pub struct OperationView {
     pub op: Operation,
     pub block_timestamp: Timestamp,
+    pub expires_at_timestamp: Option<Timestamp>,
+    pub expires_at_timestamp_sec: Option<u64>,
 }
 
 #[derive(Clone, Debug)]
