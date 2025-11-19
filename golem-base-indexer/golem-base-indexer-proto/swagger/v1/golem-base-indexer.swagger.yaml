@@ -1273,6 +1273,8 @@ definitions:
         type: string
       owner:
         type: string
+      creator:
+        type: string
       gas_used:
         type: string
       fees_paid:

@@ -342,6 +342,7 @@ pub async fn get_full_entity<T: ConnectionTrait>(
         expires_at_timestamp,
         expires_at_timestamp_sec,
         owner: entity.owner.map(|v| v.as_slice().try_into()).transpose()?,
+        creator: entity.creator.map(|v| v.as_slice().try_into()).transpose()?,
         gas_used: Default::default(), // FIXME when we have gas per operation
         fees_paid: Default::default(), // FIXME when we have gas per operation
     }))
@@ -561,11 +562,13 @@ pub async fn refresh_entity_based_on_history<T: ConnectionTrait>(
     if let Some(latest_entry) = latest_entry {
         let create_op = super::operations::find_create_operation(db, key).await?;
 
+        let creator = create_op.as_ref().map(|op| op.metadata.sender.as_slice().into());
         let entity = golem_base_entities::ActiveModel {
             key: Set(key.as_slice().into()),
             data: Set(latest_entry.data.map(Into::into)),
             status: Set(latest_entry.status.into()),
             owner: Set(latest_entry.owner.map(|v| v.as_slice().into())),
+            creator: Set(creator),
             created_at_tx_hash: Set(create_op.map(|v| v.metadata.tx_hash.as_slice().into())),
             last_updated_at_tx_hash: Set(latest_entry.transaction_hash.as_slice().into()),
             expires_at_block_number: Set(latest_entry

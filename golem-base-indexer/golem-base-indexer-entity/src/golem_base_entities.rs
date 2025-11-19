@@ -18,6 +18,8 @@ pub struct Model {
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub owner: Option<Vec<u8>>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
+    pub creator: Option<Vec<u8>>,
+    #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
     pub created_at_tx_hash: Option<Vec<u8>>,
     #[sea_orm(column_type = "VarBinary(StringLen::None)")]
     pub last_updated_at_tx_hash: Vec<u8>,
