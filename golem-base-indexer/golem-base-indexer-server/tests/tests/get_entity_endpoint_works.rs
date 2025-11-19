@@ -43,6 +43,7 @@ async fn test_get_entity_endpoint_works() {
         }
       ],
       "created_at_tx_hash": "0x385ae37be55f8e28678afeaccb594ad0a25e013746c5250df31df5d1a1df5806",
+      "creator": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
       "created_at_operation_index": "0",
       "created_at_block_number": "4",
       "created_at_timestamp": "2025-07-22T11:31:32+00:00",
