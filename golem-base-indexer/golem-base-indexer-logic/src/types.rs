@@ -218,6 +218,7 @@ pub struct FullEntity {
     pub expires_at_timestamp_sec: Option<u64>,
 
     pub owner: Option<Address>,
+    pub creator: Option<Address>,
     pub gas_used: CurrencyAmount,
     pub fees_paid: CurrencyAmount,
 }

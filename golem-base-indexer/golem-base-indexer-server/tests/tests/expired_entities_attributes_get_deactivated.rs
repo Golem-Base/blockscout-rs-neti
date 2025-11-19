@@ -31,6 +31,7 @@ async fn test_expired_entities_attributes_get_deactivated() {
       "string_annotations": [],
       "numeric_annotations": [],
       "created_at_tx_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
+      "creator": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
       "created_at_operation_index": "0",
       "created_at_block_number": "6",
       "created_at_timestamp": "2025-07-22T11:31:34+00:00",

@@ -45,6 +45,7 @@ impl v1::FullEntity {
             data_size,
             status: status.into(),
             owner: entity.owner.map(|v| v.to_checksum(None)),
+            creator: entity.creator.map(|v| v.to_checksum(None)),
 
             created_at_tx_hash: entity
                 .created_at_tx_hash
