@@ -106,7 +106,7 @@ pub async fn insert_data_multi<T: ConnectionTrait>(txn: &T, blocks: Vec<Block>) 
     .await?;
 
     let prefix = "insert into transactions (gas_used, gas_price, cumulative_gas_used, gas, hash, index, input, nonce, r, s, status, v, value, inserted_at, updated_at, block_hash, block_number, from_address_hash, to_address_hash, block_timestamp) values ";
-    let values = blocks_params
+    let values = txs_params
         .iter()
         .enumerate()
         .map(|(i, _)| {

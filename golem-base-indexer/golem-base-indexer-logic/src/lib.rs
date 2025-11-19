@@ -19,8 +19,7 @@ use crate::{
     types::{
         Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAttribute,
         FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogIndex, Operation,
-        OperationData, OperationMetadata, OperationView, OperationsFilter, PaginationParams,
-        TxHash,
+        OperationData, OperationMetadata, OperationsFilter, PaginationParams, Timestamp, TxHash,
     },
 };
 
@@ -276,7 +275,7 @@ impl Indexer {
                 _ => Some((op.op.metadata.tx_hash, op.op.metadata.index)),
             };
 
-            let entry = self.build_history_entry(op, prev_entry.as_ref());
+            let entry = self.build_history_entry(op.op, op.block_timestamp, prev_entry.as_ref());
             entries.push(entry.clone());
             prev_entry = Some(entry);
         }
@@ -456,15 +455,15 @@ impl Indexer {
 
     fn build_history_entry(
         &self,
-        op: OperationView,
+        op: Operation,
+        block_ts: Timestamp,
         prev_entry: Option<&EntityHistoryEntry>,
     ) -> EntityHistoryEntry {
         let reference_block = Block {
-            hash: op.op.metadata.block_hash,
-            number: op.op.metadata.block_number,
-            timestamp: op.block_timestamp,
+            hash: op.metadata.block_hash,
+            number: op.metadata.block_number,
+            timestamp: block_ts,
         };
-        let op = op.op;
         let status = match op.operation {
             OperationData::Delete
                 if op.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
@@ -692,13 +691,7 @@ impl Indexer {
             Some(idx.clone()),
         )
         .await?;
-        let entry = self.build_history_entry(
-            OperationView {
-                op,
-                block_timestamp: tx.block_timestamp,
-            },
-            prev_entry.as_ref(),
-        );
+        let entry = self.build_history_entry(op, tx.block_timestamp, prev_entry.as_ref());
         repository::entities::batch_insert_history_entry(&txn, vec![entry]).await?;
         repository::entities::refresh_entity_based_on_history(&txn, entity_key).await?;
 
