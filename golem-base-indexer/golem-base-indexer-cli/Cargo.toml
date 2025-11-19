@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
-arkiv-storage-tx = { path = "../../golem-base-tools/crates/arkiv-storage-tx" }
+arkiv-storage-tx.workspace = true
 blockscout-service-launcher = { workspace = true, features = ["database-1"] }
 clap.workspace = true
 futures.workspace = true
