@@ -1,10 +1,10 @@
 mod address_leaderboard_ranks;
 mod block_stats;
+mod creator_field_works;
 mod entities_averages;
 mod expired_entities_attributes_get_deactivated;
 mod expired_entities_dont_get_updated;
 mod get_address_stats_endpoint_works;
-mod creator_field_works;
 mod get_consensus_info;
 mod get_entity_data_size_histogram;
 mod get_entity_endpoint_works;

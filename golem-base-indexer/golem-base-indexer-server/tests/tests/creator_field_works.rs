@@ -102,4 +102,3 @@ async fn test_creator_field_is_populated_and_unchanged_after_change_owner() {
         "Creator and owner should be different after change owner"
     );
 }
-
