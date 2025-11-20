@@ -1153,9 +1153,9 @@ dependencies = [
 
 [[package]]
 name = "arkiv-storage-tx"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45139e35aad37d64f817ab1220f1f3af03dab50e9700e7752f6ffa2582f8edc8"
+checksum = "cc26a19fb66e1a37550a28659e2c761f3255212b316a63e20681e83189e1d7b2"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",
@@ -2777,8 +2777,12 @@ name = "golem-base-indexer-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "arkiv-storage-tx",
+ "blockscout-service-launcher",
  "clap",
+ "futures",
  "golem-base-indexer-logic",
+ "golem-base-indexer-migration",
  "sea-orm",
  "tokio",
 ]

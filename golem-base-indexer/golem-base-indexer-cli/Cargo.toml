@@ -5,7 +5,13 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+arkiv-storage-tx.workspace = true
+blockscout-service-launcher = { workspace = true, features = ["database-1"] }
 clap.workspace = true
-golem-base-indexer-logic = { path = "../golem-base-indexer-logic" }
+futures.workspace = true
+golem-base-indexer-logic = { path = "../golem-base-indexer-logic", features = [
+  "test-utils",
+] }
+golem-base-indexer-migration = { version = "0.1.0", path = "../golem-base-indexer-migration" }
 sea-orm.workspace = true
 tokio.workspace = true

@@ -5,8 +5,10 @@ use arkiv_storage_tx::{
 };
 use color_eyre::Result;
 use golem_base_sdk::entity::EncodableGolemBaseTransaction;
-use std::fs::File;
-use std::io::{BufRead, Write};
+use std::{
+    fs::File,
+    io::{BufRead, Write},
+};
 
 const HELP: &str = "\
 Internal

@@ -31,7 +31,7 @@ alloy.workspace = true
 arkiv-storage-tx.workspace = true
 
 [dev-dependencies]
-alloy-primitives = { workspace = true, features = ["rand"] }
+alloy-primitives.workspace = true
 blockscout-service-launcher = { workspace = true, features = [
   "test-server",
   "test-database",
@@ -40,3 +40,6 @@ pretty_assertions.workspace = true
 reqwest.workspace = true
 alloy-rlp.workspace = true
 wiremock.workspace = true
+golem-base-indexer-logic = { path = "../golem-base-indexer-logic", features = [
+  "test-utils",
+] }

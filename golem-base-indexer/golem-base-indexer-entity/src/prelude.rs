@@ -4,7 +4,6 @@ pub use super::{
     addresses::Entity as Addresses, blocks::Entity as Blocks,
     golem_base_entities::Entity as GolemBaseEntities,
     golem_base_entity_history::Entity as GolemBaseEntityHistory,
-    golem_base_entity_locks::Entity as GolemBaseEntityLocks,
     golem_base_numeric_annotations::Entity as GolemBaseNumericAnnotations,
     golem_base_operations::Entity as GolemBaseOperations,
     golem_base_pending_logs_operations::Entity as GolemBasePendingLogsOperations,

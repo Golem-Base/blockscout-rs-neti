@@ -25,7 +25,7 @@ alloy-primitives = { version = "1.4.1", features = ["rlp"] }
 alloy-rlp = "0.3.12"
 alloy-sol-types = "1.4.1"
 anyhow = "1.0"
-arkiv-storage-tx = "0.3.0"
+arkiv-storage-tx = "0.4.0"
 async-std = { version = "1", features = ["attributes", "tokio1"] }
 async-trait = "0.1"
 blockscout-display-bytes = "1.0"

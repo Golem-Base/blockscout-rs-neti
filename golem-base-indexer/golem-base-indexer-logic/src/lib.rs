@@ -7,7 +7,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, DatabaseTransaction, Transact
 use serde::Deserialize;
 use serde_with::serde_as;
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::HashSet,
     sync::Arc,
     time::{self, Duration},
 };
@@ -16,14 +16,15 @@ use tracing::{instrument, warn};
 
 use crate::{
     arkiv::{block_timestamp, block_timestamp_sec, entity_key},
-    repository::locks::Guard,
     types::{
         Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAttribute,
-        FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogIndex, NumericAttribute,
-        Operation, OperationData, OperationMetadata, OperationsFilter, PaginationParams,
-        StringAttribute, TxHash,
+        FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogIndex, Operation,
+        OperationData, OperationMetadata, OperationsFilter, PaginationParams, Timestamp, TxHash,
     },
 };
+
+#[cfg(feature = "test-utils")]
+pub mod test_utils;
 
 pub mod arkiv;
 mod attributes;
@@ -102,7 +103,6 @@ impl Indexer {
 
     #[instrument(skip_all)]
     pub async fn run(self) -> Result<()> {
-        repository::locks::clear(&*self.db).await?;
         loop {
             self.tick().await.inspect_err(|e| {
                 tracing::error!(
@@ -129,19 +129,42 @@ impl Indexer {
         }
     }
 
-    #[instrument(skip_all)]
-    pub async fn tick(&self) -> Result<()> {
+    pub async fn process_batch_of_transactions(&self) -> Result<()> {
         repository::blockscout::stream_unprocessed_tx_hashes(&*self.db)
             .await?
-            .for_each_concurrent(self.settings.concurrency, |tx| async move {
-                // ignore errors, it's most likely just a deadlock anyway, we'll just retry.
-                let _ = self
-                    .handle_tx(tx)
+            .map(|tx| async move {
+                self.handle_tx(tx)
                     .await
-                    .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx failed"));
+                    .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx failed"))
+                    .unwrap_or_default() // ignore error, it will be retried
             })
+            .buffer_unordered(self.settings.concurrency)
+            .collect::<Vec<_>>()
             .await;
 
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    pub async fn process_reindexes(&self) -> Result<()> {
+        repository::entities::stream_entities_to_reindex(&*self.db)
+            .await?
+            .map(|key| {
+                async move {
+                    self.reindex_entity(key)
+                        .await
+                        .inspect_err(|e| tracing::warn!(?e, ?key, "Handling tx reindex failed"))
+                        .unwrap_or_default() // ignore error, it will be retried
+                }
+            })
+            .buffer_unordered(self.settings.concurrency)
+            .collect::<Vec<_>>()
+            .await;
+
+        Ok(())
+    }
+
+    pub async fn process_delete_logs(&self) -> Result<()> {
         repository::blockscout::stream_unprocessed_logs(&*self.db)
             .await?
             .for_each_concurrent(self.settings.concurrency, |log| async move {
@@ -151,52 +174,72 @@ impl Indexer {
                     .inspect_err(|e| tracing::warn!(?e, ?log, "Handling log failed"));
             })
             .await;
-
-        repository::blockscout::stream_tx_hashes_for_cleanup(&*self.db)
+        Ok(())
+    }
+    pub async fn process_tx_cleanups(&self) -> Result<()> {
+        let txn = self.db.begin().await?;
+        let affected_entities = repository::blockscout::stream_tx_hashes_for_cleanup(&*self.db)
             .await?
-            .for_each_concurrent(self.settings.concurrency, |tx| async move {
-                // ignore errors, it's most likely just a deadlock anyway, we'll just retry.
-                let _ = self
-                    .handle_tx_cleanup(tx)
-                    .await
-                    .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx cleanup failed"));
+            .map(|tx| {
+                let txn = &txn;
+                async move {
+                    self.handle_tx_cleanup(txn, tx)
+                        .await
+                        .inspect_err(|e| tracing::warn!(?e, ?tx, "Handling tx cleanup failed"))
+                        .unwrap_or_default() // ignore error, it will be retried
+                }
             })
+            .buffer_unordered(self.settings.concurrency)
+            .collect::<Vec<_>>()
             .await;
+
+        if !affected_entities.is_empty() {
+            repository::entities::batch_queue_reindex(
+                &*self.db,
+                affected_entities.into_iter().flatten().collect(),
+            )
+            .await?;
+        }
+
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
+    pub async fn tick(&self) -> Result<()> {
+        self.process_batch_of_transactions().await?;
+        self.process_delete_logs().await?;
+        self.process_tx_cleanups().await?;
+        self.process_reindexes().await?;
 
         Ok(())
     }
 
-    #[instrument(skip(self))]
-    async fn handle_tx_cleanup(&self, tx_hash: TxHash) -> Result<()> {
+    #[instrument(skip(self, txn))]
+    async fn handle_tx_cleanup(
+        &self,
+        txn: &DatabaseTransaction,
+        tx_hash: TxHash,
+    ) -> Result<HashSet<EntityKey>> {
         tracing::info!("Processing tx cleanup after reorg");
-        let txn = self.db.begin().await?;
 
-        let affected_entities: Vec<EntityKey> =
-            repository::entities::find_by_tx_hash(&txn, tx_hash)
-                .await
-                .with_context(|| format!("Finding entities for tx hash {tx_hash}"))?
-                .into_iter()
-                .map(|e| e.key)
-                .collect();
+        let affected_entities: Vec<EntityKey> = repository::entities::find_by_tx_hash(txn, tx_hash)
+            .await
+            .with_context(|| format!("Finding entities for tx hash {tx_hash}"))?
+            .into_iter()
+            .map(|e| e.key)
+            .collect();
 
-        repository::operations::delete_by_tx_hash(&txn, tx_hash)
+        repository::operations::delete_by_tx_hash(txn, tx_hash)
             .await
             .with_context(|| format!("Deleting operations for tx hash {tx_hash}"))?;
 
-        let mut guards = HashMap::<_, _>::new();
-        for entity in affected_entities {
-            self.reindex_entity(&txn, Some(&mut guards), entity).await?;
-        }
+        repository::transactions::finish_tx_processing(txn, tx_hash).await?;
+        repository::transactions::finish_tx_cleanup(txn, tx_hash).await?;
 
-        repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
-        repository::transactions::finish_tx_cleanup(&txn, tx_hash).await?;
-
-        for guard in guards.into_values() {
-            guard.unlock(&txn).await?;
-        }
-        txn.commit().await?;
         TX_REORG_COUNTER.inc();
-        Ok(())
+
+        Ok(affected_entities.into_iter().collect())
     }
 
     async fn reindex_entity_with_ops<T: ConnectionTrait>(
@@ -219,112 +262,23 @@ impl Indexer {
             },
         )
         .await?;
-        let owner = ops
-            .iter()
-            .rev()
-            .find(|v| !matches!(v.op.operation, OperationData::Delete))
-            .and_then(|v| v.op.owner());
 
         repository::entities::delete_history(txn, entity).await?;
         let mut prev_entry: Option<EntityHistoryEntry> = None;
         let mut active_attributes_index = None;
+        let mut entries = Vec::new();
         for op in ops {
-            let status = match op.op.operation {
-                OperationData::Create(_, _, _) => EntityStatus::Active,
-                OperationData::Update(_, _, _) => EntityStatus::Active,
-                OperationData::Extend(_) => EntityStatus::Active,
-                OperationData::Delete => {
-                    if op.op.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS {
-                        EntityStatus::Expired
-                    } else {
-                        EntityStatus::Deleted
-                    }
-                }
-                OperationData::ChangeOwner(_) => EntityStatus::Active,
-            };
-
-            let expires_at_block_number = match op.op.operation {
-                OperationData::Create(_, btl, _) => Some(op.op.metadata.block_number + btl),
-                OperationData::Update(_, btl, _) => Some(op.op.metadata.block_number + btl),
-                OperationData::Extend(extend_btl) => prev_entry
-                    .as_ref()
-                    .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
-                OperationData::Delete => Some(op.op.metadata.block_number),
-                OperationData::ChangeOwner(_) => {
-                    prev_entry.as_ref().and_then(|v| v.expires_at_block_number)
-                }
-            };
-
-            let data = match op.op.operation {
-                OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.data.to_owned()),
-                OperationData::ChangeOwner(_) => {
-                    prev_entry.as_ref().and_then(|v| v.data.to_owned())
-                }
-                _ => op.op.operation.data().cloned(),
-            };
-
-            let reference_block = Block {
-                number: op.op.metadata.block_number,
-                timestamp: op.block_timestamp,
-                hash: op.op.metadata.block_hash,
-            };
-            let expires_at_timestamp =
-                expires_at_block_number.and_then(|v| block_timestamp(v, &reference_block));
-            let expires_at_timestamp_sec =
-                expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
-
             active_attributes_index = match op.op.operation {
                 OperationData::Delete => None,
                 OperationData::Extend(_) => active_attributes_index,
                 _ => Some((op.op.metadata.tx_hash, op.op.metadata.index)),
             };
 
-            let content_type = match op.op.operation {
-                OperationData::Create(_, _, ref content_type) => Some(content_type.clone()),
-                OperationData::Update(_, _, ref content_type) => Some(content_type.clone()),
-                _ => prev_entry.as_ref().and_then(|v| v.content_type.to_owned()),
-            };
-
-            let entry = EntityHistoryEntry {
-                entity_key: entity,
-                block_number: op.op.metadata.block_number,
-                block_hash: op.op.metadata.block_hash,
-                transaction_hash: op.op.metadata.tx_hash,
-                tx_index: op.op.metadata.tx_index,
-                op_index: op.op.metadata.index,
-                block_timestamp: op.block_timestamp,
-                owner,
-                prev_owner: prev_entry
-                    .as_ref()
-                    .and_then(|prev_entry| prev_entry.prev_owner),
-                sender: op.op.metadata.sender,
-                data,
-                prev_data: prev_entry
-                    .as_ref()
-                    .and_then(|prev_entry| prev_entry.data.clone()),
-                operation: op.op.operation.clone().into(),
-                status,
-                prev_status: prev_entry.as_ref().map(|prev_entry| prev_entry.status),
-                expires_at_block_number,
-                prev_expires_at_block_number: prev_entry
-                    .as_ref()
-                    .and_then(|prev_entry| prev_entry.expires_at_block_number),
-                expires_at_timestamp,
-                expires_at_timestamp_sec,
-                prev_expires_at_timestamp: prev_entry
-                    .clone()
-                    .and_then(|prev_entry| prev_entry.expires_at_timestamp),
-                prev_expires_at_timestamp_sec: prev_entry
-                    .as_ref()
-                    .and_then(|prev_entry| prev_entry.expires_at_timestamp_sec),
-                btl: op.op.operation.btl(),
-                content_type,
-                prev_content_type: prev_entry
-                    .and_then(|prev_entry| prev_entry.content_type.clone()),
-            };
-            repository::entities::insert_history_entry(txn, entry.clone()).await?;
+            let entry = self.build_history_entry(op.op, op.block_timestamp, prev_entry.as_ref());
+            entries.push(entry.clone());
             prev_entry = Some(entry);
         }
+        repository::entities::batch_insert_history_entry(txn, entries).await?;
         repository::attributes::deactivate_attributes(txn, entity).await?;
         if let Some(active_attributes_index) = active_attributes_index {
             repository::attributes::activate_attributes(txn, entity, active_attributes_index)
@@ -335,29 +289,22 @@ impl Indexer {
     }
 
     #[instrument(skip_all, fields(entity))]
-    pub async fn reindex_entity<T: ConnectionTrait>(
-        &self,
-        txn: &T,
-        guards: Option<&mut HashMap<EntityKey, Guard>>,
-        entity: EntityKey,
-    ) -> Result<()> {
-        if let Some(guards) = guards {
-            if let Entry::Vacant(e) = guards.entry(entity) {
-                e.insert(repository::locks::lock(txn, entity).await?);
-            }
+    pub async fn reindex_entity(&self, entity: EntityKey) -> Result<()> {
+        tracing::info!(?entity, "Reprocessing entity");
+        let txn = self.db.begin().await?;
+        match repository::operations::find_latest_operation(&txn, entity).await? {
+            Some(_) => self.reindex_entity_with_ops(&txn, entity).await?,
+            None => repository::entities::drop_entity(&txn, entity).await?,
         }
-        match repository::operations::find_latest_operation(txn, entity).await? {
-            Some(_) => self.reindex_entity_with_ops(txn, entity).await?,
-            None => repository::entities::drop_entity(txn, entity).await?,
-        }
-        repository::entities::refresh_entity_based_on_history(txn, entity).await?;
+        repository::entities::refresh_entity_based_on_history(&txn, entity).await?;
+        repository::entities::finish_reindex(&txn, entity).await?;
+        txn.commit().await?;
         Ok(())
     }
 
     #[instrument(skip(self))]
     async fn handle_tx(&self, tx_hash: TxHash) -> Result<()> {
         tracing::info!("Processing tx");
-
         let txn = self.db.begin().await?;
 
         let tx = repository::blockscout::get_tx(&txn, tx_hash)
@@ -367,7 +314,6 @@ impl Indexer {
         let tx: ConsensusTx = tx.try_into()?;
 
         let mut op_idx = 0;
-        let mut guards = HashMap::<_, _>::new();
         let storagetx: StorageTransaction = match (&tx.input).try_into() {
             Ok(storagetx) => storagetx,
             Err(e) => {
@@ -378,43 +324,73 @@ impl Indexer {
 
         // following operations are a good candidate for optimization when needed
         // possible improvements include parallelization and batching
+        let mut ops = Vec::new();
+        let mut string_attributes = Vec::new();
+        let mut numeric_attributes = Vec::new();
         for create in storagetx.creates {
-            self.handle_create(&txn, &mut guards, &tx, create, op_idx)
+            let (op, op_string_attributes, op_numeric_attributes) = self
+                .handle_create(&tx, create, op_idx)
                 .await
                 .with_context(|| format!("Handling create op tx_hash={tx_hash} op_idx={op_idx}"))?;
+            ops.push(op);
+            string_attributes.extend(op_string_attributes);
+            numeric_attributes.extend(op_numeric_attributes);
             op_idx += 1;
         }
         for delete in storagetx.deletes {
-            self.handle_delete(&txn, &mut guards, &tx, delete, op_idx)
+            let op = self
+                .handle_delete(&tx, delete, op_idx)
                 .await
                 .with_context(|| format!("Handling delete op tx_hash={tx_hash} op_idx={op_idx}"))?;
+            ops.push(op);
             op_idx += 1;
         }
         for update in storagetx.updates {
-            self.handle_update(&txn, &mut guards, &tx, update, op_idx)
+            let (op, op_string_attributes, op_numeric_attributes) = self
+                .handle_update(&tx, update, op_idx)
                 .await
                 .with_context(|| format!("Handling update op tx_hash={tx_hash} op_idx={op_idx}"))?;
+            ops.push(op);
+            string_attributes.extend(op_string_attributes);
+            numeric_attributes.extend(op_numeric_attributes);
             op_idx += 1;
         }
         for extend in storagetx.extensions {
-            self.handle_extend(&txn, &mut guards, &tx, extend, op_idx)
+            let op = self
+                .handle_extend(&tx, extend, op_idx)
                 .await
                 .with_context(|| format!("Handling extend op tx_hash={tx_hash} op_idx={op_idx}"))?;
+            ops.push(op);
             op_idx += 1;
         }
         for change_owner in storagetx.change_owners {
-            self.handle_change_owner(&txn, &mut guards, &tx, change_owner, op_idx)
+            let op = self
+                .handle_change_owner(&tx, change_owner, op_idx)
                 .await
                 .with_context(|| {
                     format!("Handling change_owner op tx_hash={tx_hash} op_idx={op_idx}")
                 })?;
+            ops.push(op);
             op_idx += 1;
         }
 
-        repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
-        for guard in guards.into_values() {
-            guard.unlock(&txn).await?;
+        if !ops.is_empty() {
+            repository::entities::batch_queue_reindex(
+                &txn,
+                ops.iter().map(|v| v.metadata.entity_key).collect(),
+            )
+            .await?;
+            repository::operations::batch_insert_operation(&txn, ops).await?;
         }
+        if !string_attributes.is_empty() {
+            repository::attributes::batch_insert_string_attribute(&txn, string_attributes).await?;
+        }
+        if !numeric_attributes.is_empty() {
+            repository::attributes::batch_insert_numeric_attribute(&txn, numeric_attributes)
+                .await?;
+        }
+
+        repository::transactions::finish_tx_processing(&txn, tx_hash).await?;
         txn.commit().await?;
 
         TX_COUNTER.inc();
@@ -425,98 +401,71 @@ impl Indexer {
     #[instrument(skip_all, fields(create, idx))]
     async fn handle_create(
         &self,
-        txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         create: Create,
         idx: u64,
-    ) -> Result<()> {
+    ) -> Result<(
+        Operation,
+        Vec<FullStringAttribute>,
+        Vec<FullNumericAttribute>,
+    )> {
         let key = entity_key(tx.hash, create.payload.clone(), idx);
-        if let Entry::Vacant(e) = guards.entry(key) {
-            e.insert(repository::locks::lock(txn, key).await?);
-        }
-        tracing::info!("Processing Create operation");
 
-        let op = Operation {
-            metadata: OperationMetadata {
-                entity_key: key,
-                sender: tx.from_address_hash,
-                recipient: tx.to_address_hash,
-                tx_hash: tx.hash,
-                block_hash: tx.block_hash,
-                index: idx,
-                tx_index: tx.index,
-                block_number: tx.block_number,
+        Ok((
+            Operation {
+                metadata: OperationMetadata {
+                    entity_key: key,
+                    sender: tx.from_address_hash,
+                    recipient: tx.to_address_hash,
+                    tx_hash: tx.hash,
+                    block_hash: tx.block_hash,
+                    index: idx,
+                    tx_index: tx.index,
+                    block_number: tx.block_number,
+                },
+                operation: OperationData::create(
+                    create.payload.clone(),
+                    create.btl,
+                    &create.content_type,
+                ),
             },
-            operation: OperationData::create(
-                create.payload.clone(),
-                create.btl,
-                &create.content_type,
-            ),
-        };
-        repository::operations::insert_operation(txn, op.clone()).await?;
-
-        if repository::entities::get_oldest_entity_history_entry(
-            txn,
-            key,
-            FullOperationIndex {
-                block_number: tx.block_number,
-                tx_index: tx.index,
-                op_index: idx,
-            },
-        )
-        .await?
-        .is_some()
-        {
-            self.reindex_entity_with_ops(txn, key).await?;
-        } else {
-            self.insert_history_entry(txn, key, tx, op).await?;
-        }
-
-        repository::entities::refresh_entity_based_on_history(txn, key).await?;
-
-        self.store_attributes(
-            txn,
-            key,
-            tx,
-            idx,
             create
                 .string_attributes
                 .into_iter()
-                .map(Into::into)
+                .map(|v| FullStringAttribute {
+                    entity_key: key,
+                    operation_tx_hash: tx.hash,
+                    operation_index: idx,
+                    attribute: v.into(),
+                })
                 .collect(),
             create
                 .numeric_attributes
                 .into_iter()
-                .map(Into::into)
+                .map(|v| FullNumericAttribute {
+                    entity_key: key,
+                    operation_tx_hash: tx.hash,
+                    operation_index: idx,
+                    attribute: v.into(),
+                })
                 .collect(),
-        )
-        .await?;
-
-        Ok(())
+        ))
     }
 
-    async fn insert_history_entry<T: ConnectionTrait>(
+    fn build_history_entry(
         &self,
-        txn: &T,
-        entity_key: EntityKey,
-        tx: &ConsensusTx,
         op: Operation,
-    ) -> Result<()> {
-        let idx = FullOperationIndex {
-            block_number: tx.block_number,
-            tx_index: tx.index,
-            op_index: op.metadata.index,
+        block_ts: Timestamp,
+        prev_entry: Option<&EntityHistoryEntry>,
+    ) -> EntityHistoryEntry {
+        let reference_block = Block {
+            hash: op.metadata.block_hash,
+            number: op.metadata.block_number,
+            timestamp: block_ts,
         };
-        let prev_entry = repository::entities::get_latest_entity_history_entry(
-            txn,
-            entity_key,
-            Some(idx.clone()),
-        )
-        .await?;
         let status = match op.operation {
             OperationData::Delete
-                if tx.to_address_hash == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
+                if op.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
             {
                 EntityStatus::Expired
             }
@@ -525,174 +474,125 @@ impl Indexer {
         };
         let owner = match op.operation {
             OperationData::Delete
-                if tx.to_address_hash == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
+                if op.metadata.recipient == well_known::L1_BLOCK_CONTRACT_ADDRESS =>
             {
-                prev_entry.as_ref().and_then(|v| v.owner)
+                prev_entry.and_then(|v| v.owner)
             }
             OperationData::ChangeOwner(new_owner) => Some(new_owner),
-            _ => Some(tx.from_address_hash),
+            _ => Some(op.metadata.sender),
         };
         let data = match op.operation {
-            OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.data.clone()),
-            OperationData::ChangeOwner(_) => prev_entry.as_ref().and_then(|v| v.data.clone()),
+            OperationData::Extend(_) => prev_entry.and_then(|v| v.data.clone()),
+            OperationData::ChangeOwner(_) => prev_entry.and_then(|v| v.data.clone()),
             _ => op.operation.data().map(ToOwned::to_owned),
         };
 
         let expires_at_block_number = match op.operation {
-            OperationData::Create(_, btl, _) => Some(tx.block_number + btl),
-            OperationData::Update(_, btl, _) => Some(tx.block_number + btl),
-            OperationData::Extend(extend_btl) => prev_entry
-                .as_ref()
-                .and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl)),
-            OperationData::Delete => Some(tx.block_number),
-            OperationData::ChangeOwner(_) => {
-                prev_entry.as_ref().and_then(|v| v.expires_at_block_number)
+            OperationData::Create(_, btl, _) => Some(op.metadata.block_number + btl),
+            OperationData::Update(_, btl, _) => Some(op.metadata.block_number + btl),
+            OperationData::Extend(extend_btl) => {
+                prev_entry.and_then(|v| v.expires_at_block_number.map(|v| v + extend_btl))
             }
+            OperationData::Delete => Some(op.metadata.block_number),
+            OperationData::ChangeOwner(_) => prev_entry.and_then(|v| v.expires_at_block_number),
         };
 
-        let reference_block = Block {
-            number: tx.block_number,
-            timestamp: tx.block_timestamp,
-            hash: tx.block_hash,
-        };
         let expires_at_timestamp =
             expires_at_block_number.and_then(|v| block_timestamp(v, &reference_block));
         let expires_at_timestamp_sec =
             expires_at_block_number.and_then(|v| block_timestamp_sec(v, &reference_block));
         let content_type = match op.operation {
-            OperationData::Extend(_) => prev_entry.as_ref().and_then(|v| v.content_type.clone()),
-            OperationData::ChangeOwner(_) => {
-                prev_entry.as_ref().and_then(|v| v.content_type.clone())
-            }
+            OperationData::Extend(_) => prev_entry.and_then(|v| v.content_type.clone()),
+            OperationData::ChangeOwner(_) => prev_entry.and_then(|v| v.content_type.clone()),
             _ => op.operation.content_type(),
         };
 
-        let entry = EntityHistoryEntry {
-            entity_key,
-            block_number: tx.block_number,
-            block_hash: tx.block_hash,
-            transaction_hash: tx.hash,
-            tx_index: tx.index,
+        EntityHistoryEntry {
+            entity_key: op.metadata.entity_key,
+            block_number: op.metadata.block_number,
+            block_hash: op.metadata.block_hash,
+            transaction_hash: op.metadata.tx_hash,
+            tx_index: op.metadata.tx_index,
             op_index: op.metadata.index,
-            block_timestamp: tx.block_timestamp,
+            block_timestamp: reference_block.timestamp,
             owner,
-            prev_owner: prev_entry.as_ref().and_then(|prev_entry| prev_entry.owner),
-            sender: tx.from_address_hash,
+            prev_owner: prev_entry.and_then(|prev_entry| prev_entry.owner),
+            sender: op.metadata.sender,
             data,
-            prev_data: prev_entry
-                .as_ref()
-                .and_then(|prev_entry| prev_entry.data.clone()),
+            prev_data: prev_entry.and_then(|prev_entry| prev_entry.data.clone()),
             operation: op.operation.clone().into(),
             status,
-            prev_status: prev_entry.as_ref().map(|prev_entry| prev_entry.status),
+            prev_status: prev_entry.map(|prev_entry| prev_entry.status),
             expires_at_block_number,
             prev_expires_at_block_number: prev_entry
-                .as_ref()
                 .and_then(|prev_entry| prev_entry.expires_at_block_number),
             expires_at_timestamp,
             expires_at_timestamp_sec,
             prev_expires_at_timestamp: prev_entry
-                .clone()
                 .and_then(|prev_entry| prev_entry.expires_at_timestamp),
             prev_expires_at_timestamp_sec: prev_entry
-                .as_ref()
                 .and_then(|prev_entry| prev_entry.expires_at_timestamp_sec),
             btl: op.operation.btl(),
             content_type,
-            prev_content_type: prev_entry.and_then(|prev_entry| prev_entry.content_type),
-        };
-        repository::entities::insert_history_entry(txn, entry.clone()).await?;
-        Ok(())
+            prev_content_type: prev_entry.and_then(|prev_entry| prev_entry.content_type.clone()),
+        }
     }
 
     #[instrument(skip_all, fields(update, idx))]
     async fn handle_update(
         &self,
-        txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         update: Update,
         idx: u64,
-    ) -> Result<()> {
-        if let Entry::Vacant(e) = guards.entry(update.entity_key) {
-            e.insert(repository::locks::lock(txn, update.entity_key).await?);
-        }
-        tracing::info!("Processing Update operation");
-
-        let op = Operation {
-            metadata: OperationMetadata {
-                entity_key: update.entity_key,
-                sender: tx.from_address_hash,
-                recipient: tx.to_address_hash,
-                tx_hash: tx.hash,
-                block_hash: tx.block_hash,
-                index: idx,
-                block_number: tx.block_number,
-                tx_index: tx.index,
+    ) -> Result<(
+        Operation,
+        Vec<FullStringAttribute>,
+        Vec<FullNumericAttribute>,
+    )> {
+        Ok((
+            Operation {
+                metadata: OperationMetadata {
+                    entity_key: update.entity_key,
+                    sender: tx.from_address_hash,
+                    recipient: tx.to_address_hash,
+                    tx_hash: tx.hash,
+                    block_hash: tx.block_hash,
+                    index: idx,
+                    block_number: tx.block_number,
+                    tx_index: tx.index,
+                },
+                operation: OperationData::update(
+                    update.payload.clone(),
+                    update.btl,
+                    &update.content_type,
+                ),
             },
-            operation: OperationData::update(
-                update.payload.clone(),
-                update.btl,
-                &update.content_type,
-            ),
-        };
-        repository::operations::insert_operation(txn, op.clone()).await?;
-
-        if repository::entities::get_oldest_entity_history_entry(
-            txn,
-            update.entity_key,
-            FullOperationIndex {
-                block_number: tx.block_number,
-                tx_index: tx.index,
-                op_index: idx,
-            },
-        )
-        .await?
-        .is_some()
-        {
-            self.reindex_entity_with_ops(txn, update.entity_key).await?;
-        } else {
-            self.insert_history_entry(txn, update.entity_key, tx, op)
-                .await?;
-        }
-
-        repository::entities::refresh_entity_based_on_history(txn, update.entity_key).await?;
-
-        self.store_attributes(
-            txn,
-            update.entity_key,
-            tx,
-            idx,
             update
                 .string_attributes
                 .into_iter()
-                .map(Into::into)
+                .map(|v| FullStringAttribute {
+                    entity_key: update.entity_key,
+                    operation_tx_hash: tx.hash,
+                    operation_index: idx,
+                    attribute: v.into(),
+                })
                 .collect(),
             update
                 .numeric_attributes
                 .into_iter()
-                .map(Into::into)
+                .map(|v| FullNumericAttribute {
+                    entity_key: update.entity_key,
+                    operation_tx_hash: tx.hash,
+                    operation_index: idx,
+                    attribute: v.into(),
+                })
                 .collect(),
-        )
-        .await?;
-
-        Ok(())
+        ))
     }
 
     #[instrument(skip_all, fields(delete, idx))]
-    async fn handle_delete(
-        &self,
-        txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
-        tx: &ConsensusTx,
-        delete: Delete,
-        idx: u64,
-    ) -> Result<()> {
-        if let Entry::Vacant(e) = guards.entry(delete) {
-            e.insert(repository::locks::lock(txn, delete).await?);
-        }
-        tracing::info!("Processing Delete operation");
-        let op = Operation {
+    async fn handle_delete(&self, tx: &ConsensusTx, delete: Delete, idx: u64) -> Result<Operation> {
+        Ok(Operation {
             metadata: OperationMetadata {
                 entity_key: delete,
                 sender: tx.from_address_hash,
@@ -704,30 +604,12 @@ impl Indexer {
                 tx_index: tx.index,
             },
             operation: OperationData::delete(),
-        };
-        repository::operations::insert_operation(txn, op.clone()).await?;
-
-        self.insert_history_entry(txn, delete, tx, op).await?;
-        repository::entities::refresh_entity_based_on_history(txn, delete).await?;
-
-        repository::attributes::deactivate_attributes(txn, delete).await?;
-        Ok(())
+        })
     }
 
     #[instrument(skip_all, fields(extend, idx))]
-    async fn handle_extend(
-        &self,
-        txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
-        tx: &ConsensusTx,
-        extend: Extend,
-        idx: u64,
-    ) -> Result<()> {
-        if let Entry::Vacant(e) = guards.entry(extend.entity_key) {
-            e.insert(repository::locks::lock(txn, extend.entity_key).await?);
-        }
-        tracing::info!("Processing Extend operation");
-        let op = Operation {
+    async fn handle_extend(&self, tx: &ConsensusTx, extend: Extend, idx: u64) -> Result<Operation> {
+        Ok(Operation {
             metadata: OperationMetadata {
                 entity_key: extend.entity_key,
                 sender: tx.from_address_hash,
@@ -739,47 +621,17 @@ impl Indexer {
                 tx_index: tx.index,
             },
             operation: OperationData::extend(extend.number_of_blocks),
-        };
-        repository::operations::insert_operation(txn, op.clone()).await?;
-
-        if repository::entities::get_oldest_entity_history_entry(
-            txn,
-            extend.entity_key,
-            FullOperationIndex {
-                block_number: tx.block_number,
-                tx_index: tx.index,
-                op_index: idx,
-            },
-        )
-        .await?
-        .is_some()
-        {
-            self.reindex_entity_with_ops(txn, extend.entity_key).await?;
-        } else {
-            self.insert_history_entry(txn, extend.entity_key, tx, op)
-                .await?;
-        }
-
-        repository::entities::refresh_entity_based_on_history(txn, extend.entity_key).await?;
-
-        Ok(())
+        })
     }
 
     #[instrument(skip_all, fields(extend, idx))]
     async fn handle_change_owner(
         &self,
-        txn: &DatabaseTransaction,
-        guards: &mut HashMap<EntityKey, Guard>,
         tx: &ConsensusTx,
         change_owner: ChangeOwner,
         idx: u64,
-    ) -> Result<()> {
-        if let Entry::Vacant(e) = guards.entry(change_owner.entity_key) {
-            e.insert(repository::locks::lock(txn, change_owner.entity_key).await?);
-        }
-        tracing::info!("Processing ChangeOwner operation");
-
-        let op = Operation {
+    ) -> Result<Operation> {
+        Ok(Operation {
             metadata: OperationMetadata {
                 entity_key: change_owner.entity_key,
                 sender: tx.from_address_hash,
@@ -791,56 +643,11 @@ impl Indexer {
                 tx_index: tx.index,
             },
             operation: OperationData::ChangeOwner(change_owner.new_owner),
-        };
-        repository::operations::insert_operation(txn, op.clone()).await?;
-
-        if repository::entities::get_oldest_entity_history_entry(
-            txn,
-            change_owner.entity_key,
-            FullOperationIndex {
-                block_number: tx.block_number,
-                tx_index: tx.index,
-                op_index: idx,
-            },
-        )
-        .await?
-        .is_some()
-        {
-            self.reindex_entity_with_ops(txn, change_owner.entity_key)
-                .await?;
-        } else {
-            self.insert_history_entry(txn, change_owner.entity_key, tx, op)
-                .await?;
-        }
-
-        repository::entities::refresh_entity_based_on_history(txn, change_owner.entity_key).await?;
-
-        Ok(())
-    }
-
-    async fn is_latest_update(
-        &self,
-        txn: &DatabaseTransaction,
-        entity_key: EntityKey,
-        index: FullOperationIndex,
-    ) -> Result<bool> {
-        let entity = repository::entities::get_entity(txn, entity_key).await?;
-
-        if let Some(entity) = entity {
-            if !matches!(entity.status, EntityStatus::Active) {
-                return Ok(false);
-            }
-        }
-
-        match repository::operations::get_latest_update(txn, entity_key).await? {
-            Some(latest_stored_index) => Ok(index >= latest_stored_index),
-            None => Ok(true),
-        }
+        })
     }
 
     #[instrument(skip_all, fields(log))]
     async fn handle_log(&self, log: LogIndex) -> Result<()> {
-        tracing::info!("Processing log");
         let txn = self.db.begin().await?;
         let tx = repository::blockscout::get_tx(&txn, log.transaction_hash)
             .await?
@@ -855,7 +662,6 @@ impl Indexer {
             tracing::warn!("Delete Log event with no second topic?");
             return Ok(());
         };
-        let guard = repository::locks::lock(&txn, entity_key).await?;
         tracing::info!("Processing delete log for entity {entity_key}");
 
         let op = Operation {
@@ -873,77 +679,25 @@ impl Indexer {
         };
         repository::operations::insert_operation(&txn, op.clone()).await?;
 
-        self.insert_history_entry(&txn, entity_key, &tx, op).await?;
+        let idx = FullOperationIndex {
+            block_number: tx.block_number,
+            tx_index: tx.index,
+            op_index: op.metadata.index,
+        };
+        let prev_entry = repository::entities::get_latest_entity_history_entry(
+            &txn,
+            entity_key,
+            Some(idx.clone()),
+        )
+        .await?;
+        let entry = self.build_history_entry(op, tx.block_timestamp, prev_entry.as_ref());
+        repository::entities::batch_insert_history_entry(&txn, vec![entry]).await?;
         repository::entities::refresh_entity_based_on_history(&txn, entity_key).await?;
 
         repository::attributes::deactivate_attributes(&txn, entity_key).await?;
         repository::logs::finish_log_processing(&txn, tx.hash, tx.block_hash, log.index).await?;
-        guard.unlock(&txn).await?;
         txn.commit().await?;
         OP_COUNTER.inc();
-
-        Ok(())
-    }
-
-    #[instrument(skip_all, fields(entity_key))]
-    async fn store_attributes(
-        &self,
-        txn: &DatabaseTransaction,
-        entity_key: EntityKey,
-        tx: &ConsensusTx,
-        op_index: u64,
-        string_attributes: Vec<StringAttribute>,
-        numeric_attributes: Vec<NumericAttribute>,
-    ) -> Result<()> {
-        let latest_update = self
-            .is_latest_update(
-                txn,
-                entity_key,
-                FullOperationIndex {
-                    block_number: tx.block_number,
-                    tx_index: tx.index,
-                    op_index,
-                },
-            )
-            .await?;
-
-        if latest_update {
-            repository::attributes::deactivate_attributes(txn, entity_key).await?;
-        }
-
-        for attribute in string_attributes {
-            repository::attributes::insert_string_attribute(
-                txn,
-                FullStringAttribute {
-                    entity_key,
-                    operation_tx_hash: tx.hash,
-                    operation_index: op_index,
-                    attribute: StringAttribute {
-                        key: attribute.key,
-                        value: attribute.value,
-                    },
-                },
-                latest_update,
-            )
-            .await?;
-        }
-
-        for attribute in numeric_attributes {
-            repository::attributes::insert_numeric_attribute(
-                txn,
-                FullNumericAttribute {
-                    entity_key,
-                    operation_tx_hash: tx.hash,
-                    operation_index: op_index,
-                    attribute: NumericAttribute {
-                        key: attribute.key,
-                        value: attribute.value,
-                    },
-                },
-                latest_update,
-            )
-            .await?;
-        }
 
         Ok(())
     }
