@@ -147,7 +147,6 @@ impl Indexer {
 
     #[instrument(skip_all)]
     pub async fn process_reindexes(&self) -> Result<()> {
-        tracing::info!("Reindexing affected entities...");
         repository::entities::stream_entities_to_reindex(&*self.db)
             .await?
             .map(|key| {
