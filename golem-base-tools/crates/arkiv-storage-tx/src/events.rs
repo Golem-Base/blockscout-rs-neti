@@ -9,7 +9,7 @@ alloy_sol_types::sol! {
 
         event ArkivEntityUpdated(
             uint256 indexed entityKey,
-            uint256 indexed owner,
+            address indexed owner,
             uint256 oldExpirationBlock,
             uint256 newExpirationBlock,
             uint256 cost,
@@ -22,7 +22,7 @@ alloy_sol_types::sol! {
 
         event ArkivEntityBTLExtended(
             uint256 indexed entityKey,
-            uint256 indexed owner,
+            address indexed owner,
             uint256 oldExpirationBlock,
             uint256 newExpirationBlock,
             uint256 cost

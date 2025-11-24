@@ -1,6 +1,6 @@
 [package]
 name = "arkiv-storage-tx"
-version = "0.4.0"
+version = "0.4.1"
 description = "Library for encoding and decoding Arkiv DB Chain storage transactions"
 edition.workspace = true
 rust-version.workspace = true
