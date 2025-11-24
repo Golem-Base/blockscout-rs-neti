@@ -17,7 +17,7 @@ alloy_sol_types::sol! {
 
         event ArkivEntityDeleted(
             uint256 indexed entityKey,
-            uint256 indexed owner,
+            address indexed owner,
         );
 
         event ArkivEntityBTLExtended(
@@ -30,13 +30,13 @@ alloy_sol_types::sol! {
 
         event ArkivEntityOwnerChanged(
             uint256 indexed entityKey,
-            uint256 indexed oldOwner,
-            uint256 indexed newOwner,
+            address indexed oldOwner,
+            address indexed newOwner,
         );
 
         event ArkivEntityExpired(
             uint256 indexed entityKey,
-            uint256 indexed owner,
+            address indexed owner,
         );
     }
 }
