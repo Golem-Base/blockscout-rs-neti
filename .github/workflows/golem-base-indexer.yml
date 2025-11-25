@@ -6,12 +6,14 @@ on:
       - "golem-base-indexer/v*"
     paths:
       - golem-base-indexer/**
+      - golem-base-tools/**
       - .github/workflows/golem-base-indexer.yml
       - .github/workflows/_*.yml
       - .github/actions/**
   pull_request:
     paths:
       - golem-base-indexer/**
+      - golem-base-tools/**
       - .github/workflows/golem-base-indexer.yml
       - .github/workflows/_*.yml
       - .github/actions/**
