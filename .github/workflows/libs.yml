@@ -6,11 +6,15 @@ on:
       - libs/**
       - .github/workflows/libs.yml
       - .github/actions/deps/**
+      - golem-base-indexer/**
+      - golem-base-tools/**
   pull_request:
     paths:
       - libs/**
       - .github/workflows/libs.yml
       - .github/actions/deps/**
+      - golem-base-indexer/**
+      - golem-base-tools/**
 
 name: Test, lint (libs)
 
