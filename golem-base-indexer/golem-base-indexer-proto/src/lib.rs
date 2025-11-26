@@ -438,6 +438,7 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             owner: v.owner.map(|v| v.to_checksum(None)),
             content_type: v.content_type,
             prev_content_type: v.prev_content_type,
+            cost: v.cost.map(|cost_u256| cost_u256.to_string()),
         }
     }
 }

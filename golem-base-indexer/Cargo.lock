@@ -1153,9 +1153,9 @@ dependencies = [
 
 [[package]]
 name = "arkiv-storage-tx"
-version = "0.4.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc26a19fb66e1a37550a28659e2c761f3255212b316a63e20681e83189e1d7b2"
+checksum = "f47ab24e9e9d480685c1e9193b16d43ec5fedfbcbd66efcf6f06ff0a73b313a4"
 dependencies = [
  "alloy-primitives",
  "alloy-rlp",

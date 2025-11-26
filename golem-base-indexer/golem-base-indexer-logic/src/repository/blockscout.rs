@@ -126,6 +126,31 @@ pub async fn stream_unprocessed_logs<T: StreamTrait + ConnectionTrait>(
 }
 
 #[instrument(skip(db))]
+pub async fn stream_unprocessed_logs_events<T: StreamTrait + ConnectionTrait>(
+    db: &T,
+) -> Result<impl Stream<Item = LogIndex> + '_> {
+    Ok(
+        DbLogIndex::find_by_statement(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            sql::GET_UNPROCESSED_LOGS_EVENTS,
+            [],
+        ))
+        .stream(db)
+        .await
+        .context("Failed to get unprocessed logs events")?
+        .filter_map(|log| async {
+            match log {
+                Ok(log) => Some(log.try_into().ok()?),
+                Err(err) => {
+                    tracing::error!(error = ?err, "error during unprocessed log events retrieval");
+                    None
+                }
+            }
+        }),
+    )
+}
+
+#[instrument(skip(db))]
 pub async fn stream_unprocessed_tx_hashes<T: StreamTrait + ConnectionTrait>(
     db: &T,
 ) -> Result<impl Stream<Item = TxHash> + '_> {

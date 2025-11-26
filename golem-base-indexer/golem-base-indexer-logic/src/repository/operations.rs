@@ -8,15 +8,17 @@ use sea_orm::{
     ActiveValue::{NotSet, Set},
     DbBackend, FromQueryResult, QueryOrder, QuerySelect, Statement,
 };
+use std::str::FromStr;
 use tracing::instrument;
 
 use crate::{
     arkiv::{block_timestamp, block_timestamp_sec},
     pagination::paginate_try_from,
     types::{
-        Block, BlockNumberOrHashFilter, EntityKey, FullOperationIndex, ListOperationsFilter,
-        Operation, OperationData, OperationMetadata, OperationType, OperationView, OperationsCount,
-        OperationsFilter, PaginationMetadata, PaginationParams, TxHash,
+        Block, BlockNumberOrHashFilter, CurrencyAmount, EntityKey, FullOperationIndex,
+        ListOperationsFilter, Operation, OperationData, OperationMetadata, OperationType,
+        OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
+        TxHash,
     },
 };
 
@@ -181,6 +183,10 @@ impl TryFrom<golem_base_operations::Model> for Operation {
                 index: v.index.try_into()?,
                 block_number: v.block_number.try_into()?,
                 tx_index: v.tx_index.try_into()?,
+                cost: match v.cost {
+                    Some(cost) => Some(CurrencyAmount::from_str_radix(&cost.to_string(), 10)?),
+                    None => None,
+                },
             },
         })
     }
@@ -229,6 +235,10 @@ impl TryFrom<Operation> for golem_base_operations::ActiveModel {
             tx_index: Set(md.tx_index.try_into()?),
             inserted_at: NotSet,
             content_type: Set(op.operation.content_type()),
+            cost: Set(match md.cost {
+                Some(cost_u256) => Some(Decimal::from_str(&cost_u256.to_string())?),
+                None => None,
+            }),
         })
     }
 }
@@ -241,6 +251,18 @@ pub async fn insert_operation<T: ConnectionTrait>(db: &T, op: Operation) -> Resu
     .insert(db)
     .await
     .with_context(|| format!("Failed to insert operation: {op:?}"))?;
+
+    Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn update_operation<T: ConnectionTrait>(db: &T, op: Operation) -> Result<()> {
+    golem_base_operations::ActiveModel {
+        ..op.clone().try_into()?
+    }
+    .update(db)
+    .await
+    .with_context(|| format!("Failed to update operation: {op:?}"))?;
 
     Ok(())
 }
@@ -278,6 +300,31 @@ pub async fn get_operation<T: ConnectionTrait>(
             v.try_into().with_context(|| {
                 format!("Failed to convert operation. tx_hash={tx_hash}, index={index}")
             })
+        })
+        .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn get_operation_by_type_key_txhash_txindex<T: ConnectionTrait>(
+    db: &T,
+    op_type: OperationType,
+    entity_key: EntityKey,
+    tx_hash: TxHash,
+    tx_index: u64,
+) -> Result<Option<Operation>> {
+    golem_base_operations::Entity::find()
+        .filter(golem_base_operations::Column::Operation.eq(GolemBaseOperationType::from(op_type)))
+        .filter(golem_base_operations::Column::TransactionHash.eq(tx_hash.as_slice()))
+        .filter(golem_base_operations::Column::EntityKey.eq(entity_key.as_slice()))
+        .filter(golem_base_operations::Column::TxIndex.eq(tx_index))
+        .one(db)
+        .await
+        .with_context(|| {
+            format!("Failed to get operation. op_type={op_type:?}, entity_key={entity_key}, tx_hash={tx_hash}")
+        })?
+        .map(|v| {
+            v.try_into()
+                .with_context(|| format!("Failed to convert operation. op_type={op_type:?}, entity_key={entity_key}, tx_hash={tx_hash}"))
         })
         .transpose()
 }

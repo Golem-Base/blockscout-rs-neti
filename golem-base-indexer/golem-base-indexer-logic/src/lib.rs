@@ -1,5 +1,6 @@
+use alloy_sol_types::SolEvent;
 use anyhow::{anyhow, Context, Result};
-use arkiv_storage_tx::{ChangeOwner, Create, Delete, Extend, StorageTransaction, Update};
+use arkiv_storage_tx::{ArkivABI, ChangeOwner, Create, Delete, Extend, StorageTransaction, Update};
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use prometheus::{opts, register_counter, register_gauge, Counter, Gauge};
@@ -19,7 +20,8 @@ use crate::{
     types::{
         Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAttribute,
         FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogIndex, Operation,
-        OperationData, OperationMetadata, OperationsFilter, PaginationParams, Timestamp, TxHash,
+        OperationData, OperationMetadata, OperationType, OperationsFilter, PaginationParams,
+        Timestamp, TxHash,
     },
 };
 
@@ -176,6 +178,20 @@ impl Indexer {
             .await;
         Ok(())
     }
+
+    pub async fn process_logs_events(&self) -> Result<()> {
+        repository::blockscout::stream_unprocessed_logs_events(&*self.db)
+            .await?
+            .for_each_concurrent(self.settings.concurrency, |log| async move {
+                let _ = self
+                    .handle_log_event(log.clone())
+                    .await
+                    .inspect_err(|e| tracing::warn!(?e, ?log, "Handling log event failed"));
+            })
+            .await;
+        Ok(())
+    }
+
     pub async fn process_tx_cleanups(&self) -> Result<()> {
         let txn = self.db.begin().await?;
         let affected_entities = repository::blockscout::stream_tx_hashes_for_cleanup(&*self.db)
@@ -209,6 +225,7 @@ impl Indexer {
     pub async fn tick(&self) -> Result<()> {
         self.process_batch_of_transactions().await?;
         self.process_delete_logs().await?;
+        self.process_logs_events().await?;
         self.process_tx_cleanups().await?;
         self.process_reindexes().await?;
 
@@ -422,6 +439,7 @@ impl Indexer {
                     index: idx,
                     tx_index: tx.index,
                     block_number: tx.block_number,
+                    cost: None,
                 },
                 operation: OperationData::create(
                     create.payload.clone(),
@@ -535,6 +553,7 @@ impl Indexer {
             btl: op.operation.btl(),
             content_type,
             prev_content_type: prev_entry.and_then(|prev_entry| prev_entry.content_type.clone()),
+            cost: op.metadata.cost,
         }
     }
 
@@ -560,6 +579,7 @@ impl Indexer {
                     index: idx,
                     block_number: tx.block_number,
                     tx_index: tx.index,
+                    cost: None,
                 },
                 operation: OperationData::update(
                     update.payload.clone(),
@@ -602,6 +622,7 @@ impl Indexer {
                 index: idx,
                 block_number: tx.block_number,
                 tx_index: tx.index,
+                cost: None,
             },
             operation: OperationData::delete(),
         })
@@ -619,6 +640,7 @@ impl Indexer {
                 index: idx,
                 block_number: tx.block_number,
                 tx_index: tx.index,
+                cost: None,
             },
             operation: OperationData::extend(extend.number_of_blocks),
         })
@@ -641,6 +663,7 @@ impl Indexer {
                 index: idx,
                 block_number: tx.block_number,
                 tx_index: tx.index,
+                cost: None,
             },
             operation: OperationData::ChangeOwner(change_owner.new_owner),
         })
@@ -674,6 +697,7 @@ impl Indexer {
                 block_number: tx.block_number,
                 tx_index: tx.index,
                 index: log.index,
+                cost: None,
             },
             operation: OperationData::delete(),
         };
@@ -698,6 +722,102 @@ impl Indexer {
         repository::logs::finish_log_processing(&txn, tx.hash, tx.block_hash, log.index).await?;
         txn.commit().await?;
         OP_COUNTER.inc();
+
+        Ok(())
+    }
+
+    #[instrument(skip_all, fields(log))]
+    async fn handle_log_event(&self, log_index: LogIndex) -> Result<()> {
+        let txn = self.db.begin().await?;
+
+        // Get transaction
+        let tx = repository::blockscout::get_tx(&txn, log_index.transaction_hash)
+            .await?
+            .ok_or(anyhow!("Event with no matching transaction."))?;
+        let tx: ConsensusTx = tx.try_into()?;
+
+        // Get log
+        let log = repository::logs::get_log(&txn, log_index.clone())
+            .await?
+            .ok_or(anyhow!("Event with missing log."))?;
+
+        // Extract signature hash and entity key
+        let signature_hash = log
+            .first_topic
+            .ok_or(anyhow!("Missing first topic in Arkiv event log"))?;
+        let entity_key = log
+            .second_topic
+            .ok_or(anyhow!("Missing second topic in Arkiv event log"))?;
+
+        // Extract operation type and cost
+        let (op_type, cost) = match signature_hash {
+            ArkivABI::ArkivEntityCreated::SIGNATURE_HASH => {
+                let (_expiration_block, cost) =
+                    ArkivABI::ArkivEntityCreated::abi_decode_data_validate(&log.data).map_err(
+                        |e| anyhow!("Error decoding non-indexed parameters for event log: {e}"),
+                    )?;
+                (OperationType::Create, cost)
+            }
+            ArkivABI::ArkivEntityUpdated::SIGNATURE_HASH => {
+                let (_old_expiration_block, _new_expiration_block, cost) =
+                    ArkivABI::ArkivEntityUpdated::abi_decode_data_validate(&log.data).map_err(
+                        |e| anyhow!("Error decoding non-indexed parameters for event log: {e}"),
+                    )?;
+                (OperationType::Update, cost)
+            }
+            ArkivABI::ArkivEntityBTLExtended::SIGNATURE_HASH => {
+                let (_old_expiration_block, _new_expiration_block, cost) =
+                    ArkivABI::ArkivEntityBTLExtended::abi_decode_data_validate(&log.data)
+                        .map_err(|e| anyhow!("Error decoding non-indexed parameters. log={e}"))?;
+                (OperationType::Extend, cost)
+            }
+            _ => {
+                return Err(anyhow!(
+                    "Unnrecognized event. signature_hash={signature_hash}"
+                ));
+            }
+        };
+
+        // Get stored operation
+        let mut op = repository::operations::get_operation_by_type_key_txhash_txindex(
+            &txn,
+            op_type,
+            entity_key,
+            log.tx_hash,
+            tx.index,
+        )
+        .await
+        .map_err(|e| anyhow!("Error fetching operation for an event: {e}"))?
+        .ok_or(anyhow!("No matching operation found for an event."))?;
+
+        // Set cost and update operation
+        op.metadata.cost = Some(cost);
+        repository::operations::update_operation(&txn, op.clone()).await?;
+
+        // Get stored history entry
+        let mut entity_history = repository::entities::get_entity_history_entry(
+            &txn,
+            op.metadata.tx_hash,
+            op.metadata.index,
+        )
+        .await
+        .map_err(|e| anyhow!("Error fetching history entry for an event {e}"))?
+        .ok_or(anyhow!("No matching history entry found for an event."))?;
+
+        // Set cost and update history entry
+        entity_history.cost = Some(cost);
+        repository::entities::update_entity_history_entry(&txn, entity_history).await?;
+
+        // Remove log from the pending queue
+        repository::logs::finish_log_event_processing(
+            &txn,
+            log.tx_hash,
+            log_index.block_hash,
+            log.index,
+        )
+        .await?;
+
+        txn.commit().await?;
 
         Ok(())
     }

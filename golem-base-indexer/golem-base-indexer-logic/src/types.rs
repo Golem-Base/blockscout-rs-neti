@@ -72,6 +72,7 @@ pub struct OperationMetadata {
     pub index: u64,
     pub block_number: BlockNumber,
     pub tx_index: u64,
+    pub cost: Option<CurrencyAmount>,
 }
 
 #[derive(Clone, Debug)]
@@ -365,6 +366,7 @@ pub struct EntityHistoryEntry {
     pub btl: Option<u64>,
     pub content_type: Option<String>,
     pub prev_content_type: Option<String>,
+    pub cost: Option<CurrencyAmount>,
 }
 
 #[derive(Debug, Clone)]
