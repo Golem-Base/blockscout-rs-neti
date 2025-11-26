@@ -160,7 +160,7 @@ fn extract_csrf_token(metadata: &MetadataMap) -> Result<&str, Error> {
     Ok(token)
 }
 
-fn get_cookies(metadata: &MetadataMap) -> Result<HashMap<String, Cookie>, Error> {
+fn get_cookies(metadata: &MetadataMap) -> Result<HashMap<String, Cookie<'_>>, Error> {
     let cookies_raw = match metadata.get(COOKIE.as_str()) {
         Some(cookie) => cookie
             .to_str()
