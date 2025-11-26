@@ -15,3 +15,4 @@ See [compose files](https://github.com/Golem-Base/blockscout-compose-files)
 ## License
 
 This project is primarily distributed under the terms of the MIT license. See [LICENSE-MIT](LICENSE-MIT) for details.
+
