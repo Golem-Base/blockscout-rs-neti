@@ -40,8 +40,10 @@ select
 from golem_base_pending_logs_events as pendings
     inner join transactions on transactions.hash = pendings.transaction_hash
     left join golem_base_pending_transaction_cleanups on transactions.hash = pendings.transaction_hash
+    left join golem_base_pending_transaction_operations on golem_base_pending_transaction_operations.hash = pendings.transaction_hash
 where
     golem_base_pending_transaction_cleanups is null
+    and golem_base_pending_transaction_operations is null
     and transactions.status = 1
 order by
     pendings.block_number asc,

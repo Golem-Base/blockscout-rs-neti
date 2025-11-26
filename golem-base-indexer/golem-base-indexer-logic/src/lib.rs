@@ -225,9 +225,9 @@ impl Indexer {
     pub async fn tick(&self) -> Result<()> {
         self.process_batch_of_transactions().await?;
         self.process_delete_logs().await?;
-        self.process_logs_events().await?;
         self.process_tx_cleanups().await?;
         self.process_reindexes().await?;
+        self.process_logs_events().await?;
 
         Ok(())
     }
