@@ -2,6 +2,7 @@ mod address_leaderboard_ranks;
 mod block_stats;
 mod creator_field_works;
 mod entities_averages;
+mod events_operation_cost;
 mod expired_entities_attributes_get_deactivated;
 mod expired_entities_dont_get_updated;
 mod get_address_stats_endpoint_works;

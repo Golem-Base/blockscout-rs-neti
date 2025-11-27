@@ -33,22 +33,31 @@ limit 1
 "#;
 
 pub const GET_UNPROCESSED_LOGS_EVENTS: &str = r#"
-select
+SELECT
     pendings.transaction_hash,
     pendings.block_hash,
-    pendings.index
-from golem_base_pending_logs_events as pendings
-    inner join transactions on transactions.hash = pendings.transaction_hash
-    left join golem_base_pending_transaction_cleanups on transactions.hash = pendings.transaction_hash
-    left join golem_base_pending_transaction_operations on golem_base_pending_transaction_operations.hash = pendings.transaction_hash
-where
-    golem_base_pending_transaction_cleanups is null
-    and golem_base_pending_transaction_operations is null
-    and transactions.status = 1
-order by
-    pendings.block_number asc,
-    pendings.index asc
-limit 100
+    pendings.index,
+    ROW_NUMBER() OVER (
+        PARTITION BY logs.transaction_hash
+        ORDER BY logs.index ASC
+    )::INTEGER - 1 as op_index,
+    logs.first_topic as signature_hash,
+    logs.data as data
+FROM golem_base_pending_logs_events as pendings
+    INNER JOIN transactions ON transactions.hash = pendings.transaction_hash
+    INNER JOIN logs ON logs.transaction_hash = pendings.transaction_hash
+        AND logs.block_hash = pendings.block_hash
+        AND logs.index = pendings.index
+    LEFT JOIN golem_base_pending_transaction_cleanups ON golem_base_pending_transaction_cleanups.hash = pendings.transaction_hash
+    LEFT JOIN golem_base_pending_transaction_operations ON golem_base_pending_transaction_operations.hash = pendings.transaction_hash
+WHERE
+    golem_base_pending_transaction_cleanups.hash IS NULL
+    AND golem_base_pending_transaction_operations.hash IS NULL
+    AND transactions.status = 1
+ORDER BY
+    pendings.block_number ASC,
+    pendings.index ASC
+LIMIT 100
 "#;
 
 pub const GET_UNPROCESSED_LOGS: &str = r#"

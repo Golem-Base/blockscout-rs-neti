@@ -528,6 +528,16 @@ pub struct LogIndex {
     pub index: u64,
 }
 
+#[derive(Debug, Clone)]
+pub struct LogEventIndex {
+    pub transaction_hash: TxHash,
+    pub block_hash: BlockHash,
+    pub index: u64,
+    pub op_index: u64,
+    pub signature_hash: B256,
+    pub data: Vec<u8>,
+}
+
 #[derive(Clone, Debug)]
 pub struct EntityDataHistogram {
     pub bucket: u64,

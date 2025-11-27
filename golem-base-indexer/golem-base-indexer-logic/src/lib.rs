@@ -19,9 +19,9 @@ use crate::{
     arkiv::{block_timestamp, block_timestamp_sec, entity_key},
     types::{
         Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAttribute,
-        FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogIndex, Operation,
-        OperationData, OperationMetadata, OperationType, OperationsFilter, PaginationParams,
-        Timestamp, TxHash,
+        FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogEventIndex, LogIndex,
+        Operation, OperationData, OperationMetadata, OperationType, OperationsFilter,
+        PaginationParams, Timestamp, TxHash,
     },
 };
 
@@ -727,30 +727,17 @@ impl Indexer {
     }
 
     #[instrument(skip_all, fields(log))]
-    async fn handle_log_event(&self, log_index: LogIndex) -> Result<()> {
+    async fn handle_log_event(&self, log: LogEventIndex) -> Result<()> {
+        tracing::info!(
+            "Processing event log for tx_hash={}, op_index={}",
+            log.transaction_hash,
+            log.op_index
+        );
+
         let txn = self.db.begin().await?;
 
-        // Get transaction
-        let tx = repository::blockscout::get_tx(&txn, log_index.transaction_hash)
-            .await?
-            .ok_or(anyhow!("Event with no matching transaction."))?;
-        let tx: ConsensusTx = tx.try_into()?;
-
-        // Get log
-        let log = repository::logs::get_log(&txn, log_index.clone())
-            .await?
-            .ok_or(anyhow!("Event with missing log."))?;
-
-        // Extract signature hash and entity key
-        let signature_hash = log
-            .first_topic
-            .ok_or(anyhow!("Missing first topic in Arkiv event log"))?;
-        let entity_key = log
-            .second_topic
-            .ok_or(anyhow!("Missing second topic in Arkiv event log"))?;
-
         // Extract operation type and cost
-        let (op_type, cost) = match signature_hash {
+        let (_op_type, cost) = match log.signature_hash {
             ArkivABI::ArkivEntityCreated::SIGNATURE_HASH => {
                 let (_expiration_block, cost) =
                     ArkivABI::ArkivEntityCreated::abi_decode_data_validate(&log.data).map_err(
@@ -773,32 +760,35 @@ impl Indexer {
             }
             _ => {
                 return Err(anyhow!(
-                    "Unnrecognized event. signature_hash={signature_hash}"
+                    "Unnrecognized event. signature_hash={}",
+                    log.signature_hash
                 ));
             }
         };
 
         // Get stored operation
-        let mut op = repository::operations::get_operation_by_type_key_txhash_txindex(
-            &txn,
-            op_type,
-            entity_key,
-            log.tx_hash,
-            tx.index,
-        )
-        .await
-        .map_err(|e| anyhow!("Error fetching operation for an event: {e}"))?
-        .ok_or(anyhow!("No matching operation found for an event."))?;
+        let mut op =
+            repository::operations::get_operation(&txn, log.transaction_hash, log.op_index)
+                .await
+                .map_err(|e| anyhow!("Error fetching operation for an event: {e}"))?
+                .ok_or(anyhow!("No matching operation found for an event."))?;
 
         // Set cost and update operation
+        if op.metadata.cost.is_some() {
+            return Err(anyhow!(
+                "Cost is already set. Reprocessing the same event log? tx_hash={}, op_index={}",
+                log.transaction_hash,
+                log.op_index
+            ));
+        }
         op.metadata.cost = Some(cost);
         repository::operations::update_operation(&txn, op.clone()).await?;
 
         // Get stored history entry
         let mut entity_history = repository::entities::get_entity_history_entry(
             &txn,
-            op.metadata.tx_hash,
-            op.metadata.index,
+            log.transaction_hash,
+            log.op_index,
         )
         .await
         .map_err(|e| anyhow!("Error fetching history entry for an event {e}"))?
@@ -811,8 +801,8 @@ impl Indexer {
         // Remove log from the pending queue
         repository::logs::finish_log_event_processing(
             &txn,
-            log.tx_hash,
-            log_index.block_hash,
+            log.transaction_hash,
+            log.block_hash,
             log.index,
         )
         .await?;
