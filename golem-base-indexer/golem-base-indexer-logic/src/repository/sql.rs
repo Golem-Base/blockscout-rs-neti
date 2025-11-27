@@ -33,31 +33,57 @@ limit 1
 "#;
 
 pub const GET_UNPROCESSED_LOGS_EVENTS: &str = r#"
-SELECT
-    pendings.transaction_hash,
-    pendings.block_hash,
-    pendings.index,
-    ROW_NUMBER() OVER (
-        PARTITION BY logs.transaction_hash
-        ORDER BY logs.index ASC
-    )::INTEGER - 1 as op_index,
+WITH pendings AS (
+  SELECT
+    DISTINCT transaction_hash,
+    block_number
+  FROM
+    golem_base_pending_logs_events
+  ORDER BY
+    block_number ASC
+  LIMIT
+    100
+), logs AS (
+  SELECT
+    logs.transaction_hash,
+    logs.block_hash,
+    logs.index,
     logs.first_topic as signature_hash,
-    logs.data as data
-FROM golem_base_pending_logs_events as pendings
-    INNER JOIN transactions ON transactions.hash = pendings.transaction_hash
-    INNER JOIN logs ON logs.transaction_hash = pendings.transaction_hash
-        AND logs.block_hash = pendings.block_hash
-        AND logs.index = pendings.index
-    LEFT JOIN golem_base_pending_transaction_cleanups ON golem_base_pending_transaction_cleanups.hash = pendings.transaction_hash
-    LEFT JOIN golem_base_pending_transaction_operations ON golem_base_pending_transaction_operations.hash = pendings.transaction_hash
+    logs.data,
+    ROW_NUMBER() OVER (
+      PARTITION BY logs.transaction_hash
+      ORDER BY
+        index ASC
+    ):: INTEGER - 1 as op_index
+  FROM
+    logs
+    JOIN pendings ON pendings.transaction_hash = logs.transaction_hash
+  WHERE
+    address_hash = '\x00000000000000000000000000000061726b6976'
+)
+SELECT
+  output.block_number,
+  output.block_hash,
+  output.transaction_hash,
+  output.index,
+  logs.op_index,
+  logs.signature_hash,
+  logs.data
+FROM
+  golem_base_pending_logs_events AS output
+  INNER JOIN transactions ON transactions.hash = output.transaction_hash
+  INNER JOIN logs ON output.transaction_hash = logs.transaction_hash
+  AND output.index = logs.index
+  AND output.block_hash = logs.block_hash
+  LEFT JOIN golem_base_pending_transaction_operations AS tx_pending ON tx_pending.hash = output.transaction_hash
+  LEFT JOIN golem_base_pending_transaction_cleanups AS tx_pending_cleanup ON tx_pending_cleanup.hash = output.transaction_hash
 WHERE
-    golem_base_pending_transaction_cleanups.hash IS NULL
-    AND golem_base_pending_transaction_operations.hash IS NULL
-    AND transactions.status = 1
+  transactions.status = 1
+  AND tx_pending.hash IS NULL
+  AND tx_pending_cleanup.hash IS NULL
 ORDER BY
-    pendings.block_number ASC,
-    pendings.index ASC
-LIMIT 100
+  output.block_number ASC,
+  output.index ASC
 "#;
 
 pub const GET_UNPROCESSED_LOGS: &str = r#"
