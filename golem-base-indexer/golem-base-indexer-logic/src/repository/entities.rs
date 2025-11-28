@@ -214,7 +214,7 @@ impl EntityHistoryEntry {
             content_type: value.content_type,
             prev_content_type: value.prev_content_type,
             cost: match value.cost {
-                Some(cost) => Some(CurrencyAmount::from_str_radix(&cost.to_string(), 10)?),
+                Some(cost) => Some(CurrencyAmount::from_str(&cost.to_string())?),
                 None => None,
             },
         })
