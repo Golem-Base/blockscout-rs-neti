@@ -304,31 +304,6 @@ pub async fn get_operation<T: ConnectionTrait>(
         .transpose()
 }
 
-#[instrument(skip(db))]
-pub async fn get_operation_by_type_key_txhash_txindex<T: ConnectionTrait>(
-    db: &T,
-    op_type: OperationType,
-    entity_key: EntityKey,
-    tx_hash: TxHash,
-    tx_index: u64,
-) -> Result<Option<Operation>> {
-    golem_base_operations::Entity::find()
-        .filter(golem_base_operations::Column::Operation.eq(GolemBaseOperationType::from(op_type)))
-        .filter(golem_base_operations::Column::TransactionHash.eq(tx_hash.as_slice()))
-        .filter(golem_base_operations::Column::EntityKey.eq(entity_key.as_slice()))
-        .filter(golem_base_operations::Column::TxIndex.eq(tx_index))
-        .one(db)
-        .await
-        .with_context(|| {
-            format!("Failed to get operation. op_type={op_type:?}, entity_key={entity_key}, tx_hash={tx_hash}")
-        })?
-        .map(|v| {
-            v.try_into()
-                .with_context(|| format!("Failed to convert operation. op_type={op_type:?}, entity_key={entity_key}, tx_hash={tx_hash}"))
-        })
-        .transpose()
-}
-
 fn filtered_operations(filter: DbOperationsFilter) -> Select<golem_base_operations::Entity> {
     let mut q = golem_base_operations::Entity::find();
 
