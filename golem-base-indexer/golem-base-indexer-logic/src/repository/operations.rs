@@ -8,15 +8,17 @@ use sea_orm::{
     ActiveValue::{NotSet, Set},
     DbBackend, FromQueryResult, QueryOrder, QuerySelect, Statement,
 };
+use std::str::FromStr;
 use tracing::instrument;
 
 use crate::{
     arkiv::{block_timestamp, block_timestamp_sec},
     pagination::paginate_try_from,
     types::{
-        Block, BlockNumberOrHashFilter, EntityKey, FullOperationIndex, ListOperationsFilter,
-        Operation, OperationData, OperationMetadata, OperationType, OperationView, OperationsCount,
-        OperationsFilter, PaginationMetadata, PaginationParams, TxHash,
+        Block, BlockNumberOrHashFilter, CurrencyAmount, EntityKey, FullOperationIndex,
+        ListOperationsFilter, Operation, OperationData, OperationMetadata, OperationType,
+        OperationView, OperationsCount, OperationsFilter, PaginationMetadata, PaginationParams,
+        TxHash,
     },
 };
 
@@ -181,6 +183,10 @@ impl TryFrom<golem_base_operations::Model> for Operation {
                 index: v.index.try_into()?,
                 block_number: v.block_number.try_into()?,
                 tx_index: v.tx_index.try_into()?,
+                cost: match v.cost {
+                    Some(cost) => Some(CurrencyAmount::from_str(&cost.to_string())?),
+                    None => None,
+                },
             },
         })
     }
@@ -229,6 +235,10 @@ impl TryFrom<Operation> for golem_base_operations::ActiveModel {
             tx_index: Set(md.tx_index.try_into()?),
             inserted_at: NotSet,
             content_type: Set(op.operation.content_type()),
+            cost: Set(match md.cost {
+                Some(cost_u256) => Some(BigDecimal::from_str(&cost_u256.to_string())?),
+                None => None,
+            }),
         })
     }
 }
@@ -241,6 +251,18 @@ pub async fn insert_operation<T: ConnectionTrait>(db: &T, op: Operation) -> Resu
     .insert(db)
     .await
     .with_context(|| format!("Failed to insert operation: {op:?}"))?;
+
+    Ok(())
+}
+
+#[instrument(skip(db))]
+pub async fn update_operation<T: ConnectionTrait>(db: &T, op: Operation) -> Result<()> {
+    golem_base_operations::ActiveModel {
+        ..op.clone().try_into()?
+    }
+    .update(db)
+    .await
+    .with_context(|| format!("Failed to update operation: {op:?}"))?;
 
     Ok(())
 }

@@ -72,6 +72,7 @@ pub struct OperationMetadata {
     pub index: u64,
     pub block_number: BlockNumber,
     pub tx_index: u64,
+    pub cost: Option<CurrencyAmount>,
 }
 
 #[derive(Clone, Debug)]
@@ -365,6 +366,7 @@ pub struct EntityHistoryEntry {
     pub btl: Option<u64>,
     pub content_type: Option<String>,
     pub prev_content_type: Option<String>,
+    pub cost: Option<CurrencyAmount>,
 }
 
 #[derive(Debug, Clone)]
@@ -524,6 +526,16 @@ pub struct LogIndex {
     pub transaction_hash: TxHash,
     pub block_hash: BlockHash,
     pub index: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct LogEventIndex {
+    pub transaction_hash: TxHash,
+    pub block_hash: BlockHash,
+    pub index: u64,
+    pub op_index: u64,
+    pub signature_hash: B256,
+    pub data: Vec<u8>,
 }
 
 #[derive(Clone, Debug)]

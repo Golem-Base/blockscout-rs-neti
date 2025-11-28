@@ -1,5 +1,5 @@
 use crate::{repository::sql::GET_TX_BY_HASH, types::Block};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use futures::{Stream, StreamExt};
 use golem_base_indexer_entity::{
     golem_base_pending_transaction_cleanups, golem_base_pending_transaction_operations,
@@ -9,7 +9,7 @@ use tracing::instrument;
 
 use super::sql;
 use crate::{
-    types::{BlockHash, BlockNumber, LogIndex, Tx, TxHash},
+    types::{BlockHash, BlockNumber, LogEventIndex, LogIndex, Tx, TxHash},
     well_known,
 };
 
@@ -100,6 +100,37 @@ impl TryFrom<DbLogIndex> for LogIndex {
     }
 }
 
+#[derive(FromQueryResult)]
+struct DbLogEventIndex {
+    pub transaction_hash: Vec<u8>,
+    pub block_hash: Vec<u8>,
+    pub index: i32,
+    pub op_index: i32,
+    pub signature_hash: Option<Vec<u8>>,
+    pub data: Vec<u8>,
+}
+
+impl TryFrom<DbLogEventIndex> for LogEventIndex {
+    type Error = anyhow::Error;
+
+    fn try_from(value: DbLogEventIndex) -> Result<Self> {
+        Ok(Self {
+            transaction_hash: value.transaction_hash.as_slice().try_into()?,
+            block_hash: value.block_hash.as_slice().try_into()?,
+            index: value.index.try_into()?,
+            op_index: value.op_index.try_into()?,
+            signature_hash: value
+                .signature_hash
+                .ok_or(anyhow!(
+                    "Missing signature hash (first topic) in an event log."
+                ))?
+                .as_slice()
+                .try_into()?,
+            data: value.data,
+        })
+    }
+}
+
 #[instrument(skip(db))]
 pub async fn stream_unprocessed_logs<T: StreamTrait + ConnectionTrait>(
     db: &T,
@@ -118,6 +149,31 @@ pub async fn stream_unprocessed_logs<T: StreamTrait + ConnectionTrait>(
                 Ok(log) => Some(log.try_into().ok()?),
                 Err(err) => {
                     tracing::error!(error = ?err, "error during unprocessed log retrieval");
+                    None
+                }
+            }
+        }),
+    )
+}
+
+#[instrument(skip(db))]
+pub async fn stream_unprocessed_logs_events<T: StreamTrait + ConnectionTrait>(
+    db: &T,
+) -> Result<impl Stream<Item = LogEventIndex> + '_> {
+    Ok(
+        DbLogEventIndex::find_by_statement(Statement::from_sql_and_values(
+            DbBackend::Postgres,
+            sql::GET_UNPROCESSED_LOGS_EVENTS,
+            [],
+        ))
+        .stream(db)
+        .await
+        .context("Failed to get unprocessed logs events")?
+        .filter_map(|log| async {
+            match log {
+                Ok(log) => Some(log.try_into().ok()?),
+                Err(err) => {
+                    tracing::error!(error = ?err, "error during unprocessed log events retrieval");
                     None
                 }
             }

@@ -11,6 +11,7 @@ use sea_orm::{
     ActiveValue::{NotSet, Set},
     Condition, DbBackend, FromQueryResult, Iterable, QueryOrder, Statement, StreamTrait,
 };
+use std::str::FromStr;
 use tracing::instrument;
 
 use crate::{
@@ -19,9 +20,9 @@ use crate::{
     pagination::{paginate, paginate_try_from},
     repository::sql,
     types::{
-        Address, Block, BlockNumber, Bytes, EntitiesAverages, EntitiesFilter, Entity,
-        EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter, EntityKey, EntityStatus,
-        EntityWithExpTimestamp, FullEntity, FullOperationIndex, ListEntitiesFilter,
+        Address, Block, BlockNumber, Bytes, CurrencyAmount, EntitiesAverages, EntitiesFilter,
+        Entity, EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter, EntityKey,
+        EntityStatus, EntityWithExpTimestamp, FullEntity, FullOperationIndex, ListEntitiesFilter,
         OperationFilter, PaginationMetadata, TxHash,
     },
 };
@@ -212,6 +213,10 @@ impl EntityHistoryEntry {
             btl: value.btl.map(|v| v.try_into()).transpose()?,
             content_type: value.content_type,
             prev_content_type: value.prev_content_type,
+            cost: match value.cost {
+                Some(cost) => Some(CurrencyAmount::from_str(&cost.to_string())?),
+                None => None,
+            },
         })
     }
 }
@@ -246,6 +251,10 @@ impl TryFrom<EntityHistoryEntry> for golem_base_entity_history::ActiveModel {
                 .transpose()?),
             content_type: Set(entry.content_type),
             prev_content_type: Set(entry.prev_content_type),
+            cost: Set(match entry.cost {
+                Some(cost_u256) => Some(BigDecimal::from_str(&cost_u256.to_string())?),
+                None => None,
+            }),
         })
     }
 }
@@ -577,6 +586,33 @@ pub async fn delete_history<T: ConnectionTrait>(db: &T, entity: EntityKey) -> Re
         .context("Failed to delete entity history")?;
     Ok(())
 }
+
+#[instrument(skip(db))]
+pub async fn get_entity_history_entry<T: ConnectionTrait>(
+    db: &T,
+    tx_hash: TxHash,
+    index: u64,
+) -> Result<Option<EntityHistoryEntry>> {
+    golem_base_entity_history::Entity::find_by_id((tx_hash.as_slice().into(), index.try_into()?))
+        .one(db)
+        .await
+        .with_context(|| format!("Failed to get entity history. tx_hash={tx_hash}, index={index}"))?
+        .map(EntityHistoryEntry::try_new)
+        .transpose()
+}
+
+#[instrument(skip(db))]
+pub async fn update_entity_history_entry<T: ConnectionTrait>(
+    db: &T,
+    entry: EntityHistoryEntry,
+) -> Result<golem_base_entity_history::Model> {
+    let model = golem_base_entity_history::ActiveModel::try_from(entry)?;
+    golem_base_entity_history::Entity::update(model)
+        .exec(db)
+        .await
+        .context("Failed to update entity history entry")
+}
+
 #[instrument(skip(db))]
 pub async fn refresh_entity_based_on_history<T: ConnectionTrait>(
     db: &T,

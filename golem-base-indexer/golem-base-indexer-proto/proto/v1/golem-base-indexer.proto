@@ -294,6 +294,7 @@ message EntityHistoryEntry {
   optional string owner = 24;
   optional string content_type = 25;
   optional string prev_content_type = 26;
+  optional string cost = 27;
 }
 
 message BlockStatsRequest {

@@ -1195,6 +1195,8 @@ definitions:
         type: string
       prev_content_type:
         type: string
+      cost:
+        type: string
   v1EntityStatus:
     type: string
     enum:
