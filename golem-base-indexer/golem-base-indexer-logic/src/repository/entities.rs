@@ -252,7 +252,7 @@ impl TryFrom<EntityHistoryEntry> for golem_base_entity_history::ActiveModel {
             content_type: Set(entry.content_type),
             prev_content_type: Set(entry.prev_content_type),
             cost: Set(match entry.cost {
-                Some(cost_u256) => Some(Decimal::from_str(&cost_u256.to_string())?),
+                Some(cost_u256) => Some(BigDecimal::from_str(&cost_u256.to_string())?),
                 None => None,
             }),
         })
