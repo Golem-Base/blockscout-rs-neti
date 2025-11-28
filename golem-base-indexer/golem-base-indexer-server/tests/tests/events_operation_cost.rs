@@ -25,7 +25,7 @@ async fn extracting_operation_cost_should_work() {
         test_server::send_get_request(&base, &format!("/api/v1/operation/{TX_HASH}/0")).await;
     let expected = json!({
         "operation": "CREATE",
-        "cost": "0",
+        "cost": "255",
     });
     assert_fields(&response, expected);
 
@@ -34,7 +34,7 @@ async fn extracting_operation_cost_should_work() {
         test_server::send_get_request(&base, &format!("/api/v1/operation/{TX_HASH}/1")).await;
     let expected = json!({
         "operation": "CREATE",
-        "cost": "0",
+        "cost": "1234567890",
     });
     assert_fields(&response, expected);
 
@@ -47,12 +47,12 @@ async fn extracting_operation_cost_should_work() {
     });
     assert_fields(&response, expected);
 
-    // Operation 3: UPDATE
+    // Operation 3: UPDATE (max 128-bit value)
     let response: Value =
         test_server::send_get_request(&base, &format!("/api/v1/operation/{TX_HASH}/3")).await;
     let expected = json!({
         "operation": "UPDATE",
-        "cost": "0",
+        "cost": "340282366920938463463374607431768211455",
     });
     assert_fields(&response, expected);
 
@@ -65,12 +65,21 @@ async fn extracting_operation_cost_should_work() {
     });
     assert_fields(&response, expected);
 
-    // Operation 5: EXTEND
+    // Operation 5: EXTEND (max 256-bit value)
     let response: Value =
         test_server::send_get_request(&base, &format!("/api/v1/operation/{TX_HASH}/5")).await;
     let expected = json!({
         "operation": "EXTEND",
-        "cost": "0",
+        "cost": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+    });
+    assert_fields(&response, expected);
+
+    // Operation 6: CHANGEOWNER has no cost associated
+    let response: Value =
+        test_server::send_get_request(&base, &format!("/api/v1/operation/{TX_HASH}/6")).await;
+    let expected = json!({
+        "operation": "CHANGEOWNER",
+        "cost": null,
     });
     assert_fields(&response, expected);
 }
