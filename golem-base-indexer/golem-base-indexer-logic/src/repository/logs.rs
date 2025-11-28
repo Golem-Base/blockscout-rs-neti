@@ -125,7 +125,7 @@ pub async fn finish_log_processing<T: ConnectionTrait>(
         [tx_hash.into(), block_hash.into(), index.into()],
     ))
     .await
-    .context("Failed to finish tx cleanup - logs")?;
+    .context("Failed to finish log processing")?;
     Ok(())
 }
 
@@ -145,6 +145,6 @@ pub async fn finish_log_event_processing<T: ConnectionTrait>(
         [tx_hash.into(), block_hash.into(), index.into()],
     ))
     .await
-    .context("Failed to finish tx cleanup - event log")?;
+    .context("Failed to finish event log processing")?;
     Ok(())
 }
