@@ -181,6 +181,7 @@ pub struct Entity {
     pub created_at_tx_hash: Option<TxHash>,
     pub last_updated_at_tx_hash: TxHash,
     pub expires_at_block_number: Option<BlockNumber>,
+    pub cost: CurrencyAmount,
 }
 
 #[derive(Debug, Clone)]
@@ -195,6 +196,7 @@ pub struct EntityWithExpTimestamp {
     pub expires_at_block_number: Option<BlockNumber>,
     pub expires_at_timestamp: Option<Timestamp>,
     pub expires_at_timestamp_sec: Option<u64>,
+    pub cost: CurrencyAmount,
 }
 
 #[derive(Debug, Clone)]
@@ -220,9 +222,10 @@ pub struct FullEntity {
 
     pub owner: Option<Address>,
     pub creator: Option<Address>,
-    pub gas_used: CurrencyAmount,
+    pub cost: CurrencyAmount,
     pub fees_paid: CurrencyAmount,
 }
+
 #[derive(Debug, Clone)]
 pub enum BlockNumberOrHashFilter {
     Number(BlockNumber),
@@ -367,6 +370,7 @@ pub struct EntityHistoryEntry {
     pub content_type: Option<String>,
     pub prev_content_type: Option<String>,
     pub cost: Option<CurrencyAmount>,
+    pub total_cost: Option<CurrencyAmount>,
 }
 
 #[derive(Debug, Clone)]

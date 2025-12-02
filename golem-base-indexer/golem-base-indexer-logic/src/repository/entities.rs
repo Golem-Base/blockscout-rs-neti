@@ -111,6 +111,11 @@ impl TryFrom<golem_base_entities::Model> for Entity {
                 .expires_at_block_number
                 .map(TryInto::try_into)
                 .transpose()?,
+            cost: value
+                .cost
+                .map(|v| CurrencyAmount::from_str(&v.to_string()))
+                .transpose()?
+                .unwrap_or(CurrencyAmount::ZERO),
         })
     }
 }
@@ -149,6 +154,7 @@ impl EntityWithExpTimestamp {
             expires_at_block_number: entity_base.expires_at_block_number,
             expires_at_timestamp,
             expires_at_timestamp_sec,
+            cost: entity_base.cost,
         })
     }
 }
@@ -217,6 +223,10 @@ impl EntityHistoryEntry {
                 Some(cost) => Some(CurrencyAmount::from_str(&cost.to_string())?),
                 None => None,
             },
+            total_cost: value
+                .total_cost
+                .map(|v| CurrencyAmount::from_str(&v.to_string()))
+                .transpose()?,
         })
     }
 }
@@ -255,6 +265,10 @@ impl TryFrom<EntityHistoryEntry> for golem_base_entity_history::ActiveModel {
                 Some(cost_u256) => Some(BigDecimal::from_str(&cost_u256.to_string())?),
                 None => None,
             }),
+            total_cost: Set(entry
+                .total_cost
+                .map(|cost_u256| BigDecimal::from_str(&cost_u256.to_string()))
+                .transpose()?),
         })
     }
 }
@@ -400,7 +414,11 @@ pub async fn get_full_entity<T: ConnectionTrait>(
             .creator
             .map(|v| v.as_slice().try_into())
             .transpose()?,
-        gas_used: Default::default(), // FIXME when we have gas per operation
+        cost: entity
+            .cost
+            .map(|v| CurrencyAmount::from_str(&v.to_string()))
+            .transpose()?
+            .unwrap_or(CurrencyAmount::ZERO),
         fees_paid: Default::default(), // FIXME when we have gas per operation
     }))
 }
@@ -641,6 +659,10 @@ pub async fn refresh_entity_based_on_history<T: ConnectionTrait>(
             inserted_at: NotSet,
             updated_at: Set(Utc::now().naive_utc()),
             content_type: Set(latest_entry.content_type),
+            cost: Set(latest_entry
+                .total_cost
+                .map(|cost_u256| BigDecimal::from_str(&cost_u256.to_string()))
+                .transpose()?),
         };
         golem_base_entities::Entity::insert(entity)
             .on_conflict(

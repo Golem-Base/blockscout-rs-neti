@@ -42,6 +42,8 @@ pub struct Model {
     pub prev_content_type: Option<String>,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
     pub cost: Option<BigDecimal>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
+    pub total_cost: Option<BigDecimal>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

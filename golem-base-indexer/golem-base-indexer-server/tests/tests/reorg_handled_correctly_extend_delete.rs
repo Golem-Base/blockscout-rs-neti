@@ -28,7 +28,8 @@ async fn test_extend_delete_reorg_handling_works() {
       "status": "ACTIVE",
       "created_at_tx_hash": "0xae9430e348f74284c3c91443b134b835961901862dd6ef24f32e646f346449a1",
       "last_updated_at_tx_hash": "0x488a9a57364c22e819a6af41fca5db893a2dee1f678d859ec6bd5079aae71453",
-      "expires_at_block_number": "225"
+      "expires_at_block_number": "225",
+      "cost": "0"
             }
         ]
     );
@@ -54,7 +55,8 @@ async fn test_extend_delete_reorg_handling_works() {
       "status": "DELETED",
       "created_at_tx_hash": "0xae9430e348f74284c3c91443b134b835961901862dd6ef24f32e646f346449a1",
       "last_updated_at_tx_hash": "0xdac82fe3f61d518aefddb840e859699f50ab0713ce1ab0c0123ebbcee05fb325",
-      "expires_at_block_number": "3"
+      "expires_at_block_number": "3",
+      "cost": "0"
             }
         ]
     );
