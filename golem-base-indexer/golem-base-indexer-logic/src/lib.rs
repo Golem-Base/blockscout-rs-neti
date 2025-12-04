@@ -240,8 +240,8 @@ impl Indexer {
         self.process_batch_of_transactions().await?;
         self.process_delete_logs().await?;
         self.process_tx_cleanups().await?;
-        self.process_reindexes().await?;
         self.process_logs_events().await?;
+        self.process_reindexes().await?;
 
         Ok(())
     }
@@ -805,19 +805,8 @@ impl Indexer {
             ));
         }
         op.metadata.cost = Some(cost);
-        repository::operations::update_operation(txn, op.clone()).await?;
-
-        // Get stored history entry
-        let mut entity_history =
-            repository::entities::get_entity_history_entry(txn, log.transaction_hash, log.op_index)
-                .await
-                .map_err(|e| anyhow!("Error fetching history entry for an event {e}"))?
-                .ok_or(anyhow!("No matching history entry found for an event."))?;
-        let entity_key = entity_history.entity_key;
-
-        // Set cost and update history entry
-        entity_history.cost = Some(cost);
-        repository::entities::update_entity_history_entry(txn, entity_history).await?;
+        let entity_key = op.metadata.entity_key;
+        repository::operations::update_operation(txn, op).await?;
 
         // Remove log from the pending queue
         repository::logs::finish_log_event_processing(

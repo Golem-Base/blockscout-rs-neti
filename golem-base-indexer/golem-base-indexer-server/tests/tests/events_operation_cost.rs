@@ -94,7 +94,6 @@ async fn entity_cost_calculation_should_work() {
     helpers::load_data(&*client, include_str!("../fixtures/sample_events.sql")).await;
     let indexer = Indexer::new(client, Default::default());
     indexer.tick().await.unwrap();
-    indexer.tick().await.unwrap();
 
     // Entity '0xd45c0192c8d31259e3e9814ef92dfbaab2f93b5634ebb12b1f1d6a281295c937'
     // (CREATE)
