@@ -63,8 +63,8 @@ impl v1::FullEntity {
             expires_at_timestamp: entity.expires_at_timestamp.map(|v| v.to_rfc3339()),
             expires_at_timestamp_sec: entity.expires_at_timestamp_sec.map(|v| v.to_string()),
             expires_at_block_number: entity.expires_at_block_number,
+            cost: entity.cost.to_string(),
             fees_paid: entity.fees_paid.to_string(),
-            gas_used: entity.gas_used.to_string(),
 
             string_annotations: string_attributes.into_iter().map(Into::into).collect(),
             numeric_annotations: numeric_attributes.into_iter().map(Into::into).collect(),
@@ -306,7 +306,12 @@ impl From<OperationView> for v1::Operation {
             block_number: v.op.metadata.block_number,
             transaction_hash: v.op.metadata.tx_hash.to_string(),
             index: v.op.metadata.index,
-            gas_used: "0".into(),  // FIXME
+            cost: v
+                .op
+                .metadata
+                .cost
+                .map(|v| v.to_string())
+                .unwrap_or("0".into()),
             fees_paid: "0".into(), // FIXME
             content_type: v.op.operation.content_type(),
             expires_at_timestamp: v.expires_at_timestamp.map(|v| v.to_rfc3339()),
@@ -358,6 +363,7 @@ impl From<Entity> for v1::Entity {
             created_at_tx_hash: entity.created_at_tx_hash.map(|v| v.to_string()),
             last_updated_at_tx_hash: entity.last_updated_at_tx_hash.to_string(),
             expires_at_block_number: entity.expires_at_block_number,
+            cost: entity.cost.to_string(),
         }
     }
 }
@@ -376,6 +382,7 @@ impl From<EntityWithExpTimestamp> for v1::EntityWithExpTimestamp {
             expires_at_block_number: entity.expires_at_block_number,
             expires_at_timestamp: entity.expires_at_timestamp.map(|v| v.to_rfc3339()),
             expires_at_timestamp_sec: entity.expires_at_timestamp_sec,
+            cost: entity.cost.to_string(),
         }
     }
 }
@@ -432,13 +439,18 @@ impl From<EntityHistoryEntry> for v1::EntityHistoryEntry {
             expires_at_timestamp_sec: v.expires_at_timestamp_sec,
             prev_expires_at_timestamp: v.prev_expires_at_timestamp.map(|v| v.to_rfc3339()),
             prev_expires_at_timestamp_sec: v.prev_expires_at_timestamp_sec,
-            gas_used: "0".into(),  // FIXME
-            fees_paid: "0".into(), // FIXME
             prev_owner: v.prev_owner.map(|v| v.to_checksum(None)),
             owner: v.owner.map(|v| v.to_checksum(None)),
             content_type: v.content_type,
             prev_content_type: v.prev_content_type,
-            cost: v.cost.map(|cost_u256| cost_u256.to_string()),
+            cost: v
+                .cost
+                .map(|cost_u256| cost_u256.to_string())
+                .unwrap_or("0".into()),
+            total_cost: v
+                .total_cost
+                .map(|cost_u256| cost_u256.to_string())
+                .unwrap_or("0".into()),
         }
     }
 }

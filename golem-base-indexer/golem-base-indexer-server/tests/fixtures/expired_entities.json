@@ -7,7 +7,8 @@
       "status": "EXPIRED",
       "created_at_tx_hash": "0x61080cf78f68f5813d841300d7ed257ab1a735271606d4d435e42283c4be8137",
       "last_updated_at_tx_hash": "0x1b7b3d0ac4b9636a34c72e6ab55a115a2abaa74dfcbf492d5b0b58fe13a04a96",
-      "expires_at_block_number": "7"
+      "expires_at_block_number": "7",
+      "cost": "0"
     }
   ],
   "pagination": {

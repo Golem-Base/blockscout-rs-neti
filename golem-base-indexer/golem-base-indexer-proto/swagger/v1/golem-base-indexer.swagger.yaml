@@ -1118,6 +1118,8 @@ definitions:
       expires_at_block_number:
         type: string
         format: uint64
+      cost:
+        type: string
   v1EntityDataHistogram:
     type: object
     properties:
@@ -1173,9 +1175,9 @@ definitions:
       prev_expires_at_block_number:
         type: string
         format: uint64
-      gas_used:
+      cost:
         type: string
-      fees_paid:
+      total_cost:
         type: string
       expires_at_timestamp:
         type: string
@@ -1194,8 +1196,6 @@ definitions:
       content_type:
         type: string
       prev_content_type:
-        type: string
-      cost:
         type: string
   v1EntityStatus:
     type: string
@@ -1235,6 +1235,8 @@ definitions:
       expires_at_timestamp_sec:
         type: string
         format: uint64
+      cost:
+        type: string
   v1FullEntity:
     type: object
     properties:
@@ -1277,7 +1279,7 @@ definitions:
         type: string
       creator:
         type: string
-      gas_used:
+      cost:
         type: string
       fees_paid:
         type: string
@@ -1539,7 +1541,7 @@ definitions:
       index:
         type: string
         format: uint64
-      gas_used:
+      cost:
         type: string
       fees_paid:
         type: string

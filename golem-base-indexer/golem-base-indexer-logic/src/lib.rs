@@ -18,10 +18,10 @@ use tracing::{instrument, warn};
 use crate::{
     arkiv::{block_timestamp, block_timestamp_sec, entity_key},
     types::{
-        Block, ConsensusTx, EntityHistoryEntry, EntityKey, EntityStatus, FullNumericAttribute,
-        FullOperationIndex, FullStringAttribute, ListOperationsFilter, LogEventIndex, LogIndex,
-        Operation, OperationData, OperationMetadata, OperationType, OperationsFilter,
-        PaginationParams, Timestamp, TxHash,
+        Block, ConsensusTx, CurrencyAmount, EntityHistoryEntry, EntityKey, EntityStatus,
+        FullNumericAttribute, FullOperationIndex, FullStringAttribute, ListOperationsFilter,
+        LogEventIndex, LogIndex, Operation, OperationData, OperationMetadata, OperationType,
+        OperationsFilter, PaginationParams, Timestamp, TxHash,
     },
 };
 
@@ -180,15 +180,29 @@ impl Indexer {
     }
 
     pub async fn process_logs_events(&self) -> Result<()> {
-        repository::blockscout::stream_unprocessed_logs_events(&*self.db)
-            .await?
-            .for_each_concurrent(self.settings.concurrency, |log| async move {
-                let _ = self
-                    .handle_log_event(log.clone())
-                    .await
-                    .inspect_err(|e| tracing::warn!(?e, ?log, "Handling log event failed"));
-            })
-            .await;
+        let txn = self.db.begin().await?;
+        let affected_entities: Vec<EntityKey> =
+            repository::blockscout::stream_unprocessed_logs_events(&*self.db)
+                .await?
+                .map(|log| {
+                    let txn = &txn;
+                    async move {
+                        self.handle_log_event(txn, log)
+                            .await
+                            .inspect_err(|e| tracing::warn!(?e, "Handling log failed"))
+                            .unwrap_or_default()
+                    }
+                })
+                .buffer_unordered(self.settings.concurrency)
+                .collect()
+                .await;
+
+        if !affected_entities.is_empty() {
+            repository::entities::batch_queue_reindex(&*self.db, affected_entities).await?;
+        }
+
+        txn.commit().await?;
+
         Ok(())
     }
 
@@ -226,8 +240,8 @@ impl Indexer {
         self.process_batch_of_transactions().await?;
         self.process_delete_logs().await?;
         self.process_tx_cleanups().await?;
-        self.process_reindexes().await?;
         self.process_logs_events().await?;
+        self.process_reindexes().await?;
 
         Ok(())
     }
@@ -525,6 +539,13 @@ impl Indexer {
             _ => op.operation.content_type(),
         };
 
+        let total_cost = Some(
+            prev_entry
+                .and_then(|v| v.total_cost)
+                .unwrap_or(CurrencyAmount::ZERO)
+                .saturating_add(op.metadata.cost.unwrap_or(CurrencyAmount::ZERO)),
+        );
+
         EntityHistoryEntry {
             entity_key: op.metadata.entity_key,
             block_number: op.metadata.block_number,
@@ -554,6 +575,7 @@ impl Indexer {
             content_type,
             prev_content_type: prev_entry.and_then(|prev_entry| prev_entry.content_type.clone()),
             cost: op.metadata.cost,
+            total_cost,
         }
     }
 
@@ -727,14 +749,16 @@ impl Indexer {
     }
 
     #[instrument(skip_all, fields(log))]
-    async fn handle_log_event(&self, log: LogEventIndex) -> Result<()> {
+    async fn handle_log_event(
+        &self,
+        txn: &DatabaseTransaction,
+        log: LogEventIndex,
+    ) -> Result<EntityKey> {
         tracing::info!(
             "Processing event log for tx_hash={}, op_index={}",
             log.transaction_hash,
             log.op_index
         );
-
-        let txn = self.db.begin().await?;
 
         // Extract operation type and cost
         let (_op_type, cost) = match log.signature_hash {
@@ -767,11 +791,10 @@ impl Indexer {
         };
 
         // Get stored operation
-        let mut op =
-            repository::operations::get_operation(&txn, log.transaction_hash, log.op_index)
-                .await
-                .map_err(|e| anyhow!("Error fetching operation for an event: {e}"))?
-                .ok_or(anyhow!("No matching operation found for an event."))?;
+        let mut op = repository::operations::get_operation(txn, log.transaction_hash, log.op_index)
+            .await
+            .map_err(|e| anyhow!("Error fetching operation for an event: {e}"))?
+            .ok_or(anyhow!("No matching operation found for an event."))?;
 
         // Set cost and update operation
         if op.metadata.cost.is_some() {
@@ -782,33 +805,18 @@ impl Indexer {
             ));
         }
         op.metadata.cost = Some(cost);
-        repository::operations::update_operation(&txn, op.clone()).await?;
-
-        // Get stored history entry
-        let mut entity_history = repository::entities::get_entity_history_entry(
-            &txn,
-            log.transaction_hash,
-            log.op_index,
-        )
-        .await
-        .map_err(|e| anyhow!("Error fetching history entry for an event {e}"))?
-        .ok_or(anyhow!("No matching history entry found for an event."))?;
-
-        // Set cost and update history entry
-        entity_history.cost = Some(cost);
-        repository::entities::update_entity_history_entry(&txn, entity_history).await?;
+        let entity_key = op.metadata.entity_key;
+        repository::operations::update_operation(txn, op).await?;
 
         // Remove log from the pending queue
         repository::logs::finish_log_event_processing(
-            &txn,
+            txn,
             log.transaction_hash,
             log.block_hash,
             log.index,
         )
         .await?;
 
-        txn.commit().await?;
-
-        Ok(())
+        Ok(entity_key)
     }
 }

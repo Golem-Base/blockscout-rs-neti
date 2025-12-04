@@ -27,6 +27,8 @@ pub struct Model {
     pub inserted_at: DateTime,
     pub updated_at: DateTime,
     pub content_type: Option<String>,
+    #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
+    pub cost: Option<BigDecimal>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

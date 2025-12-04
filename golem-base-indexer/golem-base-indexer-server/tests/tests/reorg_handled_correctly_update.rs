@@ -24,7 +24,8 @@ async fn test_update_reorg_handling_works() {
       "status": "ACTIVE",
       "created_at_tx_hash": "0xae9430e348f74284c3c91443b134b835961901862dd6ef24f32e646f346449a1",
       "last_updated_at_tx_hash": "0x1872c3e9c4c76b5802b9a7c3f7798fac5bb8110d2707e145701acf90dd6de559",
-      "expires_at_block_number": "103"
+      "expires_at_block_number": "103",
+      "cost": "0"
             }
         ]
     );
@@ -45,7 +46,8 @@ async fn test_update_reorg_handling_works() {
       "status": "ACTIVE",
       "created_at_tx_hash": "0xae9430e348f74284c3c91443b134b835961901862dd6ef24f32e646f346449a1",
       "last_updated_at_tx_hash": "0x1932fed6f6464781ee6e928cf6b43a49d0dbb1024c9ac6c91ef480852c794cb9",
-      "expires_at_block_number": "103"
+      "expires_at_block_number": "103",
+      "cost": "0",
             }
         ]
     );
