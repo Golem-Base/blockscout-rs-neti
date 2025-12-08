@@ -796,14 +796,12 @@ impl Indexer {
             .map_err(|e| anyhow!("Error fetching operation for an event: {e}"))?
             .ok_or(anyhow!("No matching operation found for an event."))?;
 
-        // Set cost and update operation
-        if op.metadata.cost.is_some() {
-            return Err(anyhow!(
-                "Cost is already set. Reprocessing the same event log? tx_hash={}, op_index={}",
-                log.transaction_hash,
-                log.op_index
-            ));
+        // Warn when overwriting operation cost
+        if let Some(current_cost) = op.metadata.cost {
+            tracing::warn!(?log.transaction_hash, log.op_index, "Replacing current operation cost ({}) with a new value ({})", current_cost.to_string(), cost.to_string());
         }
+
+        // Set cost and update operation
         op.metadata.cost = Some(cost);
         let entity_key = op.metadata.entity_key;
         repository::operations::update_operation(txn, op).await?;
