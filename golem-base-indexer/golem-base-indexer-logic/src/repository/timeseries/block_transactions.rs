@@ -11,7 +11,7 @@ struct DbChartBlockTransactions {
     pub tx_count: i64,
 }
 
-const DEFAULT_BLOCK_LIMIT: u64 = 100;
+const DEFAULT_BLOCK_LIMIT: u64 = 300;
 
 #[instrument(skip(db))]
 pub async fn timeseries_block_transactions<T: ConnectionTrait>(
