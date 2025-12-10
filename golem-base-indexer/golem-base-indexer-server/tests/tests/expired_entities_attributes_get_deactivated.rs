@@ -44,7 +44,6 @@ async fn test_expired_entities_attributes_get_deactivated() {
       "expires_at_timestamp_sec": "1753193871",
       "owner": "0xD29Bb1a1a0F6D2783306a8618b3a5b58CB313152",
       "cost": "0",
-      "fees_paid": "0"
     });
     assert_eq!(response, expected);
 }

@@ -419,7 +419,6 @@ pub async fn get_full_entity<T: ConnectionTrait>(
             .map(|v| CurrencyAmount::from_str(&v.to_string()))
             .transpose()?
             .unwrap_or(CurrencyAmount::ZERO),
-        fees_paid: Default::default(), // FIXME when we have gas per operation
     }))
 }
 

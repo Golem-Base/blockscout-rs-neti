@@ -223,7 +223,6 @@ pub struct FullEntity {
     pub owner: Option<Address>,
     pub creator: Option<Address>,
     pub cost: CurrencyAmount,
-    pub fees_paid: CurrencyAmount,
 }
 
 #[derive(Debug, Clone)]

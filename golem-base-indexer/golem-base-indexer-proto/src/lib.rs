@@ -64,7 +64,6 @@ impl v1::FullEntity {
             expires_at_timestamp_sec: entity.expires_at_timestamp_sec.map(|v| v.to_string()),
             expires_at_block_number: entity.expires_at_block_number,
             cost: entity.cost.to_string(),
-            fees_paid: entity.fees_paid.to_string(),
 
             string_annotations: string_attributes.into_iter().map(Into::into).collect(),
             numeric_annotations: numeric_attributes.into_iter().map(Into::into).collect(),
@@ -312,7 +311,6 @@ impl From<OperationView> for v1::Operation {
                 .cost
                 .map(|v| v.to_string())
                 .unwrap_or("0".into()),
-            fees_paid: "0".into(), // FIXME
             content_type: v.op.operation.content_type(),
             expires_at_timestamp: v.expires_at_timestamp.map(|v| v.to_rfc3339()),
             expires_at_timestamp_sec: v.expires_at_timestamp_sec,

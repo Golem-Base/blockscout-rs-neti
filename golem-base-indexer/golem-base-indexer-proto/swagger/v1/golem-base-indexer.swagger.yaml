@@ -1281,8 +1281,6 @@ definitions:
         type: string
       cost:
         type: string
-      fees_paid:
-        type: string
       updated_at_tx_hash:
         type: string
       updated_at_operation_index:
@@ -1542,8 +1540,6 @@ definitions:
         type: string
         format: uint64
       cost:
-        type: string
-      fees_paid:
         type: string
       block_number:
         type: string
