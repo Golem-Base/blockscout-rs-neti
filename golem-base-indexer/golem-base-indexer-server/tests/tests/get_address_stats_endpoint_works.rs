@@ -25,8 +25,10 @@ async fn test_get_address_stats_endpoint_works() {
     .await;
 
     let expected: serde_json::Value = serde_json::json!({
-        "active_entities": "3",
         "created_entities": "6",
+        "owned_entities": "5",
+        "active_entities": "3",
+        "size_of_active_entities": "76",
         "failed_transactions": "1",
         "operations_counts": {
             "changeowner_count": "1",
@@ -35,7 +37,6 @@ async fn test_get_address_stats_endpoint_works() {
             "extend_count": "1",
             "update_count": "2",
         },
-        "size_of_active_entities": "76",
         "total_transactions": "7",
         "first_seen_timestamp": "2025-07-22T11:31:28+00:00",
         "last_seen_timestamp": "2025-07-22T11:31:35+00:00",
@@ -51,8 +52,10 @@ async fn test_get_address_stats_endpoint_works() {
     .await;
 
     let expected: serde_json::Value = serde_json::json!({
-        "active_entities": "0",
         "created_entities": "0",
+        "owned_entities": "0",
+        "active_entities": "0",
+        "size_of_active_entities": "0",
         "failed_transactions": "0",
         "operations_counts": {
             "changeowner_count": "0",
@@ -61,7 +64,6 @@ async fn test_get_address_stats_endpoint_works() {
             "extend_count": "0",
             "update_count": "0",
         },
-        "size_of_active_entities": "0",
         "total_transactions": "0",
         "first_seen_timestamp": "2025-07-22T11:31:28+00:00",
         "last_seen_timestamp": "2025-07-22T11:31:28+00:00",
@@ -75,8 +77,10 @@ async fn test_get_address_stats_endpoint_works() {
         test_server::send_get_request(&base, &format!("/api/v1/address/{random_address}/stats"))
             .await;
     let expected: serde_json::Value = serde_json::json!({
-        "active_entities": "0",
         "created_entities": "0",
+        "owned_entities": "0",
+        "active_entities": "0",
+        "size_of_active_entities": "0",
         "failed_transactions": "0",
         "operations_counts": {
             "changeowner_count": "0",
@@ -85,7 +89,6 @@ async fn test_get_address_stats_endpoint_works() {
             "extend_count": "0",
             "update_count": "0",
         },
-        "size_of_active_entities": "0",
         "total_transactions": "0",
         "first_seen_timestamp": null,
         "last_seen_timestamp": null,
