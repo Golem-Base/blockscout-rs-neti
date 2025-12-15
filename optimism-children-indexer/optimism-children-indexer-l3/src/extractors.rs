@@ -1,10 +1,16 @@
 //! Data extractors for Layer3 chains.
-use super::types::{Layer3Chains, Layer3Deposit, Layer3IndexerTaskOutputItem};
-use optimism_children_indexer_logic::well_known::ARKIV_HOUSEKEEPING_ADDRESS;
+use super::{
+    abi::L2ToL1MessagePasser,
+    types::{Layer3Chains, Layer3Deposit, Layer3IndexerTaskOutputItem, Layer3Withdrawal},
+};
+use optimism_children_indexer_logic::well_known::{
+    ARKIV_HOUSEKEEPING_ADDRESS, OPTIMISM_L3_TO_L2_MESSAGE_PASSER_ADDRESS,
+};
 
 use alloy::{
     network::{ReceiptResponse, TransactionResponse},
     providers::Network,
+    sol_types::SolEvent,
 };
 use anyhow::{Result, anyhow};
 use op_alloy::network::Optimism;
@@ -36,11 +42,7 @@ pub fn extract_deposits(
                         .into_array()
                         .to_vec(),
                     block_number: block.number() as i64,
-                    block_hash: tx
-                        .block_hash
-                        .ok_or_else(|| anyhow!("Missing block_hash for tx_hash: {}", tx.tx_hash()))?
-                        .as_slice()
-                        .to_vec(),
+                    block_hash: block.hash().to_vec(),
                     tx_hash: tx.tx_hash().as_slice().to_vec(),
                     source_hash: deposit_tx.source_hash.as_slice().to_vec(),
                     success: receipt.status(),
@@ -50,6 +52,60 @@ pub fn extract_deposits(
             }
         }
     }
+
+    Ok(items)
+}
+
+/// Extract Optimism withdrawal events from a block.
+pub fn extract_withdrawals(
+    config: &Layer3Chains::Model,
+    block: &<Optimism as Network>::BlockResponse,
+    receipts: &Vec<<Optimism as Network>::ReceiptResponse>,
+) -> Result<Vec<Layer3IndexerTaskOutputItem>> {
+    let items: Vec<Layer3IndexerTaskOutputItem> = receipts
+        .iter()
+        .filter(|receipt| {
+            // Use bloom filter to look for `MessagePassed` event.
+            receipt.inner.inner.logs_bloom().contains_raw_log(
+                OPTIMISM_L3_TO_L2_MESSAGE_PASSER_ADDRESS,
+                &[L2ToL1MessagePasser::MessagePassed::SIGNATURE_HASH],
+            )
+        })
+        .filter_map(|receipt| {
+            // Find and decode first `MessagePassed` event.
+            if let Some(message_passed) = receipt
+                .inner
+                .decoded_log::<L2ToL1MessagePasser::MessagePassed>()
+            {
+                let withdrawal = Layer3Withdrawal {
+                    chain_id: config.chain_id,
+                    block_number: block.number() as i64,
+                    block_hash: block.hash().to_vec(),
+                    tx_hash: receipt.transaction_hash().to_vec(),
+                    nonce: message_passed.nonce,
+                    sender: message_passed.sender.to_vec(),
+                    target: message_passed.target.to_vec(),
+                    value: message_passed.value,
+                    gas_limit: message_passed.gasLimit,
+                    data: message_passed.data.data.to_vec(),
+                    withdrawal_hash: message_passed.withdrawalHash.to_vec(),
+                };
+
+                Some(Layer3IndexerTaskOutputItem::Withdrawal(withdrawal))
+            } else {
+                // `MessagePassed` event not found. Most likely bloom false positive.
+                tracing::warn!(
+                    block_number = block.number(),
+                    block_hash = block.hash().to_string(),
+                    tx_hash = receipt.inner.transaction_hash.to_string(),
+                    "[{}] No MessagePassed event found in the receipt logs. Bloom filter false positive?",
+                    config.chain_name,
+                );
+
+                None
+            }
+        })
+        .collect();
 
     Ok(items)
 }

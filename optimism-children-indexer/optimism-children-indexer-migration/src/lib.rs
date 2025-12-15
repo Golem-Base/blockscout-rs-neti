@@ -4,6 +4,7 @@ use sea_orm_migration::sea_orm::{Statement, TransactionTrait};
 mod m20220101_000001_create_table;
 mod m20251029_185826_create_optimism_children_l3_chains;
 mod m20251105_083000_create_optimism_children_l3_deposits;
+mod m20251210_071929_create_optimism_children_l3_withdrawals;
 
 pub struct Migrator;
 
@@ -14,6 +15,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20220101_000001_create_table::Migration),
             Box::new(m20251029_185826_create_optimism_children_l3_chains::Migration),
             Box::new(m20251105_083000_create_optimism_children_l3_deposits::Migration),
+            Box::new(m20251210_071929_create_optimism_children_l3_withdrawals::Migration),
         ]
     }
 

@@ -1,3 +1,4 @@
+mod abi;
 mod extractors;
 mod indexer;
 mod indexer_task;

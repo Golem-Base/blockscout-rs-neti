@@ -4,7 +4,7 @@
 //! for connecting to a chain's RPC endpoint, fetching blocks and receipts, and
 //! extracting relevant data using extractors.
 use super::{
-    extractors::extract_deposits,
+    extractors::{extract_deposits, extract_withdrawals},
     types::{Layer3Chains, Layer3IndexerTaskOutput, Layer3IndexerTaskOutputItem},
 };
 
@@ -176,6 +176,7 @@ impl Layer3IndexerTask {
 
             // Run extractors
             items.append(&mut extract_deposits(&self.config, &block, &receipts)?);
+            items.append(&mut extract_withdrawals(&self.config, &block, &receipts)?);
         }
 
         Ok(items)

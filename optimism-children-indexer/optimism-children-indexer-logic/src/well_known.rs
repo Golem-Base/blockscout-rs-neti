@@ -7,3 +7,6 @@ pub const TRANSACTION_DEPOSITED_SIG: B256 =
 
 pub const ARKIV_HOUSEKEEPING_ADDRESS: Address =
     address!("deaddeaddeaddeaddeaddeaddeaddeaddead0001");
+
+pub const OPTIMISM_L3_TO_L2_MESSAGE_PASSER_ADDRESS: Address =
+    address!("0x4200000000000000000000000000000000000016");
