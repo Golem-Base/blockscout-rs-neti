@@ -94,17 +94,26 @@ impl Layer3IndexerTask {
             config.l3_last_indexed_block = to_block as i64;
 
             tracing::info!(
-                "[{}] Status: {}, Indexing blocks {}-{} took {} second(s). Collected {} item(s).",
+                "[{}] Status: {}. Indexing blocks {}-{} took {} second(s).{}",
                 self.config.chain_name,
                 if to_block == latest_block_number {
-                    "synced"
+                    "synced".to_string()
                 } else {
-                    "catching-up"
+                    let percentage = if latest_block_number == 0 {
+                        100
+                    } else {
+                        ((to_block as f64 / latest_block_number as f64) * 100.0).floor() as u8
+                    };
+                    format!("{}% done", percentage)
                 },
                 from_block,
                 to_block,
                 started_at.elapsed().as_secs(),
-                items.len()
+                if !items.is_empty() {
+                    format!(" Extracted {} item(s).", items.len())
+                } else {
+                    String::new()
+                }
             );
 
             Ok((config, items))
