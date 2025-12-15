@@ -18,10 +18,10 @@ use tracing::{instrument, warn};
 use crate::{
     arkiv::{block_timestamp, block_timestamp_sec, entity_key},
     types::{
-        Block, ConsensusTx, CurrencyAmount, EntityHistoryEntry, EntityKey, EntityStatus,
-        FullNumericAttribute, FullOperationIndex, FullStringAttribute, ListOperationsFilter,
-        LogEventIndex, LogIndex, Operation, OperationData, OperationMetadata, OperationType,
-        OperationsFilter, PaginationParams, Timestamp, TxHash,
+        Block, BlockStorageUsage, ConsensusTx, CurrencyAmount, EntityHistoryEntry, EntityKey,
+        EntityStatus, FullNumericAttribute, FullOperationIndex, FullStringAttribute,
+        ListOperationsFilter, LogEventIndex, LogIndex, Operation, OperationData, OperationMetadata,
+        OperationType, OperationsFilter, PaginationParams, Timestamp, TxHash,
     },
 };
 
@@ -166,6 +166,64 @@ impl Indexer {
         Ok(())
     }
 
+    #[instrument(skip_all)]
+    pub async fn process_block_stats(&self) -> Result<()> {
+        let latest_block_number =
+            if let Some(v) = repository::block::latest_block_number(&*self.db).await? {
+                v
+            } else {
+                tracing::warn!("No blocks indexed, skipping stats processing");
+                return Ok(());
+            };
+
+        let oldest_unprocessed_block_number =
+            if let Some(v) = repository::block::oldest_unprocessed_stats(&*self.db).await? {
+                v
+            } else {
+                tracing::warn!("No blocks indexed, skipping stats processing");
+                return Ok(());
+            };
+
+        if oldest_unprocessed_block_number >= latest_block_number {
+            return Ok(());
+        }
+        tracing::info!("Processing stats for for blocks");
+
+        let prev_block_active_bytes = if oldest_unprocessed_block_number > 0 {
+            if let Some(v) = repository::block::total_storage_usage(
+                &*self.db,
+                oldest_unprocessed_block_number - 1,
+            )
+            .await?
+            {
+                v.storage_usage
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+        let prev_block_active_bytes: i64 = prev_block_active_bytes.try_into()?;
+
+        let batch_size = 100; // FIXME make it a setting
+        let batch_end = std::cmp::min(
+            latest_block_number,
+            oldest_unprocessed_block_number + batch_size,
+        );
+        let batch = oldest_unprocessed_block_number..batch_end;
+        let diffs = repository::block::storage_diff(&*self.db, batch).await?;
+        let updates = diffs.into_iter().scan(prev_block_active_bytes, |sum, i| {
+            *sum += i.storage_diff;
+            Some(BlockStorageUsage {
+                block_number: i.block_number,
+                storage_usage: (*sum).try_into().unwrap_or_default(),
+            })
+        });
+        repository::block::update_stats(&*self.db, updates).await?;
+
+        Ok(())
+    }
+
     pub async fn process_delete_logs(&self) -> Result<()> {
         repository::blockscout::stream_unprocessed_logs(&*self.db)
             .await?
@@ -242,6 +300,7 @@ impl Indexer {
         self.process_tx_cleanups().await?;
         self.process_logs_events().await?;
         self.process_reindexes().await?;
+        self.process_block_stats().await?;
 
         Ok(())
     }
@@ -343,6 +402,7 @@ impl Indexer {
             .with_context(|| format!("Getting tx {tx_hash}"))?;
         let tx = tx.ok_or(anyhow!("Somehow tx disappeared from the DB"))?;
         let tx: ConsensusTx = tx.try_into()?;
+        repository::block::mark_stats_dirty(&txn, tx.block_number).await?;
 
         let mut op_idx = 0;
         let storagetx: StorageTransaction = match (&tx.input).try_into() {
@@ -800,6 +860,8 @@ impl Indexer {
         if let Some(current_cost) = op.metadata.cost {
             tracing::warn!(?log.transaction_hash, log.op_index, "Replacing current operation cost ({}) with a new value ({})", current_cost.to_string(), cost.to_string());
         }
+
+        repository::block::mark_stats_dirty(txn, op.metadata.block_number).await?;
 
         // Set cost and update operation
         op.metadata.cost = Some(cost);

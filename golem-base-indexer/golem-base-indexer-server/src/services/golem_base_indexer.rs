@@ -280,16 +280,29 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             })?;
 
         // Get storage usage
-        let storage = repository::block::storage_usage(&*self.db, block_number)
+        let total_bytes = repository::block::total_storage_usage(&*self.db, block_number)
             .await
             .map_err(|err| {
-                tracing::error!(?err, "failed to query block storage usage");
-                Status::internal("failed to query block storage usage")
-            })?;
+                tracing::error!(?err, "failed to query block storage usage - total bytes");
+                Status::internal("failed to query block storage usage - total bytes")
+            })?
+            .map(|v| v.storage_usage)
+            .unwrap_or_default();
+
+        let block_bytes = repository::block::new_data(&*self.db, block_number)
+            .await
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query block storage usage - new data");
+                Status::internal("failed to query block storage usage - new data")
+            })?
+            .new_data;
 
         Ok(Response::new(BlockStatsResponse {
             counts: Some(counts.into()),
-            storage: Some(storage.into()),
+            storage: Some(v1::BlockStatsStorage {
+                block_bytes,
+                total_bytes,
+            }),
         }))
     }
 

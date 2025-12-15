@@ -5,10 +5,9 @@ use const_hex::traits::ToHexExt;
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
     AddressLeaderboardRanks, BlockEntitiesCount, BlockGasUsageLimitPoint, BlockOperationPoint,
-    BlockStorageUsage, BlockTransactionPoint, ChartInfo, ChartPoint, ConsensusInfo,
-    EntitiesAverages, EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry,
-    EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
-    LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
+    BlockTransactionPoint, ChartInfo, ChartPoint, ConsensusInfo, EntitiesAverages, EntitiesFilter,
+    Entity, EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
+    EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
     ListEntitiesFilter, ListOperationsFilter, NumericAttribute, NumericAttributeWithRelations,
@@ -559,15 +558,6 @@ impl From<BlockEntitiesCount> for v1::BlockStatsCounts {
             delete_count: value.delete_count,
             extend_count: value.extend_count,
             changeowner_count: value.changeowner_count,
-        }
-    }
-}
-
-impl From<BlockStorageUsage> for v1::BlockStatsStorage {
-    fn from(value: BlockStorageUsage) -> Self {
-        Self {
-            block_bytes: value.block_bytes,
-            total_bytes: value.total_bytes,
         }
     }
 }

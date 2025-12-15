@@ -384,12 +384,6 @@ pub struct BlockEntitiesCount {
 }
 
 #[derive(Debug, Clone)]
-pub struct BlockStorageUsage {
-    pub block_bytes: u64,
-    pub total_bytes: u64,
-}
-
-#[derive(Debug, Clone)]
 pub struct AddressActivity {
     pub first_seen_timestamp: Option<DateTime<Utc>>,
     pub last_seen_timestamp: Option<DateTime<Utc>>,
@@ -416,7 +410,7 @@ pub struct Transaction {
     pub created_contract_address_hash: Option<Address>,
     pub r#type: Option<i32>,
     pub l1_transaction_origin: Option<Address>,
-    pub l1_block_number: Option<u64>,
+    pub l1_block_number: Option<BlockNumber>,
 }
 
 #[derive(Debug, Clone, Ord, PartialEq, Eq, PartialOrd)]
@@ -451,13 +445,13 @@ pub struct ChartInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockTransactionPoint {
-    pub block_number: u64,
+    pub block_number: BlockNumber,
     pub tx_count: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockOperationPoint {
-    pub block_number: u64,
+    pub block_number: BlockNumber,
     pub create_count: u64,
     pub update_count: u64,
     pub delete_count: u64,
@@ -467,7 +461,7 @@ pub struct BlockOperationPoint {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockGasUsageLimitPoint {
-    pub block_number: u64,
+    pub block_number: BlockNumber,
     pub gas_used: u64,
     pub gas_limit: u64,
     pub gas_usage_percentage: f64,
@@ -552,7 +546,7 @@ pub struct EntityDataHistogram {
 
 #[derive(Clone, Debug, Default)]
 pub struct ConsensusBlockInfo {
-    pub block_number: u64,
+    pub block_number: BlockNumber,
     pub timestamp: u64,
 }
 
@@ -580,4 +574,21 @@ pub struct ConsensusInfo {
 pub struct EntitiesAverages {
     pub average_entitiy_size: u64,
     pub average_entity_btl: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct BlockStorageUsage {
+    pub block_number: BlockNumber,
+    pub storage_usage: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct BlockNewData {
+    pub new_data: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct BlockStorageDiff {
+    pub block_number: BlockNumber,
+    pub storage_diff: i64,
 }
