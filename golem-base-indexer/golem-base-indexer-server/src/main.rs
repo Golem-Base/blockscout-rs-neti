@@ -7,11 +7,13 @@ async fn main() -> Result<(), anyhow::Error> {
     let settings = Settings::build().expect("failed to read config");
     tracing_subscriber::fmt::init();
 
-    let db_connection = database::initialize_postgres::<Migrator>(&settings.database).await?;
-    run_indexer(db_connection.into(), settings.clone()).await?;
+    if !settings.indexer.api_only {
+        let db_connection = database::initialize_postgres::<Migrator>(&settings.database).await?;
+        run_indexer(db_connection.into(), settings.clone()).await?;
 
-    let db_connection = database::initialize_postgres::<Migrator>(&settings.database).await?;
-    run_mat_view_scheduler(db_connection.into()).await?;
+        let db_connection = database::initialize_postgres::<Migrator>(&settings.database).await?;
+        run_mat_view_scheduler(db_connection.into()).await?;
+    }
 
     let db_connection = database::initialize_postgres::<Migrator>(&settings.database).await?;
     run_server(db_connection.into(), settings.clone()).await?;
