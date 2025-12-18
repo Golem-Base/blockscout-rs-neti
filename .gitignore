@@ -31,3 +31,4 @@ libs/Cargo.lock
 **.decrypted~**
 **.dec**
 /tac-operation-lifecycle/database/
+.aider*

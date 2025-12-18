@@ -4,10 +4,12 @@ pub mod prelude;
 
 pub mod addresses;
 pub mod blocks;
+pub mod golem_base_block_stats;
 pub mod golem_base_entities;
 pub mod golem_base_entity_history;
 pub mod golem_base_numeric_annotations;
 pub mod golem_base_operations;
+pub mod golem_base_pending_logs_events;
 pub mod golem_base_pending_logs_operations;
 pub mod golem_base_pending_transaction_cleanups;
 pub mod golem_base_pending_transaction_operations;

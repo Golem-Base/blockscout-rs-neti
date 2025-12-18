@@ -9,6 +9,7 @@ mod m20251118_084413_backfill_content_type;
 mod m20251119_080215_add_creator;
 mod m20251119_090215_lockless;
 mod m20251201_215928_add_total_cost;
+mod m20251215_142514_block_stats;
 
 pub struct Migrator;
 
@@ -24,6 +25,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251119_080215_add_creator::Migration),
             Box::new(m20251119_090215_lockless::Migration),
             Box::new(m20251201_215928_add_total_cost::Migration),
+            Box::new(m20251215_142514_block_stats::Migration),
         ]
     }
 

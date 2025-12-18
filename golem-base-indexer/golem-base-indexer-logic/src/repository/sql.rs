@@ -273,26 +273,34 @@ where
 group by key, value
 "#;
 
-pub const STORAGE_USAGE_BY_BLOCK: &str = r#"
-WITH current_state AS (
-  SELECT DISTINCT ON (entity_key)
-    block_number,
-    status,
-    length(data) size
-  FROM golem_base_entity_history
-  WHERE block_number <= $1 AND operation != 'extend' AND operation != 'changeowner'
-  ORDER BY entity_key, block_number DESC
-)
+pub const TOTAL_STORAGE_USAGE_BY_BLOCK: &str = r#"
+select block_number, storage_usage from golem_base_block_stats where block_number = $1;
+"#;
+
+pub const STORAGE_DIFF_BY_BLOCK: &str = r#"
+select
+    blocks.number as block_number,
+    sum(
+        coalesce(length(data), 0)
+        - coalesce(length(prev_data), 0)
+    ) as storage_diff
+from blocks
+left join golem_base_entity_history
+    on blocks.number = golem_base_entity_history.block_number
+where blocks.number = any($1)
+group by blocks.number
+order by blocks.number;
+"#;
+
+pub const NEW_DATA_BY_BLOCK: &str = r#"
 SELECT
-  $1 as block_number,
-
-  -- Storage added in this specific block
-  COALESCE(SUM(size) FILTER (WHERE block_number = $1), 0) as block_bytes,
-
-  -- Total storage up to and including this block
-  COALESCE(SUM(size), 0) as total_bytes
-FROM current_state
-WHERE status = 'active'
+    coalesce(sum(length(data)), 0) new_data
+FROM golem_base_entity_history
+WHERE
+    block_number = $1
+    AND operation != 'extend'
+    AND operation != 'changeowner'
+    AND status = 'active'
 "#;
 
 pub const BLOCK_OPERATIONS_TIMESERIES: &str = r#"
@@ -450,4 +458,24 @@ select distinct key from golem_base_entities_to_reindex
 
 pub const FINISH_REINDEX: &str = r#"
 delete from golem_base_entities_to_reindex where key = $1
+"#;
+
+pub const OLDEST_UNPROCESSED_BLOCK_STATS: &str = r#"
+select min(blocks.number) as block_number
+from blocks
+left join golem_base_block_stats stats
+    on blocks.number = stats.block_number
+where stats.block_number is null or stats.is_dirty = true
+"#;
+
+pub const UPDATE_BLOCK_STATS_PREFIX: &str = r#"
+insert into golem_base_block_stats (block_number, storage_usage) values
+"#;
+
+pub const UPDATE_BLOCK_STATS_SUFFIX: &str = r#"
+on conflict (block_number) do update set is_dirty = false, storage_usage = EXCLUDED.storage_usage;
+"#;
+
+pub const MARK_STATS_DIRTY: &str = r#"
+update golem_base_block_stats set is_dirty = true where block_number >= $1;
 "#;
