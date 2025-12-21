@@ -374,6 +374,7 @@ message ConsensusInfoResponse {
   string rollup_gas_used = 7;
   string rollup_gas_price = 8;
   string rollup_transaction_fee = 9;
+  string rollup_average_transaction_cost = 10;
 }
 
 message EntitiesAveragesResponse {

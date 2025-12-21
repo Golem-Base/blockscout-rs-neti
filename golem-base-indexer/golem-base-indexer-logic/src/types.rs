@@ -559,9 +559,10 @@ pub struct ConsensusBlocksInfo {
 
 #[derive(Clone, Debug, Default)]
 pub struct ConsensusGasInfo {
-    pub gas_used: u64,
-    pub gas_price: u64,
-    pub transaction_fee: u64,
+    pub gas_used: CurrencyAmount,
+    pub gas_price: CurrencyAmount,
+    pub transaction_fee: CurrencyAmount,
+    pub average_transaction_cost: CurrencyAmount,
 }
 
 #[derive(Clone, Debug, Default)]

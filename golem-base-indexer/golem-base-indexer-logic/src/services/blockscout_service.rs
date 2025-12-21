@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use moka::future::Cache;
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use url::Url;
 
-use crate::types::ConsensusGasInfo;
+use crate::types::{ConsensusGasInfo, CurrencyAmount};
 
 /// Blockscout /api/v2/addresses/{address}/transactions response
 #[derive(Debug, Clone, Deserialize)]
@@ -28,6 +28,12 @@ pub struct AddressTransaction {
 #[derive(Debug, Clone, Deserialize)]
 pub struct AddressInfo {
     pub hash: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AddressCounters {
+    pub transactions_count: String,
+    pub gas_usage_count: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
@@ -160,32 +166,65 @@ impl BlockscoutService {
     }
 
     #[instrument(skip(self))]
-    fn get_gas_info(&self, txinfo: TransactionResponse) -> Result<ConsensusGasInfo> {
-        let gas_used = txinfo
-            .gas_used
-            .ok_or(anyhow!("missing gas_used"))?
-            .parse::<u64>()?;
-        let gas_price = txinfo
-            .gas_price
-            .ok_or(anyhow!("missing gas_used"))?
-            .parse::<u64>()?;
+    fn get_gas_info(
+        &self,
+        txinfo: TransactionResponse,
+        average_transaction_cost: CurrencyAmount,
+    ) -> Result<ConsensusGasInfo> {
+        let gas_used = CurrencyAmount::from_str(
+            &txinfo
+                .gas_used
+                .ok_or(anyhow!("Missing gas used in rollup transaction"))?,
+        )?;
+        let gas_price = CurrencyAmount::from_str(
+            &txinfo
+                .gas_price
+                .ok_or(anyhow!("Missing gas price in rollup transaction"))?,
+        )?;
+
         let transaction_fee = gas_used
             .checked_mul(gas_price)
-            .ok_or(anyhow!("transaction_fee overflow"))?;
+            .ok_or(anyhow!("Overflow in rollup transaction fee multiplication"))?;
 
         Ok(ConsensusGasInfo {
             gas_used,
             gas_price,
             transaction_fee,
+            average_transaction_cost,
         })
+    }
+
+    #[instrument(skip(self))]
+    async fn get_address_counters(&self, from: &str) -> Result<AddressCounters> {
+        let mut query = self.url.clone();
+        query.set_path(&format!("/api/v2/addresses/{from}/counters"));
+        let counters: AddressCounters = self.client.get(query).send().await?.json().await?;
+
+        Ok(counters)
+    }
+
+    #[instrument(skip(self))]
+    fn calculate_average_transaction_cost(
+        &self,
+        counters: &AddressCounters,
+    ) -> Result<CurrencyAmount> {
+        let tx_count = CurrencyAmount::from_str(&counters.transactions_count)?;
+        let gas_used = CurrencyAmount::from_str(&counters.gas_usage_count)?;
+        let avg_tx_cost = gas_used
+            .checked_div(tx_count)
+            .ok_or(anyhow!("Average transaction cost division by zero!"))?;
+
+        Ok(avg_tx_cost)
     }
 
     #[instrument(skip(self))]
     async fn get_consensus_gas_info(&self) -> Result<ConsensusGasInfo> {
         let tx = self.get_verified_tx().await?;
         let txinfo = self.get_txinfo(&tx.hash).await?;
+        let counters = self.get_address_counters(&self.batcher_address).await?;
+        let avg_tx_cost = self.calculate_average_transaction_cost(&counters)?;
 
-        self.get_gas_info(txinfo)
+        self.get_gas_info(txinfo, avg_tx_cost)
     }
 
     pub async fn get_consensus_gas_info_cached(&self) -> Result<ConsensusGasInfo> {
