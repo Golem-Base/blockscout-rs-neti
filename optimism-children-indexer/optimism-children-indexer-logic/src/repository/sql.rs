@@ -56,3 +56,51 @@ order by
     t.index desc,
     d.index desc
 "#;
+
+pub const LIST_WITHDRAWALS_WITH_TX: &str = r#"
+SELECT
+    -- L3 withdrawal information (from MessagePassed event)
+    w.chain_id,
+    w.block_number AS l3_block_number,
+    w.block_hash AS l3_block_hash,
+    w.tx_hash AS l3_tx_hash,
+    w.nonce,
+    w.sender,
+    w.target,
+    w.value,
+    w.gas_limit,
+    w.data,
+    w.withdrawal_hash,
+
+    -- L2 WithdrawalProven event information
+    wp.transaction_hash AS proven_tx_hash,
+    wp.block_hash AS proven_block_hash,
+    wp.block_number AS proven_block_number,
+    wp.index AS proven_log_index,
+    wp.from AS proven_from,
+    wp.to AS proven_to,
+    t_proven.from_address_hash AS proven_tx_from,
+    t_proven.to_address_hash AS proven_tx_to,
+
+    -- L2 WithdrawalFinalized event information
+    wf.transaction_hash AS finalized_tx_hash,
+    wf.block_hash AS finalized_block_hash,
+    wf.block_number AS finalized_block_number,
+    wf.index AS finalized_log_index,
+    wf.success AS finalized_success,
+    t_finalized.from_address_hash AS finalized_tx_from,
+    t_finalized.to_address_hash AS finalized_tx_to
+FROM optimism_children_l3_withdrawals w
+    LEFT JOIN optimism_children_withdrawal_proven_events wp
+        ON wp.withdrawal_hash = w.withdrawal_hash
+    LEFT JOIN transactions t_proven
+        ON t_proven.hash = wp.transaction_hash
+    LEFT JOIN optimism_children_withdrawal_finalized_events wf
+        ON wf.withdrawal_hash = w.withdrawal_hash
+    LEFT JOIN transactions t_finalized
+        ON t_finalized.hash = wf.transaction_hash
+ORDER BY
+    w.chain_id ASC,
+    w.block_number DESC,
+    w.id DESC
+"#;

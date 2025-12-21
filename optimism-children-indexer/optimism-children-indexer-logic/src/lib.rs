@@ -1,4 +1,4 @@
-use alloy_primitives::{Address, U256};
+use alloy_primitives::{Address, B256, U256};
 use alloy_sol_types::SolValue;
 use anyhow::{anyhow, ensure, Result};
 use futures::StreamExt;
@@ -16,7 +16,11 @@ use tracing::{instrument, warn};
 
 use crate::{
     deposit::source_hash,
-    types::{ConsensusTx, LogIndex, TransactionDepositedEvent},
+    types::{
+        ConsensusTx, LogIndex, TransactionDepositedEvent, WithdrawalFinalizedEvent,
+        WithdrawalProvenEvent,
+    },
+    well_known::{TRANSACTION_DEPOSITED_SIG, WITHDRAWAL_FINALIZED_SIG, WITHDRAWAL_PROVEN_SIG},
 };
 
 mod consensus_tx;
@@ -111,41 +115,120 @@ impl Indexer {
             .await?
             .ok_or(anyhow!("Log disappeared from the DB?!"))?;
 
-        let from = if let Some(second_topic) = log.second_topic {
-            Address::abi_decode_validate(second_topic.as_slice())?
-        } else {
-            tracing::warn!("TransactionDeposited event with no second topic?");
-            return Ok(());
-        };
+        let signature_hash = log
+            .first_topic
+            .ok_or(anyhow!("Log with missing first topic?"))?;
+        match signature_hash {
+            TRANSACTION_DEPOSITED_SIG => {
+                let from = if let Some(second_topic) = log.second_topic {
+                    Address::abi_decode_validate(second_topic.as_slice())?
+                } else {
+                    tracing::warn!("TransactionDeposited event with no second topic?");
+                    return Ok(());
+                };
 
-        let to = if let Some(third_topic) = log.third_topic {
-            Address::abi_decode_validate(third_topic.as_slice())?
-        } else {
-            tracing::warn!("TransactionDeposited event with no third topic?");
-            return Ok(());
-        };
+                let to = if let Some(third_topic) = log.third_topic {
+                    Address::abi_decode_validate(third_topic.as_slice())?
+                } else {
+                    tracing::warn!("TransactionDeposited event with no third topic?");
+                    return Ok(());
+                };
 
-        let version: U256 = if let Some(fourth_topic) = log.fourth_topic {
-            fourth_topic.into()
-        } else {
-            tracing::warn!("TransactionDeposited event with no fourth topic?");
-            return Ok(());
-        };
+                let version: U256 = if let Some(fourth_topic) = log.fourth_topic {
+                    fourth_topic.into()
+                } else {
+                    tracing::warn!("TransactionDeposited event with no fourth topic?");
+                    return Ok(());
+                };
 
-        ensure!(version == U256::ZERO, "Unsupported deposit version");
+                ensure!(version == U256::ZERO, "Unsupported deposit version");
 
-        let event = TransactionDepositedEvent {
-            from,
-            to,
-            source_hash: source_hash(tx.block_hash, log.index.try_into()?),
-            deposit: log.data.clone().try_into()?,
-        };
+                let event = TransactionDepositedEvent {
+                    from,
+                    to,
+                    source_hash: source_hash(tx.block_hash, log.index.try_into()?),
+                    deposit: log.data.clone().try_into()?,
+                };
 
-        repository::deposits::store_transaction_deposited(&txn, tx.clone(), log.clone(), event)
-            .await?;
+                repository::deposits::store_transaction_deposited(
+                    &txn,
+                    tx.clone(),
+                    log.clone(),
+                    event,
+                )
+                .await?;
+            }
+            WITHDRAWAL_PROVEN_SIG => {
+                let withdrawal_hash: B256 = if let Some(second_topic) = log.second_topic {
+                    second_topic
+                } else {
+                    tracing::warn!("WithdrawalProven event with no second topic?");
+                    return Ok(());
+                };
+
+                let from = if let Some(third_topic) = log.third_topic {
+                    Address::abi_decode_validate(third_topic.as_slice())?
+                } else {
+                    tracing::warn!("WithdrawalProven event with no third topic?");
+                    return Ok(());
+                };
+
+                let to = if let Some(fourth_topic) = log.fourth_topic {
+                    Address::abi_decode_validate(fourth_topic.as_slice())?
+                } else {
+                    tracing::warn!("WithdrawalProven event with no fourth topic?");
+                    return Ok(());
+                };
+
+                let event = WithdrawalProvenEvent {
+                    withdrawal_hash,
+                    from,
+                    to,
+                };
+
+                repository::withdrawals::store_withdrawal_proven(
+                    &txn,
+                    tx.clone(),
+                    log.clone(),
+                    event,
+                )
+                .await?;
+            }
+            WITHDRAWAL_FINALIZED_SIG => {
+                let withdrawal_hash: B256 = if let Some(second_topic) = log.second_topic {
+                    second_topic
+                } else {
+                    tracing::warn!("WithdrawalFinalized event with no second topic?");
+                    return Ok(());
+                };
+
+                let success = log.data[31] != 0;
+
+                let event = WithdrawalFinalizedEvent {
+                    withdrawal_hash,
+                    success,
+                };
+
+                repository::withdrawals::store_withdrawal_finalized(
+                    &txn,
+                    tx.clone(),
+                    log.clone(),
+                    event,
+                )
+                .await?;
+            }
+            _ => {
+                tracing::warn!(
+                    "Tried processing event with unrecognized signature hash: {signature_hash}"
+                );
+                return Ok(());
+            }
+        }
+
         repository::logs::finish_log_processing(&txn, log.tx_hash, tx.block_hash, log.index)
             .await?;
         txn.commit().await?;
+
         Ok(())
     }
 }

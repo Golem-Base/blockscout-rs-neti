@@ -2,7 +2,7 @@ use alloy_primitives::{Bytes, B256};
 use chrono::{DateTime, Utc};
 
 pub use alloy_primitives::{
-    Address, BlockHash, BlockNumber, ChainId, TxHash, U256 as CurrencyAmount,
+    Address, BlockHash, BlockNumber, ChainId, TxHash, U256 as CurrencyAmount, U256,
 };
 use anyhow::{Context, Result};
 
@@ -162,4 +162,34 @@ pub struct ExecutionTransaction {
     pub from: Address,
     pub to: Address,
     pub success: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WithdrawalProvenEvent {
+    pub withdrawal_hash: B256,
+    pub from: Address,
+    pub to: Address,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WithdrawalFinalizedEvent {
+    pub withdrawal_hash: B256,
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FullWithdrawal {
+    pub chain_id: ChainId,
+    pub l3_block_number: BlockNumber,
+    pub l3_block_hash: BlockHash,
+    pub l3_tx_hash: TxHash,
+    pub nonce: U256,
+    pub sender: Address,
+    pub target: Address,
+    pub value: U256,
+    pub gas_limit: U256,
+    pub data: Bytes,
+    pub withdrawal_hash: B256,
+    pub proving_tx: Option<FullEvent<WithdrawalProvenEvent>>,
+    pub finalizing_tx: Option<FullEvent<WithdrawalFinalizedEvent>>,
 }

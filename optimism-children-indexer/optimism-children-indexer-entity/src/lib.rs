@@ -10,4 +10,6 @@ pub mod optimism_children_l3_deposits;
 pub mod optimism_children_l3_withdrawals;
 pub mod optimism_children_pending_logs;
 pub mod optimism_children_transaction_deposited_events_v0;
+pub mod optimism_children_withdrawal_finalized_events;
+pub mod optimism_children_withdrawal_proven_events;
 pub mod transactions;

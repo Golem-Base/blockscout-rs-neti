@@ -1,7 +1,6 @@
 mod helpers;
 
-use alloy::primitives::U256;
-use alloy::primitives::{address, hex};
+use alloy::primitives::{U256, address, hex};
 use helpers::{eth_mock_server::EthMockServer, utils::build_test_chain_config};
 use optimism_children_indexer_l3::{
     Layer3IndexerTask,
