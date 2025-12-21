@@ -3,8 +3,8 @@
 use crate::blockscout::optimism_children_indexer::v1;
 use anyhow::Result;
 use optimism_children_indexer_logic::types::{
-    DepositV0, EventMetadata, ExecutionTransaction, FullDeposit, PaginationMetadata,
-    PaginationParams,
+    DepositV0, EventMetadata, ExecutionTransaction, FullDeposit, FullEvent, FullWithdrawal,
+    PaginationMetadata, PaginationParams, WithdrawalFinalizedEvent, WithdrawalProvenEvent,
 };
 
 pub mod blockscout {
@@ -88,5 +88,64 @@ impl From<FullDeposit<DepositV0>> for v1::Deposit {
             is_creation: d.event.event.deposit.is_creation,
             destination_chain_id: d.chain_id.map(|v| v.to_string()),
         }
+    }
+}
+
+impl From<WithdrawalProvenEvent> for v1::WithdrawalProvenEvent {
+    fn from(v: WithdrawalProvenEvent) -> Self {
+        Self {
+            withdrawal_hash: v.withdrawal_hash.to_string(),
+            from: v.from.to_string(),
+            to: v.to.to_string(),
+        }
+    }
+}
+
+impl From<FullEvent<WithdrawalProvenEvent>> for v1::WithdrawalProving {
+    fn from(v: FullEvent<WithdrawalProvenEvent>) -> Self {
+        Self {
+            metadata: Some(v.metadata.into()),
+            event: Some(v.event.into()),
+        }
+    }
+}
+
+impl From<WithdrawalFinalizedEvent> for v1::WithdrawalFinalizedEvent {
+    fn from(v: WithdrawalFinalizedEvent) -> Self {
+        Self {
+            withdrawal_hash: v.withdrawal_hash.to_string(),
+            success: v.success,
+        }
+    }
+}
+
+impl From<FullEvent<WithdrawalFinalizedEvent>> for v1::WithdrawalFinalizing {
+    fn from(v: FullEvent<WithdrawalFinalizedEvent>) -> Self {
+        Self {
+            metadata: Some(v.metadata.into()),
+            event: Some(v.event.into()),
+        }
+    }
+}
+
+impl TryFrom<FullWithdrawal> for v1::Withdrawal {
+    type Error = anyhow::Error;
+
+    fn try_from(v: FullWithdrawal) -> Result<Self> {
+        Ok(Self {
+            chain_id: v.chain_id.to_string(),
+            l3_block_number: v.l3_block_number,
+            l3_block_hash: v.l3_block_hash.to_string(),
+            l3_tx_hash: v.l3_tx_hash.to_string(),
+            nonce: v.nonce.to_string(),
+            sender: v.sender.to_string(),
+            target: v.target.to_string(),
+            value: v.value.to_string(),
+            gas_limit: v.gas_limit.to_string(),
+            data: v.data.to_string(),
+            withdrawal_hash: v.withdrawal_hash.to_string(),
+            proving_tx: v.proving_tx.map(Into::into),
+            finalizing_tx: v.finalizing_tx.map(Into::into),
+        })
     }
 }
