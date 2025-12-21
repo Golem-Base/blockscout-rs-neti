@@ -6,14 +6,14 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "transactions")]
 pub struct Model {
     #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
-    pub cumulative_gas_used: Option<Decimal>,
+    pub cumulative_gas_used: Option<BigDecimal>,
     pub error: Option<String>,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
-    pub gas: Decimal,
+    pub gas: BigDecimal,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
-    pub gas_price: Option<Decimal>,
+    pub gas_price: Option<BigDecimal>,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
-    pub gas_used: Option<Decimal>,
+    pub gas_used: Option<BigDecimal>,
     #[sea_orm(
         primary_key,
         auto_increment = false,
@@ -25,14 +25,14 @@ pub struct Model {
     pub input: Vec<u8>,
     pub nonce: i32,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
-    pub r: Decimal,
+    pub r: BigDecimal,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
-    pub s: Decimal,
+    pub s: BigDecimal,
     pub status: Option<i32>,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
-    pub v: Decimal,
+    pub v: BigDecimal,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))")]
-    pub value: Decimal,
+    pub value: BigDecimal,
     pub inserted_at: DateTime,
     pub updated_at: DateTime,
     #[sea_orm(column_type = "VarBinary(StringLen::None)", nullable)]
@@ -51,9 +51,9 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub revert_reason: Option<String>,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
-    pub max_priority_fee_per_gas: Option<Decimal>,
+    pub max_priority_fee_per_gas: Option<BigDecimal>,
     #[sea_orm(column_type = "Decimal(Some((100, 0)))", nullable)]
-    pub max_fee_per_gas: Option<Decimal>,
+    pub max_fee_per_gas: Option<BigDecimal>,
     pub r#type: Option<i32>,
     pub has_error_in_internal_transactions: Option<bool>,
     pub block_timestamp: Option<DateTime>,

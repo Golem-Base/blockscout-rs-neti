@@ -3,6 +3,7 @@ use golem_base_indexer_entity::transactions::{
     self, Entity as TransactionsEntity, Model as TransactionsModel,
 };
 use sea_orm::{entity::prelude::*, Condition, QueryOrder, Statement};
+use std::str::FromStr;
 use tracing::instrument;
 
 use crate::{
@@ -27,19 +28,12 @@ impl TryFrom<TransactionsModel> for Transaction {
                 .to_address_hash
                 .map(|v| v.as_slice().try_into())
                 .transpose()?,
-            value: value
-                .value
-                .to_string()
-                .parse::<CurrencyAmount>()
+            value: CurrencyAmount::from_str(&value.value.to_plain_string())
                 .context("Failed to convert value to CurrencyAmount")?,
-            input: value.input.clone().into(),
+            input: value.input.into(),
             gas_price: value
                 .gas_price
-                .map(|v| {
-                    v.to_string()
-                        .parse::<u64>()
-                        .context("Failed to convert gas_price to u64")
-                })
+                .map(|v| CurrencyAmount::from_str(&v.to_plain_string()))
                 .transpose()?,
             status: value.status.map(|v| v as u8),
             block_hash: value
@@ -50,11 +44,7 @@ impl TryFrom<TransactionsModel> for Transaction {
             block_timestamp: value.block_timestamp.map(|v| v.and_utc()),
             cumulative_gas_used: value
                 .cumulative_gas_used
-                .map(|v| {
-                    v.to_string()
-                        .parse::<u64>()
-                        .context("Failed to convert cumulative_gas_used to u64")
-                })
+                .map(|v| CurrencyAmount::from_str(&v.to_plain_string()))
                 .transpose()?,
             created_contract_address_hash: value
                 .created_contract_address_hash
