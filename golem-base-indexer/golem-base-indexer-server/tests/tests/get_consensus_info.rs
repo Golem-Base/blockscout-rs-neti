@@ -44,6 +44,7 @@ async fn test_get_consensus_info() {
             "rollup_gas_price": "0",
             "rollup_gas_used": "0",
             "rollup_transaction_fee":"0",
+            "rollup_average_transaction_cost": "0",
         })
     );
 
@@ -98,6 +99,10 @@ async fn test_get_consensus_info() {
         serde_json::from_str(include_str!("../fixtures/blockscout_addresses_tx_1.json")).unwrap();
     let addresses_tx_2: serde_json::Value =
         serde_json::from_str(include_str!("../fixtures/blockscout_addresses_tx_2.json")).unwrap();
+    let addresses_counters: serde_json::Value = serde_json::from_str(include_str!(
+        "../fixtures/blockscout_addresses_counters.json"
+    ))
+    .unwrap();
     let txinfo: serde_json::Value =
         serde_json::from_str(include_str!("../fixtures/blockscout_txinfo_v2.json")).unwrap();
 
@@ -116,6 +121,13 @@ async fn test_get_consensus_info() {
         .respond_with(ResponseTemplate::new(200).set_body_json(&addresses_tx_1))
         .mount(&blockscout_mock)
         .await;
+
+    Mock::given(method("GET"))
+        .and(path_regex(r"/addresses/[a-zA-Z0-9]{1,}/counters$"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(&addresses_counters))
+        .mount(&blockscout_mock)
+        .await;
+
     Mock::given(method("GET"))
         .and(path_regex(r"/transactions/[a-zA-Z0-9]{1,}$"))
         .respond_with(ResponseTemplate::new(200).set_body_json(&txinfo))
@@ -135,6 +147,7 @@ async fn test_get_consensus_info() {
         "rollup_gas_price": "1000282107",
         "rollup_gas_used": "23272",
         "rollup_transaction_fee":"23278565194104",
+        "rollup_average_transaction_cost": "1302377"
       }
     );
     assert_eq!(response, expected);
