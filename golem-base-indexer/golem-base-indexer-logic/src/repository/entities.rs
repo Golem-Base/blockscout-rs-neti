@@ -113,7 +113,7 @@ impl TryFrom<golem_base_entities::Model> for Entity {
                 .transpose()?,
             cost: value
                 .cost
-                .map(|v| CurrencyAmount::from_str(&v.to_string()))
+                .map(|v| CurrencyAmount::from_str(&v.to_plain_string()))
                 .transpose()?
                 .unwrap_or(CurrencyAmount::ZERO),
         })
@@ -220,12 +220,12 @@ impl EntityHistoryEntry {
             content_type: value.content_type,
             prev_content_type: value.prev_content_type,
             cost: match value.cost {
-                Some(cost) => Some(CurrencyAmount::from_str(&cost.to_string())?),
+                Some(cost) => Some(CurrencyAmount::from_str(&cost.to_plain_string())?),
                 None => None,
             },
             total_cost: value
                 .total_cost
-                .map(|v| CurrencyAmount::from_str(&v.to_string()))
+                .map(|v| CurrencyAmount::from_str(&v.to_plain_string()))
                 .transpose()?,
         })
     }
@@ -416,7 +416,7 @@ pub async fn get_full_entity<T: ConnectionTrait>(
             .transpose()?,
         cost: entity
             .cost
-            .map(|v| CurrencyAmount::from_str(&v.to_string()))
+            .map(|v| CurrencyAmount::from_str(&v.to_plain_string()))
             .transpose()?
             .unwrap_or(CurrencyAmount::ZERO),
     }))
