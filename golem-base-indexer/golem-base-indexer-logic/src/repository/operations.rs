@@ -184,7 +184,7 @@ impl TryFrom<golem_base_operations::Model> for Operation {
                 block_number: v.block_number.try_into()?,
                 tx_index: v.tx_index.try_into()?,
                 cost: match v.cost {
-                    Some(cost) => Some(CurrencyAmount::from_str(&cost.to_string())?),
+                    Some(cost) => Some(CurrencyAmount::from_str(&cost.to_plain_string())?),
                     None => None,
                 },
             },

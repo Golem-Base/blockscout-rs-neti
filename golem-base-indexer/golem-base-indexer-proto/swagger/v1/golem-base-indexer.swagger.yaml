@@ -1070,6 +1070,8 @@ definitions:
         type: string
       rollup_transaction_fee:
         type: string
+      rollup_average_transaction_cost:
+        type: string
   v1CountEntitiesResponse:
     type: object
     properties:

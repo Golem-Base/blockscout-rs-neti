@@ -72,6 +72,8 @@ lazy_static! {
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 #[serde(default, deny_unknown_fields)]
 pub struct IndexerSettings {
+    pub api_only: bool,
+
     pub concurrency: usize,
 
     #[serde_as(as = "serde_with::DurationSeconds<u64>")]
@@ -84,6 +86,7 @@ pub struct IndexerSettings {
 impl Default for IndexerSettings {
     fn default() -> Self {
         Self {
+            api_only: false,
             concurrency: 10,
             restart_delay: time::Duration::from_secs(60),
             polling_interval: time::Duration::from_secs(1),

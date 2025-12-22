@@ -327,7 +327,23 @@ WITH
             internal_transactions t
         WHERE
             t.from_address_hash = $1
-            OR t.to_address_hash = $1
+            AND (
+                -- type=call with index 0 is for the top level transaction info. 
+                -- we could just get everything and skip querying `transactions`,
+                -- but blockscout uses a partial index that doesn't include this
+                type::text = 'call'::text AND index > 0 OR type::text <> 'call'::text
+            )
+        UNION
+        SELECT
+            MIN(t.block_number) AS first_seen_block,
+            MAX(t.block_number) AS last_seen_block
+        FROM
+            internal_transactions t
+        WHERE
+            t.to_address_hash = $1
+            AND (
+                type::text = 'call'::text AND index > 0 OR type::text <> 'call'::text
+            )
         UNION
         SELECT
             MIN(t.block_number) AS first_seen_block,

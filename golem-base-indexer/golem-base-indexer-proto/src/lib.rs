@@ -765,6 +765,7 @@ impl From<ConsensusInfo> for v1::ConsensusInfoResponse {
             rollup_gas_used: v.gas.gas_used.to_string(),
             rollup_gas_price: v.gas.gas_price.to_string(),
             rollup_transaction_fee: v.gas.transaction_fee.to_string(),
+            rollup_average_transaction_cost: v.gas.average_transaction_cost.to_string(),
         }
     }
 }
