@@ -133,7 +133,7 @@ where
             drop trigger if exists optimism_children_handle_logs_insert on logs;
             drop function if exists optimism_children_queue_logs_processing;
             drop table if exists optimism_children_pending_logs;
-            drop table if exists optimism_children_transaction_deposited_events;
+            drop table if exists optimism_children_transaction_deposited_events_v0;
         "#;
         crate::from_sql(manager, sql).await
     }

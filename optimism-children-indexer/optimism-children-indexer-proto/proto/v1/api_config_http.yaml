@@ -6,6 +6,9 @@ http:
     - selector: blockscout.optimismChildrenIndexer.v1.OptimismChildrenIndexerService.GetDeposits
       get: /api/v1/deposits
 
+    - selector: blockscout.optimismChildrenIndexer.v1.OptimismChildrenIndexerService.GetWithdrawals
+      get: /api/v1/withdrawals
+
     #################### Health ####################
 
     - selector: blockscout.optimismChildrenIndexer.v1.Health.Check

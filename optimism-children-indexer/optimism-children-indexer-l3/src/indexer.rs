@@ -7,7 +7,7 @@ use super::{
     Layer3IndexerTask,
     types::{
         ChainId, Layer3IndexerTaskOutput, Layer3IndexerTaskOutputItem,
-        optimism_children_l3_deposits,
+        optimism_children_l3_deposits, optimism_children_l3_withdrawals,
     },
 };
 
@@ -272,17 +272,26 @@ impl Layer3Indexer {
 
         // Separate items by type
         let mut deposits: Vec<optimism_children_l3_deposits::ActiveModel> = Vec::new();
+        let mut withdrawals: Vec<optimism_children_l3_withdrawals::ActiveModel> = Vec::new();
 
         for item in items {
             match item {
                 Layer3IndexerTaskOutputItem::Deposit(deposit) => {
                     deposits.push(deposit.into());
                 }
+                Layer3IndexerTaskOutputItem::Withdrawal(withdrawal) => {
+                    withdrawals.push(withdrawal.try_into()?);
+                }
             }
         }
 
         // Store deposits
         optimism_children_l3_deposits::Entity::insert_many(deposits)
+            .exec(db_tx)
+            .await?;
+
+        // Store withdrawals
+        optimism_children_l3_withdrawals::Entity::insert_many(withdrawals)
             .exec(db_tx)
             .await?;
 

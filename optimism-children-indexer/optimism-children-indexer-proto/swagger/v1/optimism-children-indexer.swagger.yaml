@@ -35,6 +35,31 @@ paths:
           format: uint64
       tags:
         - OptimismChildrenIndexerService
+  /api/v1/withdrawals:
+    get:
+      operationId: OptimismChildrenIndexerService_GetWithdrawals
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/v1WithdrawalsResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+      parameters:
+        - name: page
+          in: query
+          required: false
+          type: string
+          format: uint64
+        - name: page_size
+          in: query
+          required: false
+          type: string
+          format: uint64
+      tags:
+        - OptimismChildrenIndexerService
   /health:
     get:
       summary: |-
@@ -164,3 +189,75 @@ definitions:
         type: string
       success:
         type: boolean
+  v1Withdrawal:
+    type: object
+    properties:
+      chain_id:
+        type: string
+      l3_block_number:
+        type: string
+        format: uint64
+      l3_block_hash:
+        type: string
+      l3_tx_hash:
+        type: string
+      nonce:
+        type: string
+      sender:
+        type: string
+      target:
+        type: string
+      value:
+        type: string
+      gas_limit:
+        type: string
+      data:
+        type: string
+      withdrawal_hash:
+        type: string
+      proving_tx:
+        $ref: '#/definitions/v1WithdrawalProving'
+      finalizing_tx:
+        $ref: '#/definitions/v1WithdrawalFinalizing'
+  v1WithdrawalFinalizedEvent:
+    type: object
+    properties:
+      withdrawal_hash:
+        type: string
+      success:
+        type: boolean
+  v1WithdrawalFinalizing:
+    type: object
+    properties:
+      metadata:
+        $ref: '#/definitions/v1TxInfo'
+      event:
+        $ref: '#/definitions/v1WithdrawalFinalizedEvent'
+  v1WithdrawalProvenEvent:
+    type: object
+    properties:
+      withdrawal_hash:
+        type: string
+      from:
+        type: string
+      to:
+        type: string
+  v1WithdrawalProving:
+    type: object
+    properties:
+      metadata:
+        $ref: '#/definitions/v1TxInfo'
+      event:
+        $ref: '#/definitions/v1WithdrawalProvenEvent'
+  v1WithdrawalsResponse:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          $ref: '#/definitions/v1Withdrawal'
+      pagination:
+        $ref: '#/definitions/v1Pagination'
+      next_page_params:
+        $ref: '#/definitions/v1PaginationNextPage'
