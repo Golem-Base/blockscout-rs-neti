@@ -297,12 +297,33 @@ impl GolemBaseIndexer for GolemBaseIndexerService {
             })?
             .new_data;
 
+        // Get consensus info
+        let consensus_blocks_info = self
+            .services
+            .l3_rpc
+            .get_consensus_blocks_info_cached()
+            .await
+            .map_err(|err| {
+                tracing::error!(
+                    ?err,
+                    "failed to query block consensus data - cached blocks info"
+                );
+                Status::internal("failed to query block consensus data - cached blocks info")
+            })?;
+
+        let consensus = repository::block::consensus_info(block_number, consensus_blocks_info)
+            .map_err(|err| {
+                tracing::error!(?err, "failed to query block consensus info");
+                Status::internal("failed to query block consensus info")
+            })?;
+
         Ok(Response::new(BlockStatsResponse {
             counts: Some(counts.into()),
             storage: Some(v1::BlockStatsStorage {
                 block_bytes,
                 total_bytes,
             }),
+            consensus: Some(consensus.into()),
         }))
     }
 
