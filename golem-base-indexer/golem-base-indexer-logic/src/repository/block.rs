@@ -4,7 +4,8 @@ use sea_orm::{prelude::*, DbBackend, FromQueryResult, QueryOrder, QuerySelect, S
 use tracing::instrument;
 
 use crate::types::{
-    BlockEntitiesCount, BlockNewData, BlockNumber, BlockStorageDiff, BlockStorageUsage,
+    BlockConsensusInfo, BlockEntitiesCount, BlockNewData, BlockNumber, BlockStorageDiff,
+    BlockStorageUsage, ConsensusBlocksInfo,
 };
 
 use super::sql;
@@ -237,4 +238,28 @@ pub async fn mark_stats_dirty<T: ConnectionTrait>(db: &T, block_number: BlockNum
     .await?;
 
     Ok(())
+}
+
+pub fn consensus_info(
+    block_number: BlockNumber,
+    blocks_info: ConsensusBlocksInfo,
+) -> Result<BlockConsensusInfo> {
+    let (status, expected_safe_at_block) = if block_number <= blocks_info.finalized.block_number {
+        ("finalized".to_string(), None)
+    } else if block_number <= blocks_info.safe.block_number {
+        ("safe".to_string(), None)
+    } else if block_number <= blocks_info.latest.block_number {
+        (
+            "unsafe".to_string(),
+            Some(blocks_info.latest.block_number + (block_number - blocks_info.safe.block_number)),
+        )
+    } else {
+        // Requested block number is greater than latest
+        ("unknown".to_string(), None)
+    };
+
+    Ok(BlockConsensusInfo {
+        status,
+        expected_safe_at_block,
+    })
 }

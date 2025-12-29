@@ -1,8 +1,9 @@
-use crate::helpers;
+use crate::helpers::{self, utils::gen_block_resp};
 
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
 use serde_json::{json, Value};
+use wiremock::{matchers::method, Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
@@ -10,8 +11,22 @@ async fn block_stats_should_work() {
     // Setup
     let db = helpers::init_db("test", "block_stats_should_work").await;
     let client = db.client();
-    let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
     helpers::load_data(&*client, include_str!("../fixtures/sample_data.sql")).await;
+    let rpc_mock = MockServer::start().await;
+    let rpc_response = serde_json::json!([
+        gen_block_resp(7, 123, 0), // latest
+        gen_block_resp(5, 234, 1), // safe
+        gen_block_resp(2, 345, 2), // finalized
+    ]);
+    Mock::given(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(&rpc_response))
+        .mount(&rpc_mock)
+        .await;
+    let base = helpers::init_golem_base_indexer_server(db, |mut x| {
+        x.external_services.l3_rpc_url = rpc_mock.uri();
+        x
+    })
+    .await;
 
     Indexer::new(client, Default::default())
         .tick()
@@ -32,9 +47,14 @@ async fn block_stats_should_work() {
         "block_bytes": "0",
         "total_bytes": "0",
     });
+    let consensus: Value = json!({
+        "status": "finalized",
+        "expected_safe_at_block": null,
+    });
     let expected = json!({
         "counts": counts,
         "storage": storage,
+        "consensus": consensus,
     });
     assert_eq!(response, expected);
 
@@ -52,9 +72,14 @@ async fn block_stats_should_work() {
         "block_bytes": "25",
         "total_bytes": "25",
     });
+    let consensus: Value = json!({
+        "status": "finalized",
+        "expected_safe_at_block": null,
+    });
     let expected = json!({
         "counts": counts,
         "storage": storage,
+        "consensus": consensus,
     });
     assert_eq!(response, expected);
 
@@ -72,9 +97,14 @@ async fn block_stats_should_work() {
         "block_bytes": "25",
         "total_bytes": "50",
     });
+    let consensus: Value = json!({
+        "status": "safe",
+        "expected_safe_at_block": null,
+    });
     let expected = json!({
         "counts": counts,
         "storage": storage,
+        "consensus": consensus,
     });
     assert_eq!(response, expected);
 
@@ -92,9 +122,14 @@ async fn block_stats_should_work() {
         "block_bytes": "42",
         "total_bytes": "92",
     });
+    let consensus: Value = json!({
+        "status": "safe",
+        "expected_safe_at_block": null,
+    });
     let expected = json!({
         "counts": counts,
         "storage": storage,
+        "consensus": consensus,
     });
     assert_eq!(response, expected);
 
@@ -112,9 +147,14 @@ async fn block_stats_should_work() {
         "block_bytes": "26",
         "total_bytes": "118",
     });
+    let consensus: Value = json!({
+        "status": "safe",
+        "expected_safe_at_block": null,
+    });
     let expected = json!({
         "counts": counts,
         "storage": storage,
+        "consensus": consensus,
     });
     assert_eq!(response, expected);
 
@@ -132,9 +172,14 @@ async fn block_stats_should_work() {
         "block_bytes": "95",
         "total_bytes": "121",
     });
+    let consensus: Value = json!({
+        "status": "unsafe",
+        "expected_safe_at_block": "8",
+    });
     let expected = json!({
         "counts": counts,
         "storage": storage,
+        "consensus": consensus,
     });
     assert_eq!(response, expected);
 
@@ -152,9 +197,14 @@ async fn block_stats_should_work() {
         "block_bytes": "0",
         "total_bytes": "88",
     });
+    let consensus: Value = json!({
+        "status": "unsafe",
+        "expected_safe_at_block": "9",
+    });
     let expected = json!({
         "counts": counts,
         "storage": storage,
+        "consensus": consensus,
     });
     assert_eq!(response, expected);
 
@@ -172,9 +222,14 @@ async fn block_stats_should_work() {
         "block_bytes": "0",
         "total_bytes": "88",
     });
+    let consensus: Value = json!({
+        "status": "unknown",
+        "expected_safe_at_block": null,
+    });
     let expected = json!({
         "counts": counts,
         "storage": storage,
+        "consensus": consensus,
     });
     assert_eq!(response, expected);
 }

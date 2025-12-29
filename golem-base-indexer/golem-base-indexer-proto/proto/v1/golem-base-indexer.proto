@@ -304,6 +304,7 @@ message BlockStatsRequest {
 message BlockStatsResponse {
   BlockStatsCounts counts = 1;
   BlockStatsStorage storage = 2;
+  BlockStatsConsensus consensus = 3;
 }
 
 message BlockStatsCounts {
@@ -318,6 +319,11 @@ message BlockStatsCounts {
 message BlockStatsStorage {
   uint64 block_bytes = 1;
   uint64 total_bytes = 2;
+}
+
+message BlockStatsConsensus {
+  string status = 1;
+  optional uint64 expected_safe_at_block = 2;
 }
 
 message ListCustomContractTransactionsRequest {
