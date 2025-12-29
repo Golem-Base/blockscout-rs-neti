@@ -910,6 +910,14 @@ definitions:
       changeowner_count:
         type: string
         format: uint64
+  v1BlockStatsConsensus:
+    type: object
+    properties:
+      status:
+        type: string
+      expected_safe_at_block:
+        type: string
+        format: uint64
   v1BlockStatsCounts:
     type: object
     properties:
@@ -938,6 +946,8 @@ definitions:
         $ref: '#/definitions/v1BlockStatsCounts'
       storage:
         $ref: '#/definitions/v1BlockStatsStorage'
+      consensus:
+        $ref: '#/definitions/v1BlockStatsConsensus'
   v1BlockStatsStorage:
     type: object
     properties:
