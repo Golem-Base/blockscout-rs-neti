@@ -292,6 +292,7 @@ pub async fn batch_insert_string_attribute<T: ConnectionTrait>(
         .map(golem_base_string_annotations::ActiveModel::try_from)
         .collect::<Result<Vec<_>>>()?;
     golem_base_string_annotations::Entity::insert_many(models)
+        .on_empty_do_nothing()
         .exec(db)
         .await
         .with_context(|| "Failed to insert string attributes")?;
@@ -309,6 +310,7 @@ pub async fn batch_insert_numeric_attribute<T: ConnectionTrait>(
         .map(golem_base_numeric_annotations::ActiveModel::try_from)
         .collect::<Result<Vec<_>>>()?;
     golem_base_numeric_annotations::Entity::insert_many(models)
+        .on_empty_do_nothing()
         .exec(db)
         .await
         .with_context(|| "Failed to insert numeric attributes")?;
