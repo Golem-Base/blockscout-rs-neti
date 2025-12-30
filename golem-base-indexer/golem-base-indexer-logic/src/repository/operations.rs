@@ -520,6 +520,7 @@ pub async fn batch_insert_operation<T: ConnectionTrait>(db: &T, ops: Vec<Operati
         .collect::<Result<Vec<_>>>()?;
 
     golem_base_operations::Entity::insert_many(models)
+        .on_empty_do_nothing()
         .exec(db)
         .await
         .with_context(|| "Failed to insert operations")?;

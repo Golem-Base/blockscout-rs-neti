@@ -587,6 +587,7 @@ pub async fn batch_insert_history_entry<T: ConnectionTrait>(
         .collect::<Result<Vec<_>>>()?;
 
     golem_base_entity_history::Entity::insert_many(models)
+        .on_empty_do_nothing()
         .exec(db)
         .await
         .context("Failed to insert history entries")?;
