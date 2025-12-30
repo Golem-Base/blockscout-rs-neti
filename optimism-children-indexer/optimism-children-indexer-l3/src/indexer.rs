@@ -287,11 +287,13 @@ impl Layer3Indexer {
 
         // Store deposits
         optimism_children_l3_deposits::Entity::insert_many(deposits)
+            .on_empty_do_nothing()
             .exec(db_tx)
             .await?;
 
         // Store withdrawals
         optimism_children_l3_withdrawals::Entity::insert_many(withdrawals)
+            .on_empty_do_nothing()
             .exec(db_tx)
             .await?;
 
