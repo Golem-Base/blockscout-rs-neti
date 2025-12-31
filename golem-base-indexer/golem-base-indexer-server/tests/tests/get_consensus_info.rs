@@ -1,6 +1,6 @@
 use std::thread::sleep;
 
-use crate::helpers;
+use crate::helpers::{self, utils::gen_block_resp};
 
 use blockscout_service_launcher::test_server;
 use wiremock::{
@@ -50,38 +50,6 @@ async fn test_get_consensus_info() {
 
     // Allow cache to expire
     sleep(std::time::Duration::from_secs(1));
-
-    fn gen_block_resp(block_number: u64, timestamp: u64, rpc_id: usize) -> serde_json::Value {
-        let block_number_hex = format!("0x{block_number:x}");
-        let timestamp_hex = format!("0x{timestamp:x}");
-
-        serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": rpc_id,
-            "result": {
-                "hash": format!("0x{:064x}", block_number + 0x1000000000000000),
-                "number": block_number_hex,
-                "timestamp": timestamp_hex,
-                "parentHash": format!("0x{:064x}", block_number - 1 + 0x1000000000000000),
-                "difficulty": "0x0",
-                "totalDifficulty": "0x0",
-                "gasLimit": "0x1000000",
-                "gasUsed": "0x0",
-                "miner": "0x0000000000000000000000000000000000000000",
-                "nonce": "0x0000000000000000",
-                "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
-                "stateRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "receiptsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "transactionsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
-                "extraData": "0x",
-                "size": "0x0",
-                "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                "transactions": [],
-                "uncles": []
-            }
-        })
-    }
 
     // IDs will increment with each request
     let rpc_response = serde_json::json!([

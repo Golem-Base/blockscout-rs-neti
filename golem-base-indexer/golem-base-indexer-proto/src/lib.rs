@@ -4,10 +4,11 @@ use const_hex::traits::ToHexExt;
 
 use anyhow::{anyhow, Result};
 use golem_base_indexer_logic::types::{
-    AddressLeaderboardRanks, BlockEntitiesCount, BlockGasUsageLimitPoint, BlockOperationPoint,
-    BlockTransactionPoint, ChartInfo, ChartPoint, ConsensusInfo, EntitiesAverages, EntitiesFilter,
-    Entity, EntityDataHistogram, EntityHistoryEntry, EntityHistoryFilter, EntityStatus,
-    EntityWithExpTimestamp, FullEntity, LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
+    AddressLeaderboardRanks, BlockConsensusInfo, BlockEntitiesCount, BlockGasUsageLimitPoint,
+    BlockOperationPoint, BlockTransactionPoint, ChartInfo, ChartPoint, ConsensusInfo,
+    EntitiesAverages, EntitiesFilter, Entity, EntityDataHistogram, EntityHistoryEntry,
+    EntityHistoryFilter, EntityStatus, EntityWithExpTimestamp, FullEntity,
+    LeaderboardBiggestSpendersItem, LeaderboardDataOwnedItem,
     LeaderboardEffectivelyLargestEntitiesItem, LeaderboardEntitiesCreatedItem,
     LeaderboardEntitiesOwnedItem, LeaderboardLargestEntitiesItem, LeaderboardTopAccountsItem,
     ListEntitiesFilter, ListOperationsFilter, NumericAttribute, NumericAttributeWithRelations,
@@ -775,6 +776,15 @@ impl From<EntitiesAverages> for v1::EntitiesAveragesResponse {
         Self {
             average_entity_size: v.average_entitiy_size,
             average_entity_btl: v.average_entity_btl,
+        }
+    }
+}
+
+impl From<BlockConsensusInfo> for v1::BlockStatsConsensus {
+    fn from(v: BlockConsensusInfo) -> Self {
+        Self {
+            status: v.status,
+            expected_safe_at_block: v.expected_safe_at_block,
         }
     }
 }

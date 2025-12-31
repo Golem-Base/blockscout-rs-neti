@@ -593,3 +593,9 @@ pub struct BlockStorageDiff {
     pub block_number: BlockNumber,
     pub storage_diff: i64,
 }
+
+#[derive(Clone, Debug, Default)]
+pub struct BlockConsensusInfo {
+    pub status: String,
+    pub expected_safe_at_block: Option<BlockNumber>,
+}
