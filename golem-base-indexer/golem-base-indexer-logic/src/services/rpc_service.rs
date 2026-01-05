@@ -4,19 +4,21 @@ use alloy::rpc::{
     client::{ClientBuilder, RpcClient},
     types::Block as RpcBlock,
 };
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use moka::future::Cache;
 use tracing::instrument;
 use url::Url;
 
-use crate::types::{ConsensusBlockInfo, ConsensusBlocksInfo};
+use crate::types::{ConsensusBlockInfo, ConsensusBlocksInfo, Timestamp};
 
-impl From<RpcBlock> for ConsensusBlockInfo {
-    fn from(v: RpcBlock) -> Self {
-        Self {
+impl TryFrom<RpcBlock> for ConsensusBlockInfo {
+    type Error = anyhow::Error;
+    fn try_from(v: RpcBlock) -> Result<Self> {
+        Ok(Self {
             block_number: v.number(),
-            timestamp: v.header.timestamp,
-        }
+            timestamp: Timestamp::from_timestamp_secs(v.header.timestamp.try_into()?)
+                .ok_or(anyhow!("Timestamp out of range"))?,
+        })
     }
 }
 
@@ -61,9 +63,9 @@ impl RpcService {
             .context("failed to get consensus blocks info")?;
 
         Ok(ConsensusBlocksInfo {
-            latest: latest.into(),
-            safe: safe.into(),
-            finalized: finalized.into(),
+            latest: latest.try_into()?,
+            safe: safe.try_into()?,
+            finalized: finalized.try_into()?,
         })
     }
 

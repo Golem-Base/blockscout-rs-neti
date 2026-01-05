@@ -915,9 +915,8 @@ definitions:
     properties:
       status:
         type: string
-      expected_safe_at_block:
+      expected_safe_at_timestamp:
         type: string
-        format: uint64
   v1BlockStatsCounts:
     type: object
     properties:

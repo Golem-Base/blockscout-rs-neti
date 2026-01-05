@@ -784,7 +784,7 @@ impl From<BlockConsensusInfo> for v1::BlockStatsConsensus {
     fn from(v: BlockConsensusInfo) -> Self {
         Self {
             status: v.status,
-            expected_safe_at_block: v.expected_safe_at_block,
+            expected_safe_at_timestamp: v.expected_safe_at_timestamp.map(|v| v.to_string()),
         }
     }
 }
