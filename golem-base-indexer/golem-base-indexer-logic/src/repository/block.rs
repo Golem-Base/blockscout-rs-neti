@@ -1,4 +1,7 @@
+use std::ops::Add;
+
 use anyhow::{Context, Result};
+use chrono::Duration;
 use golem_base_indexer_entity::blocks;
 use sea_orm::{prelude::*, DbBackend, FromQueryResult, QueryOrder, QuerySelect, Statement};
 use tracing::instrument;
@@ -244,14 +247,15 @@ pub fn consensus_info(
     block_number: BlockNumber,
     blocks_info: ConsensusBlocksInfo,
 ) -> Result<BlockConsensusInfo> {
-    let (status, expected_safe_at_block) = if block_number <= blocks_info.finalized.block_number {
+    let (status, expected_safe_at_timestamp) = if block_number <= blocks_info.finalized.block_number
+    {
         ("finalized".to_string(), None)
     } else if block_number <= blocks_info.safe.block_number {
         ("safe".to_string(), None)
     } else if block_number <= blocks_info.latest.block_number {
         (
             "unsafe".to_string(),
-            Some(blocks_info.latest.block_number + (block_number - blocks_info.safe.block_number)),
+            Some(blocks_info.safe.timestamp.add(Duration::minutes(20))),
         )
     } else {
         // Requested block number is greater than latest
@@ -260,6 +264,6 @@ pub fn consensus_info(
 
     Ok(BlockConsensusInfo {
         status,
-        expected_safe_at_block,
+        expected_safe_at_timestamp,
     })
 }

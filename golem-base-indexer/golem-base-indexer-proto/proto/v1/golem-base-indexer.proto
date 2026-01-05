@@ -323,7 +323,7 @@ message BlockStatsStorage {
 
 message BlockStatsConsensus {
   string status = 1;
-  optional uint64 expected_safe_at_block = 2;
+  optional string expected_safe_at_timestamp = 2;
 }
 
 message ListCustomContractTransactionsRequest {

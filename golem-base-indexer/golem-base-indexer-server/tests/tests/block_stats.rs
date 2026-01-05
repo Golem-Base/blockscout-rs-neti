@@ -49,7 +49,7 @@ async fn block_stats_should_work() {
     });
     let consensus: Value = json!({
         "status": "finalized",
-        "expected_safe_at_block": null,
+        "expected_safe_at_timestamp": null,
     });
     let expected = json!({
         "counts": counts,
@@ -74,7 +74,7 @@ async fn block_stats_should_work() {
     });
     let consensus: Value = json!({
         "status": "finalized",
-        "expected_safe_at_block": null,
+        "expected_safe_at_timestamp": null,
     });
     let expected = json!({
         "counts": counts,
@@ -99,7 +99,7 @@ async fn block_stats_should_work() {
     });
     let consensus: Value = json!({
         "status": "safe",
-        "expected_safe_at_block": null,
+        "expected_safe_at_timestamp": null,
     });
     let expected = json!({
         "counts": counts,
@@ -124,7 +124,7 @@ async fn block_stats_should_work() {
     });
     let consensus: Value = json!({
         "status": "safe",
-        "expected_safe_at_block": null,
+        "expected_safe_at_timestamp": null,
     });
     let expected = json!({
         "counts": counts,
@@ -149,7 +149,7 @@ async fn block_stats_should_work() {
     });
     let consensus: Value = json!({
         "status": "safe",
-        "expected_safe_at_block": null,
+        "expected_safe_at_timestamp": null,
     });
     let expected = json!({
         "counts": counts,
@@ -174,7 +174,7 @@ async fn block_stats_should_work() {
     });
     let consensus: Value = json!({
         "status": "unsafe",
-        "expected_safe_at_block": "8",
+        "expected_safe_at_timestamp": "1970-01-01 00:23:54 UTC",
     });
     let expected = json!({
         "counts": counts,
@@ -199,7 +199,7 @@ async fn block_stats_should_work() {
     });
     let consensus: Value = json!({
         "status": "unsafe",
-        "expected_safe_at_block": "9",
+        "expected_safe_at_timestamp": "1970-01-01 00:23:54 UTC",
     });
     let expected = json!({
         "counts": counts,
@@ -224,7 +224,7 @@ async fn block_stats_should_work() {
     });
     let consensus: Value = json!({
         "status": "unknown",
-        "expected_safe_at_block": null,
+        "expected_safe_at_timestamp": null,
     });
     let expected = json!({
         "counts": counts,

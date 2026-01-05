@@ -547,7 +547,7 @@ pub struct EntityDataHistogram {
 #[derive(Clone, Debug, Default)]
 pub struct ConsensusBlockInfo {
     pub block_number: BlockNumber,
-    pub timestamp: u64,
+    pub timestamp: Timestamp,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -597,5 +597,5 @@ pub struct BlockStorageDiff {
 #[derive(Clone, Debug, Default)]
 pub struct BlockConsensusInfo {
     pub status: String,
-    pub expected_safe_at_block: Option<BlockNumber>,
+    pub expected_safe_at_timestamp: Option<Timestamp>,
 }
