@@ -1,5 +1,6 @@
 pub use alloy::primitives::U256;
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 pub use optimism_children_indexer_entity::{
     optimism_children_l3_chains as Layer3Chains, optimism_children_l3_deposits,
     optimism_children_l3_withdrawals,
@@ -9,6 +10,9 @@ use std::str::FromStr;
 
 /// Type used for chain IDs
 pub type ChainId = i64;
+
+/// Type used for timestamps
+pub type Timestamp = DateTime<Utc>;
 
 /// Type returned from indexer task to indexer on successful pass
 pub type Layer3IndexerTaskOutput = (Layer3Chains::Model, Vec<Layer3IndexerTaskOutputItem>);
@@ -28,6 +32,7 @@ pub struct Layer3Deposit {
     pub to: Vec<u8>,
     pub block_number: i64,
     pub block_hash: Vec<u8>,
+    pub block_timestamp: Timestamp,
     pub tx_hash: Vec<u8>,
     pub source_hash: Vec<u8>,
     pub success: bool,
@@ -42,6 +47,7 @@ impl From<Layer3Deposit> for optimism_children_l3_deposits::ActiveModel {
             to: Set(v.to),
             block_number: Set(v.block_number),
             block_hash: Set(v.block_hash),
+            block_timestamp: Set(v.block_timestamp.naive_utc()),
             tx_hash: Set(v.tx_hash),
             source_hash: Set(v.source_hash),
             success: Set(v.success),
@@ -56,6 +62,7 @@ pub struct Layer3Withdrawal {
     pub chain_id: i64,
     pub block_number: i64,
     pub block_hash: Vec<u8>,
+    pub block_timestamp: Timestamp,
     pub tx_hash: Vec<u8>,
     pub nonce: U256,
     pub sender: Vec<u8>,
@@ -75,6 +82,7 @@ impl TryFrom<Layer3Withdrawal> for optimism_children_l3_withdrawals::ActiveModel
             chain_id: Set(v.chain_id),
             block_number: Set(v.block_number),
             block_hash: Set(v.block_hash),
+            block_timestamp: Set(v.block_timestamp.naive_utc()),
             tx_hash: Set(v.tx_hash),
             nonce: Set(BigDecimal::from_str(&v.nonce.to_string())?),
             sender: Set(v.sender),

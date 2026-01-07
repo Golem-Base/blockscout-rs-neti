@@ -7,6 +7,7 @@ mod m20251105_083000_create_optimism_children_l3_deposits;
 mod m20251210_071929_create_optimism_children_l3_withdrawals;
 mod m20251218_092237_queue_withdrawal_events;
 mod m20251219_152559_create_withdrawal_tables;
+mod m20260107_103511_add_deposits_withdrawals_timestamps;
 
 pub struct Migrator;
 
@@ -20,6 +21,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251210_071929_create_optimism_children_l3_withdrawals::Migration),
             Box::new(m20251218_092237_queue_withdrawal_events::Migration),
             Box::new(m20251219_152559_create_withdrawal_tables::Migration),
+            Box::new(m20260107_103511_add_deposits_withdrawals_timestamps::Migration),
         ]
     }
 
