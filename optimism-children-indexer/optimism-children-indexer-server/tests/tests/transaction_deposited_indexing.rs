@@ -4,7 +4,7 @@ use alloy_primitives::{address, b256, bytes};
 use optimism_children_indexer_logic::{
     repository,
     types::{
-        DepositV0, EventMetadata, FullDeposit, FullEvent, PaginationParams,
+        DepositV0, EventMetadata, FullDeposit, FullEvent, PaginationParams, Timestamp,
         TransactionDepositedEvent,
     },
     Indexer,
@@ -52,6 +52,7 @@ async fn test_transaction_deposited_indexing() {
                         block_hash: b256!("0x7ec13ee95beee46e78b51559fbf985b2d1124c5b98e7ecc6174ddf90afa30f16"),
                         index: 528,
                         block_number: 9398574,
+                        block_timestamp: "2025-11-04T17:18:24Z".parse::<Timestamp>().unwrap(),
                     },
                     event: TransactionDepositedEvent {
                         from: address!("0x481c965e6579099f005387b4c1d7fb03bc302f4b"),
@@ -81,7 +82,8 @@ async fn test_transaction_deposited_indexing() {
                             "0x3466e222249e9f13be5130d4623e1fc2a5bc1c6c258c510773b50977be70f5df"
                         ),
                         index: 2,
-                        block_number: 29466
+                        block_number: 29466,
+                        block_timestamp: "2025-11-04T17:30:48Z".parse::<Timestamp>().unwrap(),
                     },
                     event: TransactionDepositedEvent {
                         from: address!("0x3c41d8343a1cba9fd6f0356039b6c6d844610321"),
@@ -111,7 +113,8 @@ async fn test_transaction_deposited_indexing() {
                             "0xff58bc22f06613e01ef3d63ceeb24e9209ec304c7b71599f84bf804187bc2867"
                         ),
                         index: 2,
-                        block_number: 29280
+                        block_number: 29280,
+                        block_timestamp: "2025-11-04T17:18:24Z".parse::<Timestamp>().unwrap(),
                     },
                     event: TransactionDepositedEvent {
                         from: address!("0x3c41d8343a1cba9fd6f0356039b6c6d844610321"),

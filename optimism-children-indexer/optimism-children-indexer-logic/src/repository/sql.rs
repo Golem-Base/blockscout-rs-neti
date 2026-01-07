@@ -45,6 +45,7 @@ select
     l3d.chain_id as chain_id,
     l3d.block_hash as execution_tx_block_hash,
     l3d.block_number as execution_tx_block_number,
+    l3d.block_timestamp as execution_tx_block_timestamp,
     l3d.to as execution_tx_to,
     l3d.from as execution_tx_from,
     l3d.tx_hash as execution_tx_hash,

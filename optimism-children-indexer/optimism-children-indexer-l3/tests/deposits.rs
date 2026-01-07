@@ -3,7 +3,7 @@ mod helpers;
 use helpers::{eth_mock_server::EthMockServer, utils::build_test_chain_config};
 use optimism_children_indexer_l3::{
     Layer3IndexerTask,
-    types::{Layer3Deposit, Layer3IndexerTaskOutputItem},
+    types::{Layer3Deposit, Layer3IndexerTaskOutputItem, Timestamp},
 };
 
 const MOCKED_CHAIN_ID: i64 = 1234567890;
@@ -127,6 +127,7 @@ async fn indexing_deposits_should_work() {
         tx_hash: const_hex::decode(DEPOSIT_TX_HASH).unwrap(),
         source_hash: const_hex::decode(DEPOSIT_TX_SOURCE_HASH).unwrap(),
         success: true,
+        block_timestamp: "2021-01-14T08:25:36Z".parse::<Timestamp>().unwrap(),
     };
     assert_eq!(deposits[0], extracted_deposit);
 }
