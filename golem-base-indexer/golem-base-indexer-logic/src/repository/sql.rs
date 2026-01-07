@@ -306,8 +306,8 @@ WHERE
 pub const BLOCK_OPERATIONS_TIMESERIES: &str = r#"
 WITH block_range AS (
     SELECT
-        GREATEST(1, (SELECT MAX(number) FROM blocks) - $1 + 1) AS min_block,
-        (SELECT MAX(number) FROM blocks) AS max_block
+        GREATEST(1, COALESCE((SELECT MAX(number) FROM blocks), 0)::bigint - $1 + 1) AS min_block,
+        COALESCE((SELECT MAX(number) FROM blocks), 0)::bigint AS max_block
 ),
 all_blocks AS (
     SELECT generate_series(
@@ -317,11 +317,11 @@ all_blocks AS (
 )
 SELECT
     ab.block_number,
-    COALESCE(COUNT(*) FILTER (WHERE operation = 'create'), 0) AS create_count,
-    COALESCE(COUNT(*) FILTER (WHERE operation = 'update'), 0) AS update_count,
-    COALESCE(COUNT(*) FILTER (WHERE operation = 'delete'), 0) AS delete_count,
-    COALESCE(COUNT(*) FILTER (WHERE operation = 'extend'), 0) AS extend_count,
-    COALESCE(COUNT(*) FILTER (WHERE operation = 'changeowner'), 0) AS changeowner_count
+    COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
+    COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
+    COUNT(*) FILTER (WHERE operation = 'delete') AS delete_count,
+    COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count,
+    COUNT(*) FILTER (WHERE operation = 'changeowner') AS changeowner_count
 FROM all_blocks ab
 LEFT JOIN golem_base_operations gbo ON ab.block_number = gbo.block_number
 GROUP BY ab.block_number
