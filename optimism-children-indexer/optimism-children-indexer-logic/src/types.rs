@@ -128,6 +128,7 @@ pub struct EventMetadata {
     pub block_hash: BlockHash,
     pub index: u64,
     pub block_number: BlockNumber,
+    pub block_timestamp: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,6 +159,7 @@ pub struct FullDeposit<T> {
 pub struct ExecutionTransaction {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
+    pub block_timestamp: Timestamp,
     pub hash: TxHash,
     pub from: Address,
     pub to: Address,
@@ -182,6 +184,7 @@ pub struct FullWithdrawal {
     pub chain_id: ChainId,
     pub l3_block_number: BlockNumber,
     pub l3_block_hash: BlockHash,
+    pub l3_block_timestamp: Timestamp,
     pub l3_tx_hash: TxHash,
     pub nonce: U256,
     pub sender: Address,

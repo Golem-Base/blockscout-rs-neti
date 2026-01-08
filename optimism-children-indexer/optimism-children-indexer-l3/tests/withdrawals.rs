@@ -4,7 +4,7 @@ use alloy::primitives::{U256, address, hex};
 use helpers::{eth_mock_server::EthMockServer, utils::build_test_chain_config};
 use optimism_children_indexer_l3::{
     Layer3IndexerTask,
-    types::{Layer3IndexerTaskOutputItem, Layer3Withdrawal},
+    types::{Layer3IndexerTaskOutputItem, Layer3Withdrawal, Timestamp},
 };
 use std::str::FromStr;
 
@@ -121,6 +121,7 @@ async fn indexing_withdrawals_should_work() {
         chain_id: MOCKED_CHAIN_ID,
         block_number: INJECT_WITHDRAWAL_TX_AT_BLOCK as i64,
         block_hash: const_hex::decode(WITHDRAWAL_TX_BLOCK_HASH).unwrap(),
+        block_timestamp: "2021-01-14T08:25:36Z".parse::<Timestamp>().unwrap(),
         tx_hash: const_hex::decode(WITHDRAWAL_TX_HASH).unwrap(),
         nonce: U256::from_str(
             "1766847064778384329583297500742918515827483896875618958121606201292619789",

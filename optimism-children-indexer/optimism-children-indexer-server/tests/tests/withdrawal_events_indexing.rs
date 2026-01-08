@@ -4,8 +4,8 @@ use alloy_primitives::{address, b256, bytes, U256};
 use optimism_children_indexer_logic::{
     repository,
     types::{
-        EventMetadata, FullEvent, FullWithdrawal, PaginationParams, WithdrawalFinalizedEvent,
-        WithdrawalProvenEvent,
+        EventMetadata, FullEvent, FullWithdrawal, PaginationParams, Timestamp,
+        WithdrawalFinalizedEvent, WithdrawalProvenEvent,
     },
     Indexer,
 };
@@ -56,6 +56,7 @@ async fn withdrawal_events_indexing_should_work() {
             l3_block_hash: b256!(
                 "0x48079624a0b115a086742a6ab17ec5849c73d7b67264409e8b11e2c624622cc1"
             ),
+            l3_block_timestamp: "2025-12-16 05:13:09.095795Z".parse::<Timestamp>().unwrap(),
             l3_tx_hash: b256!("0xf40aa108279a01cd10c4ee1aa07099733f746b6cb6b18b9342d5d603ae7eec4c"),
             nonce: U256::from_str(
                 "1766847064778384329583297500742918515827483896875618958121606201292619792",
@@ -78,6 +79,7 @@ async fn withdrawal_events_indexing_should_work() {
             l3_block_hash: b256!(
                 "0x3d275c76cfcc2b73600f455f42fc27bbebbdd51752f800d451cbbad028677082"
             ),
+            l3_block_timestamp: "2025-12-16 05:13:09.095795Z".parse::<Timestamp>().unwrap(),
             l3_tx_hash: b256!("0xff9b299fabddbaa12a49c04e6a6088c69c10b93e64d5718d0b0e8b92659a3652"),
             nonce: U256::from_str(
                 "1766847064778384329583297500742918515827483896875618958121606201292619790",
@@ -103,6 +105,7 @@ async fn withdrawal_events_indexing_should_work() {
                     ),
                     index: 333,
                     block_number: 1716600,
+                    block_timestamp: "2025-06-23 16:33:27Z".parse::<Timestamp>().unwrap(),
                 },
                 event: WithdrawalProvenEvent {
                     withdrawal_hash: b256!(
@@ -120,6 +123,7 @@ async fn withdrawal_events_indexing_should_work() {
             l3_block_hash: b256!(
                 "0x7395f9d20e8e32c68e1257904d0dd950ebe0967b257df4f48440ee2fbc6e9023"
             ),
+            l3_block_timestamp: "2025-12-15T22:40:26.392458Z".parse::<Timestamp>().unwrap(),
             l3_tx_hash: b256!("0x91d89ac0e0d32971c8ed3de96d934215a64bcd1c59d2998f495279e708c1eaaa"),
             nonce: U256::from_str(
                 "1766847064778384329583297500742918515827483896875618958121606201292619789",
@@ -145,6 +149,7 @@ async fn withdrawal_events_indexing_should_work() {
                     ),
                     index: 222,
                     block_number: 1716500,
+                    block_timestamp: "2025-06-06 08:32:40Z".parse::<Timestamp>().unwrap(),
                 },
                 event: WithdrawalProvenEvent {
                     withdrawal_hash: b256!(
@@ -166,6 +171,7 @@ async fn withdrawal_events_indexing_should_work() {
                     ),
                     index: 111,
                     block_number: 1716393,
+                    block_timestamp: "2025-06-06 08:32:40Z".parse::<Timestamp>().unwrap(),
                 },
                 event: WithdrawalFinalizedEvent {
                     withdrawal_hash: b256!(

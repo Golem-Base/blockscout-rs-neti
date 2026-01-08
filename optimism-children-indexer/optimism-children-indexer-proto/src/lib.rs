@@ -57,6 +57,7 @@ impl From<EventMetadata> for v1::TxInfo {
             transaction_hash: v.transaction_hash.to_string(),
             block_hash: v.block_hash.to_string(),
             block_number: v.block_number,
+            block_timestamp: v.block_timestamp.to_rfc3339(),
             success: true,
         }
     }
@@ -70,6 +71,7 @@ impl From<ExecutionTransaction> for v1::TxInfo {
             transaction_hash: v.hash.to_string(),
             block_hash: v.block_hash.to_string(),
             block_number: v.block_number,
+            block_timestamp: v.block_timestamp.to_rfc3339(),
             success: v.success,
         }
     }
@@ -136,6 +138,7 @@ impl TryFrom<FullWithdrawal> for v1::Withdrawal {
             chain_id: v.chain_id.to_string(),
             l3_block_number: v.l3_block_number,
             l3_block_hash: v.l3_block_hash.to_string(),
+            l3_block_timestamp: v.l3_block_timestamp.to_rfc3339(),
             l3_tx_hash: v.l3_tx_hash.to_string(),
             nonce: v.nonce.to_string(),
             sender: v.sender.to_string(),

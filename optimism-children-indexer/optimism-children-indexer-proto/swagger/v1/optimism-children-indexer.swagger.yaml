@@ -183,6 +183,8 @@ definitions:
       block_number:
         type: string
         format: uint64
+      block_timestamp:
+        type: string
       from:
         type: string
       to:
@@ -198,6 +200,8 @@ definitions:
         type: string
         format: uint64
       l3_block_hash:
+        type: string
+      l3_block_timestamp:
         type: string
       l3_tx_hash:
         type: string
