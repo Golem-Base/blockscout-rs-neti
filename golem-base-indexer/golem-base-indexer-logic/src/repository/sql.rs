@@ -304,17 +304,28 @@ WHERE
 "#;
 
 pub const BLOCK_OPERATIONS_TIMESERIES: &str = r#"
+WITH block_range AS (
+    SELECT
+        GREATEST(1, COALESCE((SELECT MAX(number) FROM blocks), 0)::bigint - $1 + 1) AS min_block,
+        COALESCE((SELECT MAX(number) FROM blocks), 0)::bigint AS max_block
+),
+all_blocks AS (
+    SELECT generate_series(
+        (SELECT min_block FROM block_range),
+        (SELECT max_block FROM block_range)
+    ) AS block_number
+)
 SELECT
-    block_number,
+    ab.block_number,
     COUNT(*) FILTER (WHERE operation = 'create') AS create_count,
     COUNT(*) FILTER (WHERE operation = 'update') AS update_count,
     COUNT(*) FILTER (WHERE operation = 'delete') AS delete_count,
     COUNT(*) FILTER (WHERE operation = 'extend') AS extend_count,
     COUNT(*) FILTER (WHERE operation = 'changeowner') AS changeowner_count
-FROM golem_base_operations
-GROUP BY block_number
-ORDER BY block_number DESC
-LIMIT $1
+FROM all_blocks ab
+LEFT JOIN golem_base_operations gbo ON ab.block_number = gbo.block_number
+GROUP BY ab.block_number
+ORDER BY ab.block_number DESC
 "#;
 
 pub const GET_ADDRESS_ACTIVITY: &str = r#"
