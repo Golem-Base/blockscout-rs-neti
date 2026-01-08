@@ -2,7 +2,7 @@ use crate::helpers;
 
 use blockscout_service_launcher::test_server;
 use golem_base_indexer_logic::Indexer;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 #[tokio::test]
 #[ignore = "Needs database to run"]
@@ -164,4 +164,120 @@ async fn chart_block_operations_respects_limit() {
         chart_default.len() >= chart.len(),
         "default limit should return at least as many results as limit=5"
     );
+}
+
+#[tokio::test]
+#[ignore = "Need database to run"]
+async fn chart_block_operations_should_return_blocks_with_no_operations() {
+    // Setup
+    let db = helpers::init_db(
+        "test",
+        "chart_block_operations_should_return_blocks_with_no_operations",
+    )
+    .await;
+    let client = db.client();
+    let base = helpers::init_golem_base_indexer_server(db, |x| x).await;
+    helpers::load_data(&*client, include_str!("../fixtures/sample_data.sql")).await;
+
+    Indexer::new(client.clone(), Default::default())
+        .tick()
+        .await
+        .unwrap();
+
+    // Request range that includes blocks with no operations
+    let response: Value =
+        test_server::send_get_request(&base, "/api/v1/chart/block-operations?limit=10").await;
+
+    // Validate response
+    let expected = json!({
+      "chart": [
+        {
+          "block_number": "4",
+          "create_count": "1",
+          "update_count": "0",
+          "delete_count": "0",
+          "extend_count": "0",
+          "changeowner_count": "0"
+        },
+        {
+          "block_number": "5",
+          "create_count": "1",
+          "update_count": "0",
+          "delete_count": "0",
+          "extend_count": "0",
+          "changeowner_count": "0"
+        },
+        {
+          "block_number": "6",
+          "create_count": "2",
+          "update_count": "2",
+          "delete_count": "1",
+          "extend_count": "1",
+          "changeowner_count": "0"
+        },
+        {
+          "block_number": "7",
+          "create_count": "0",
+          "update_count": "0",
+          "delete_count": "1",
+          "extend_count": "0",
+          "changeowner_count": "1"
+        },
+        {
+          "block_number": "8",
+          "create_count": "0",
+          "update_count": "0",
+          "delete_count": "0",
+          "extend_count": "0",
+          "changeowner_count": "0"
+        },
+        {
+          "block_number": "9",
+          "create_count": "0",
+          "update_count": "0",
+          "delete_count": "0",
+          "extend_count": "0",
+          "changeowner_count": "0"
+        },
+        {
+          "block_number": "10",
+          "create_count": "0",
+          "update_count": "0",
+          "delete_count": "0",
+          "extend_count": "0",
+          "changeowner_count": "0"
+        },
+        {
+          "block_number": "11",
+          "create_count": "0",
+          "update_count": "0",
+          "delete_count": "0",
+          "extend_count": "0",
+          "changeowner_count": "0"
+        },
+        {
+          "block_number": "12",
+          "create_count": "0",
+          "update_count": "0",
+          "delete_count": "0",
+          "extend_count": "0",
+          "changeowner_count": "0"
+        },
+        {
+          "block_number": "13",
+          "create_count": "0",
+          "update_count": "0",
+          "delete_count": "0",
+          "extend_count": "0",
+          "changeowner_count": "0"
+        }
+      ],
+      "info": {
+        "id": "blockOperations",
+        "title": "Block Operations",
+        "description": "Number of operations per block by type"
+      }
+    });
+
+    assert_eq!(response, expected);
 }
