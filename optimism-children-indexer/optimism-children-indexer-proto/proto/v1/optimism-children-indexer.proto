@@ -32,9 +32,10 @@ message TxInfo {
   string transaction_hash = 1;
   string block_hash = 2;
   uint64 block_number = 3;
-  string from = 4;
-  string to = 5;
-  bool success = 6;
+  string block_timestamp =4;
+  string from = 5;
+  string to = 6;
+  bool success = 7;
 }
 
 message WithdrawalsResponse {
@@ -47,16 +48,17 @@ message Withdrawal {
   string chain_id = 1;
   uint64 l3_block_number = 2;
   string l3_block_hash = 3;
-  string l3_tx_hash = 4;
-  string nonce = 5;
-  string sender = 6;
-  string target = 7;
-  string value = 8;
-  string gas_limit = 9;
-  string data = 10;
-  string withdrawal_hash = 11;
-  optional WithdrawalProving proving_tx = 12;
-  optional WithdrawalFinalizing finalizing_tx = 13;
+  string l3_block_timestamp = 4;
+  string l3_tx_hash = 5;
+  string nonce = 6;
+  string sender = 7;
+  string target = 8;
+  string value = 9;
+  string gas_limit = 10;
+  string data = 11;
+  string withdrawal_hash = 12;
+  optional WithdrawalProving proving_tx = 13;
+  optional WithdrawalFinalizing finalizing_tx = 14;
 }
 
 message WithdrawalProving {

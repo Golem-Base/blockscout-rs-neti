@@ -3,10 +3,11 @@ use crate::{
     repository::sql,
     types::{
         ConsensusTx, DepositV0, EventMetadata, ExecutionTransaction, FullDeposit, FullEvent, Log,
-        PaginationMetadata, PaginationParams, TransactionDepositedEvent,
+        PaginationMetadata, PaginationParams, Timestamp, TransactionDepositedEvent,
     },
 };
 use anyhow::Result;
+use chrono::{NaiveDateTime, Utc};
 use optimism_children_indexer_entity::optimism_children_transaction_deposited_events_v0;
 use sea_orm::{prelude::*, ActiveValue::Set, FromQueryResult, Statement};
 use tracing::instrument;
@@ -19,6 +20,7 @@ struct DbDeposit {
     block_hash: Vec<u8>,
     index: i32,
     block_number: i32,
+    block_timestamp: NaiveDateTime,
     deposit_from: Vec<u8>,
     deposit_to: Vec<u8>,
     source_hash: Vec<u8>,
@@ -30,6 +32,7 @@ struct DbDeposit {
     chain_id: Option<i64>,
     execution_tx_block_hash: Option<Vec<u8>>,
     execution_tx_block_number: Option<i64>,
+    execution_tx_block_timestamp: Option<NaiveDateTime>,
     execution_tx_to: Option<Vec<u8>>,
     execution_tx_from: Option<Vec<u8>>,
     execution_tx_hash: Option<Vec<u8>>,
@@ -44,6 +47,7 @@ impl TryFrom<DbDeposit> for FullDeposit<DepositV0> {
             .execution_tx_block_hash
             .map(|execution_tx_block_hash| -> Result<ExecutionTransaction> {
                 assert!(value.execution_tx_block_number.is_some());
+                assert!(value.execution_tx_block_timestamp.is_some());
                 assert!(value.execution_tx_from.is_some());
                 assert!(value.execution_tx_to.is_some());
                 assert!(value.execution_tx_hash.is_some());
@@ -52,6 +56,10 @@ impl TryFrom<DbDeposit> for FullDeposit<DepositV0> {
                 Ok(ExecutionTransaction {
                     block_hash: execution_tx_block_hash.as_slice().try_into()?,
                     block_number: value.execution_tx_block_number.unwrap().try_into()?,
+                    block_timestamp: Timestamp::from_naive_utc_and_offset(
+                        value.execution_tx_block_timestamp.unwrap(),
+                        Utc,
+                    ),
                     hash: value.execution_tx_hash.unwrap().as_slice().try_into()?,
                     from: value.execution_tx_from.unwrap().as_slice().try_into()?,
                     to: value.execution_tx_to.unwrap().as_slice().try_into()?,
@@ -71,6 +79,10 @@ impl TryFrom<DbDeposit> for FullDeposit<DepositV0> {
                     block_hash: value.block_hash.as_slice().try_into()?,
                     index: value.index.try_into()?,
                     block_number: value.block_number.try_into()?,
+                    block_timestamp: Timestamp::from_naive_utc_and_offset(
+                        value.block_timestamp,
+                        Utc,
+                    ),
                 },
                 event: TransactionDepositedEvent {
                     from: value.deposit_from.as_slice().try_into()?,
@@ -114,6 +126,7 @@ pub async fn store_transaction_deposited<T: ConnectionTrait>(
         gas_limit: Set(event.deposit.gas_limit.into()),
         is_creation: Set(event.deposit.is_creation),
         calldata: Set(event.deposit.calldata.into()),
+        block_timestamp: Set(tx.block_timestamp.naive_utc()),
     };
 
     optimism_children_transaction_deposited_events_v0::Entity::insert(model)

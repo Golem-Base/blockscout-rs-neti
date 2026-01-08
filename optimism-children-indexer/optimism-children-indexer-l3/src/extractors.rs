@@ -1,13 +1,16 @@
 //! Data extractors for Layer3 chains.
 use super::{
     abi::L2ToL1MessagePasser,
-    types::{Layer3Chains, Layer3Deposit, Layer3IndexerTaskOutputItem, Layer3Withdrawal},
+    types::{
+        Layer3Chains, Layer3Deposit, Layer3IndexerTaskOutputItem, Layer3Withdrawal, Timestamp,
+    },
 };
 use optimism_children_indexer_logic::well_known::{
     ARKIV_HOUSEKEEPING_ADDRESS, OPTIMISM_L3_TO_L2_MESSAGE_PASSER_ADDRESS,
 };
 
 use alloy::{
+    consensus::BlockHeader,
     network::{ReceiptResponse, TransactionResponse},
     providers::Network,
     sol_types::SolEvent,
@@ -43,6 +46,10 @@ pub fn extract_deposits(
                         .to_vec(),
                     block_number: block.number() as i64,
                     block_hash: block.hash().to_vec(),
+                    block_timestamp: Timestamp::from_timestamp_secs(
+                        block.header.timestamp().try_into()?,
+                    )
+                    .ok_or(anyhow!("Failed to convert block timestamp"))?,
                     tx_hash: tx.tx_hash().as_slice().to_vec(),
                     source_hash: deposit_tx.source_hash.as_slice().to_vec(),
                     success: receipt.status(),
@@ -62,6 +69,9 @@ pub fn extract_withdrawals(
     block: &<Optimism as Network>::BlockResponse,
     receipts: &Vec<<Optimism as Network>::ReceiptResponse>,
 ) -> Result<Vec<Layer3IndexerTaskOutputItem>> {
+    let block_timestamp = Timestamp::from_timestamp_secs(block.header.timestamp().try_into()?)
+        .ok_or(anyhow!("Failed to convert block timestamp"))?;
+
     let items: Vec<Layer3IndexerTaskOutputItem> = receipts
         .iter()
         .filter(|receipt| {
@@ -81,6 +91,7 @@ pub fn extract_withdrawals(
                     chain_id: config.chain_id,
                     block_number: block.number() as i64,
                     block_hash: block.hash().to_vec(),
+                    block_timestamp,
                     tx_hash: receipt.transaction_hash().to_vec(),
                     nonce: message_passed.nonce,
                     sender: message_passed.sender.to_vec(),

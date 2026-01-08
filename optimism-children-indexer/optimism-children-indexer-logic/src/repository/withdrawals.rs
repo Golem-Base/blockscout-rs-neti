@@ -3,12 +3,13 @@ use crate::{
     repository::sql,
     types::{
         Address, BlockHash, ConsensusTx, EventMetadata, FullEvent, FullWithdrawal, Log,
-        PaginationMetadata, PaginationParams, TxHash, WithdrawalFinalizedEvent,
+        PaginationMetadata, PaginationParams, Timestamp, TxHash, WithdrawalFinalizedEvent,
         WithdrawalProvenEvent,
     },
 };
 use alloy_primitives::{Bytes, B256, U256};
 use anyhow::Result;
+use chrono::{NaiveDateTime, Utc};
 use optimism_children_indexer_entity::{
     optimism_children_withdrawal_finalized_events, optimism_children_withdrawal_proven_events,
 };
@@ -22,6 +23,7 @@ struct DbWithdrawal {
     chain_id: i64,
     l3_block_number: i64,
     l3_block_hash: Vec<u8>,
+    l3_block_timestamp: NaiveDateTime,
     l3_tx_hash: Vec<u8>,
     nonce: BigDecimal,
     sender: Vec<u8>,
@@ -35,6 +37,7 @@ struct DbWithdrawal {
     proven_tx_hash: Option<Vec<u8>>,
     proven_block_hash: Option<Vec<u8>>,
     proven_block_number: Option<i32>,
+    proven_block_timestamp: Option<NaiveDateTime>,
     proven_log_index: Option<i32>,
     proven_from: Option<Vec<u8>>,
     proven_to: Option<Vec<u8>>,
@@ -45,6 +48,7 @@ struct DbWithdrawal {
     finalized_tx_hash: Option<Vec<u8>>,
     finalized_block_hash: Option<Vec<u8>>,
     finalized_block_number: Option<i32>,
+    finalized_block_timestamp: Option<NaiveDateTime>,
     finalized_log_index: Option<i32>,
     finalized_success: Option<bool>,
     finalized_tx_from: Option<Vec<u8>>,
@@ -59,6 +63,7 @@ impl TryFrom<DbWithdrawal> for FullWithdrawal {
             value.proven_tx_hash,
             value.proven_block_hash,
             value.proven_block_number,
+            value.proven_block_timestamp,
             value.proven_log_index,
             value.proven_from,
             value.proven_to,
@@ -69,6 +74,7 @@ impl TryFrom<DbWithdrawal> for FullWithdrawal {
                 Some(tx_hash),
                 Some(block_hash),
                 Some(block_number),
+                Some(block_timestamp),
                 Some(index),
                 Some(from),
                 Some(to),
@@ -82,6 +88,7 @@ impl TryFrom<DbWithdrawal> for FullWithdrawal {
                     block_hash: BlockHash::from_slice(&block_hash),
                     index: index.try_into()?,
                     block_number: block_number.try_into()?,
+                    block_timestamp: Timestamp::from_naive_utc_and_offset(block_timestamp, Utc),
                 },
                 event: WithdrawalProvenEvent {
                     withdrawal_hash: B256::from_slice(&value.withdrawal_hash),
@@ -96,6 +103,7 @@ impl TryFrom<DbWithdrawal> for FullWithdrawal {
             value.finalized_tx_hash,
             value.finalized_block_hash,
             value.finalized_block_number,
+            value.finalized_block_timestamp,
             value.finalized_log_index,
             value.finalized_success,
             value.finalized_tx_from,
@@ -105,6 +113,7 @@ impl TryFrom<DbWithdrawal> for FullWithdrawal {
                 Some(tx_hash),
                 Some(block_hash),
                 Some(block_number),
+                Some(block_timestamp),
                 Some(index),
                 Some(success),
                 Some(tx_from),
@@ -117,6 +126,7 @@ impl TryFrom<DbWithdrawal> for FullWithdrawal {
                     block_hash: BlockHash::from_slice(&block_hash),
                     index: index.try_into()?,
                     block_number: block_number.try_into()?,
+                    block_timestamp: Timestamp::from_naive_utc_and_offset(block_timestamp, Utc),
                 },
                 event: WithdrawalFinalizedEvent {
                     withdrawal_hash: B256::from_slice(&value.withdrawal_hash),
@@ -130,6 +140,7 @@ impl TryFrom<DbWithdrawal> for FullWithdrawal {
             chain_id: value.chain_id.try_into()?,
             l3_block_number: value.l3_block_number.try_into()?,
             l3_block_hash: BlockHash::from_slice(&value.l3_block_hash),
+            l3_block_timestamp: Timestamp::from_naive_utc_and_offset(value.l3_block_timestamp, Utc),
             l3_tx_hash: TxHash::from_slice(&value.l3_tx_hash),
             nonce: U256::from_str(&value.nonce.to_string())?,
             sender: Address::from_slice(&value.sender),
@@ -159,6 +170,7 @@ pub async fn store_withdrawal_proven<T: ConnectionTrait>(
         withdrawal_hash: Set(event.withdrawal_hash.as_slice().into()),
         from: Set(event.from.as_slice().into()),
         to: Set(event.to.as_slice().into()),
+        block_timestamp: Set(tx.block_timestamp.naive_utc()),
     };
 
     optimism_children_withdrawal_proven_events::Entity::insert(model)
@@ -182,6 +194,7 @@ pub async fn store_withdrawal_finalized<T: ConnectionTrait>(
         index: Set(log.index.try_into()?),
         withdrawal_hash: Set(event.withdrawal_hash.as_slice().into()),
         success: Set(event.success),
+        block_timestamp: Set(tx.block_timestamp.naive_utc()),
     };
 
     optimism_children_withdrawal_finalized_events::Entity::insert(model)

@@ -43,6 +43,7 @@ async fn test_deposits_endpoint() {
                     "execution_tx": {
                         "block_hash": "0x595b3bdd6b2fb42235e760ba15d3a5a58f1665bea4d5fb526a81bb68ea8be24b",
                         "block_number": "113040",
+                        "block_timestamp": "2025-11-07T21:06:36.205300+00:00",
                         "from": "0x481c965E6579099F005387B4C1D7fb03bC302F4b",
                         "to": "0x03a858395F1a6cd22e2B4D31139794AaB58C5D4d",
                         "transaction_hash": "0xb41fd72d60425a9d836d9307b6afcd8b8b217c6fe4f09d9cf7bbe155944069a2",
@@ -53,6 +54,7 @@ async fn test_deposits_endpoint() {
                     "init_tx": {
                         "block_hash": "0x7ec13ee95beee46e78b51559fbf985b2d1124c5b98e7ecc6174ddf90afa30f16",
                         "block_number": "9398574",
+                        "block_timestamp": "2025-11-04T17:18:24+00:00",
                         "from": "0x03a858395F1a6cd22e2B4D31139794AaB58C5D4d",
                         "to": "0x370b965e6579099f005387b4c1D7Fb03bC301e3A",
                         "transaction_hash": "0x387f9c25f22259f8a044d289434f0a5f49f9259205fd1bd2711a16fe29235bfc",
@@ -68,6 +70,7 @@ async fn test_deposits_endpoint() {
                     "execution_tx": {
                         "block_hash": "0xa1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d",
                         "block_number": "82060",
+                        "block_timestamp": "2025-02-27T08:22:28.982300+00:00",
                         "from": "0x2f67dd5b165D37b179D3cEcEBFa67765a38c8ad3",
                         "to": "0x7bB44cCbAb1445d064049ed6a1ccb6f116aDd1B9",
                         "transaction_hash": "0x6b52cc514f3a4d953d5648a69d3f309e52aaeb55e62ee683d4ca526163cc153d",
@@ -78,6 +81,7 @@ async fn test_deposits_endpoint() {
                     "init_tx": {
                         "block_hash": "0x3466e222249e9f13be5130d4623e1fc2a5bc1c6c258c510773b50977be70f5df",
                         "block_number": "29466",
+                        "block_timestamp": "2025-11-04T17:30:48+00:00",
                         "from": "0x17acfafcfa4A6912F97d85950F37ceEf97305393",
                         "to": "0x8cF3068a4a1C4f329Cc19b7c57BD4b2e7EaA3662",
                         "transaction_hash": "0x653d3f9ec83c23f5e870e6d2710961a681e3bfbb280d8c19da7739146df3b6bb",
@@ -96,6 +100,7 @@ async fn test_deposits_endpoint() {
                     "init_tx": {
                         "block_hash": "0xff58bc22f06613e01ef3d63ceeb24e9209ec304c7b71599f84bf804187bc2867",
                         "block_number": "29280",
+                        "block_timestamp": "2025-11-04T17:18:24+00:00",
                         "from": "0x17acfafcfa4A6912F97d85950F37ceEf97305393",
                         "to": "0x8cF3068a4a1C4f329Cc19b7c57BD4b2e7EaA3662",
                         "transaction_hash": "0xc913706ddb07d506aebab4bb006be97c02147fc5ac9a58497f17b22486dc72f3",
